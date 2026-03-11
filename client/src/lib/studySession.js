@@ -92,10 +92,12 @@ export const getActiveSessionDeckIds = () => {
   return ids;
 };
 
-export default {
+const studySessionLib = {
   getStudySession,
   saveStudySession,
   clearStudySession,
   getSessionProgress,
   getActiveSessionDeckIds,
 };
+
+export default studySessionLib;

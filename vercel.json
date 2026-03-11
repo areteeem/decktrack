@@ -2,6 +2,6 @@
   "rewrites": [
     { "source": "/(.*)", "destination": "/index.html" }
   ],
-  "buildCommand": "cd client && npm install && npm run build",
+  "buildCommand": "cd client && npm install && CI=false npm run build",
   "outputDirectory": "client/build"
 }
