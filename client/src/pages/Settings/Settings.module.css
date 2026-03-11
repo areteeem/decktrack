@@ -1,0 +1,110 @@
+.settings {
+  max-width: 28rem;
+  margin: 1.5rem auto;
+}
+
+.settings h1 {
+  font-size: 1.25rem;
+  margin-bottom: 1.5rem;
+}
+
+/* ── Section ──────────────────────── */
+.section {
+  margin-bottom: 1.5rem;
+}
+
+.sectionTitle {
+  display: block;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--fg-faint);
+  margin-bottom: 0.5rem;
+}
+
+/* ── Profile card ─────────────────── */
+.profileCard {
+  border: var(--border);
+  border-radius: var(--radius);
+  padding: 0.85rem 1rem;
+  background: var(--card-bg);
+}
+
+.profileRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.35rem;
+}
+
+.profileRow:last-child {
+  margin-bottom: 0;
+}
+
+.profileLabel {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--fg-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.profileValue {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--fg);
+}
+
+/* ── Option pill group ────────────── */
+.optionGroup {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.optionBtn {
+  padding: 0.4rem 0.75rem;
+  border: 1.5px solid var(--border-color);
+  border-radius: var(--radius);
+  background: var(--card-bg);
+  color: var(--fg-muted);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
+}
+
+.optionBtn:hover {
+  background: var(--card-hover);
+  color: var(--fg);
+}
+
+.optionBtnActive {
+  composes: optionBtn;
+  background: var(--fg);
+  color: var(--bg);
+  border-color: var(--fg);
+}
+
+.optionBtnActive:hover {
+  background: var(--fg);
+  color: var(--bg);
+}
+
+/* ── Description text ─────────────── */
+.desc {
+  font-size: 0.75rem;
+  color: var(--fg-faint);
+  margin-top: 0.35rem;
+  line-height: 1.4;
+}
+
+/* ── Separator ────────────────────── */
+.separator {
+  border: none;
+  border-top: 1px solid var(--border-color);
+  margin: 1.5rem 0;
+  opacity: 0.2;
+}

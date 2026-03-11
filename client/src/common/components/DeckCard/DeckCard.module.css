@@ -1,6 +1,53 @@
 .card {
-  padding: 0.25em 1em;
-  margin: 0 0.5em 0.5em 0;
-  border: var(--border-thick);
-  border-radius: 1em;
+  padding: 0.85rem 1rem;
+  border: var(--border);
+  border-radius: var(--radius);
+  background: var(--card-bg);
+  transition: background 0.12s;
+}
+
+.card:hover {
+  background: var(--card-hover);
+}
+
+.title {
+  margin: 0 0 0.15rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--fg);
+}
+
+.card h3 {
+  margin: 0;
+  font-size: 0.8rem;
+  font-weight: 400;
+  color: var(--fg-muted);
+}
+
+.sessionIndicator {
+  margin-top: 0.4rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.progressTrack {
+  height: 3px;
+  background: var(--badge-bg);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.progressFill {
+  height: 100%;
+  background: var(--fg);
+  border-radius: 2px;
+  transition: width 0.3s;
+}
+
+.continueLabel {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--fg-muted);
+  letter-spacing: -0.01em;
 }

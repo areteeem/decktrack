@@ -1,28 +1,21 @@
 import { Link } from "react-router-dom";
 import styles from "./DeckLink.module.css";
-import { gql, useMutation } from "@apollo/client";
 import DeleteDeckModal from "./DeleteDeckModal";
 import { useState } from "react";
+import { useDeleteDeck } from "../../hooks/useSupabaseData";
+import { toast } from "react-toastify";
 
-const DELETE_DECK = gql`
-  mutation deleteDeck($id: ID!) {
-    deleteDeck(id: $id) {
-      id
-      name
-    }
-  }
-`;
-
-const DeckLink = ({ id, name }) => {
+const DeckLink = ({ id, name, onDeleted }) => {
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
-  const [deleteDeck] = useMutation(DELETE_DECK, {
-    update(cache, { data: { deleteDeck } }) {
-      cache.evict({ id: `Deck:${deleteDeck.id}` });
-    },
-  });
+  const { deleteDeck } = useDeleteDeck();
 
-  const handleDelete = () => {
-    deleteDeck({ variables: { id } });
+  const handleDelete = async () => {
+    try {
+      await deleteDeck(id);
+      if (onDeleted) onDeleted();
+    } catch (err) {
+      toast.error(err.message || "Failed to delete deck");
+    }
   };
 
   return (

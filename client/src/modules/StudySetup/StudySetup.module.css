@@ -1,0 +1,142 @@
+.setup {
+  max-width: 28rem;
+  margin: 2rem auto;
+}
+
+.setup h1 {
+  font-size: 1.25rem;
+  margin-bottom: 1rem;
+}
+
+.section {
+  margin-bottom: 1rem;
+}
+
+.sectionLabel {
+  display: block;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--fg-faint);
+  margin-bottom: 0.35rem;
+}
+
+.optionGroup {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.optionBtn {
+  padding: 0.4rem 0.75rem;
+  border: 1.5px solid var(--border-color);
+  border-radius: var(--radius);
+  background: var(--card-bg);
+  color: var(--fg-muted);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
+}
+
+.optionBtn:hover {
+  background: var(--card-hover);
+  color: var(--fg);
+}
+
+.optionBtnActive {
+  composes: optionBtn;
+  background: var(--fg);
+  color: var(--bg);
+  border-color: var(--fg);
+}
+
+.optionBtnActive:hover {
+  background: var(--fg);
+  color: var(--bg);
+}
+
+.toggleRow {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.toggle {
+  position: relative;
+  width: 2.2rem;
+  height: 1.2rem;
+  border-radius: 0.6rem;
+  border: 1.5px solid var(--border-color);
+  background: var(--bg-secondary);
+  cursor: pointer;
+  transition: background 0.15s;
+  flex-shrink: 0;
+}
+
+.toggle::after {
+  content: '';
+  position: absolute;
+  top: 0.1rem;
+  left: 0.1rem;
+  width: 0.8rem;
+  height: 0.8rem;
+  border-radius: 50%;
+  background: var(--fg-muted);
+  transition: transform 0.15s;
+}
+
+.toggleOn {
+  composes: toggle;
+  background: var(--fg);
+}
+
+.toggleOn::after {
+  background: var(--bg);
+  transform: translateX(1rem);
+}
+
+.toggleLabel {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--fg-muted);
+}
+
+.startBtn {
+  width: 100%;
+  padding: 0.6rem;
+  border: var(--border);
+  border-radius: var(--radius);
+  background: var(--fg);
+  color: var(--bg);
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+  margin-top: 0.75rem;
+  transition: opacity 0.12s;
+}
+
+.startBtn:hover {
+  opacity: 0.85;
+}
+
+.startBtn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.cardCounts {
+  display: flex;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+  font-size: 0.8rem;
+  color: var(--fg-muted);
+}
+
+.cardCounts strong {
+  color: var(--fg);
+}

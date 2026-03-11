@@ -1,163 +1,253 @@
 import ProgressBar from "../../common/components/ProgressBar";
-import Button from "../../common/components/Button";
 import styles from "./Practice.module.css";
-import { useEffect, useState } from "react";
-import { useApolloClient, gql, useMutation } from "@apollo/client";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import LoadingScreen from "../../common/components/LoadingScreen";
 import FlipCard from "../../common/components/FlipCard";
+import { useUpdateStudentCard } from "../../hooks/useSupabaseData";
+import { useSettings } from "../../contexts/SettingsContext";
+import { tick as timerTick, stop as timerStop } from "../../lib/studyTimer";
 
-const UPDATE_FLASHCARD = gql`
-  mutation updateFlashcard($data: UpdateFlashcardInput) {
-    updateFlashcard(data: $data) {
-      id
-      due
-      reviews
-      retention
-      new
-    }
+/**
+ * SM-2 inspired interval calculations for Practice (review cards).
+ * Again = reset to 1 day, re-queue in session
+ * Hard  = interval * 1.2
+ * Good  = interval * ease_factor (default 2.5)
+ * Easy  = interval * ease_factor * 1.3
+ */
+const computeNextInterval = (card, grade) => {
+  const curInterval = card.next_review_days || card.nextReview || 1;
+  const ease = card.ease_factor || 2.5;
+
+  switch (grade) {
+    case "again": return { interval: 1, ease: Math.max(1.3, ease - 0.2), requeue: true };
+    case "hard":  return { interval: Math.max(1, Math.round(curInterval * 1.2)), ease: Math.max(1.3, ease - 0.15) };
+    case "good":  return { interval: Math.round(curInterval * ease), ease };
+    case "easy":  return { interval: Math.round(curInterval * ease * 1.3), ease: ease + 0.15 };
+    default:      return { interval: curInterval, ease };
   }
-`;
+};
 
-const Practice = ({ flashcards, callingQuery }) => {
-  const client = useApolloClient();
-  const [loading, setLoading] = useState(true);
+/** Format interval days into a human-readable string */
+const formatInterval = (days, t) => {
+  if (days <= 0) return t("lessThan1m");
+  if (days < 1) {
+    const mins = Math.round(days * 24 * 60);
+    if (mins < 60) return t("minutes", { n: mins });
+    return t("hours", { n: Math.round(mins / 60) });
+  }
+  if (days >= 30) return t("months", { n: Math.round(days / 30) });
+  return t("days", { n: days });
+};
 
-  // force query refetch on first render
+const Practice = ({ flashcards, showTermFirst = true, onProgress, onComplete }) => {
+  const { updateStudentCard } = useUpdateStudentCard();
+  const { srsMode, t } = useSettings();
+
+  // Study timer
   useEffect(() => {
-    client
-      .refetchQueries({
-        include: [callingQuery],
-      })
-      .then(() => {
-        setLoading(false);
-      });
-  }, [callingQuery, client]);
+    const id = setInterval(timerTick, 1000);
+    return () => { clearInterval(id); timerStop(); };
+  }, []);
 
-  const [updateFlashcard] = useMutation(UPDATE_FLASHCARD, {
-    update(cache, { data: { updateFlashcard } }) {
-      cache.modify({
-        fields: {
-          id: `Flashcard:${updateFlashcard.id}`,
-          due: (value) => updateFlashcard.due,
-          reviews: (value) => updateFlashcard.reviews,
-          retention: (value) => updateFlashcard.retention,
-          new: (value) => false,
-        },
-      });
-    },
-  });
+  const initialQueue = useMemo(() => {
+    if (!flashcards) return [];
+    return [...flashcards];
+  }, [flashcards]);
 
-  useEffect(() => {
-    window.addEventListener("keydown", handleKeyDown, true);
-    return () => {
-      window.removeEventListener("keydown", handleKeyDown, true);
-    };
-  });
-
-  const handleKeyDown = (e) => {
-    if (flashcards.length !== currentFlashcard && flashcards.length !== 0) {
-      if (e.key === "r" || e.key === "R") {
-        remembered();
-      } else if (e.key === "f" || e.key === "F") {
-        forgot();
-      }
-    }
-  };
-
-  const remembered = () => {
-    const flashcard = flashcards[currentFlashcard];
-    updateFlashcard({
-      variables: {
-        data: {
-          due: new Date(
-            parseInt(flashcard.due) + flashcard.nextReview * 24 * 60 * 60 * 1000
-          ),
-          reviews: flashcard.reviews + 1,
-          retention: flashcard.retention + 1,
-          new: false,
-          id: flashcard.id,
-          nextReview: flashcard.nextReview * 2,
-          mastered: flashcard.nextReview * 2 === 256 ? true : false,
-        },
-      },
-    });
-    setIsFlipped(false);
-    setCurrentFlashcard(currentFlashcard + 1);
-  };
-
-  const forgot = () => {
-    const flashcard = flashcards[currentFlashcard];
-    let nextReview =
-      flashcard.nextReview === 1 ? 1 : flashcard.nextReview * 0.5;
-    updateFlashcard({
-      variables: {
-        data: {
-          due: new Date(
-            parseInt(flashcard.due) + nextReview * 24 * 60 * 60 * 1000
-          ),
-          reviews: flashcard.reviews + 1,
-          new: false,
-          id: flashcard.id,
-          nextReview: nextReview,
-        },
-      },
-    });
-    setIsFlipped(false);
-    setCurrentFlashcard(currentFlashcard + 1);
-  };
-
+  const [queue, setQueue] = useState(initialQueue);
+  const [position, setPosition] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
-  const [currentFlashcard, setCurrentFlashcard] = useState(0);
+  const [sessionStats, setSessionStats] = useState({ reviewed: 0, again: 0, hard: 0, good: 0, easy: 0 });
 
-  if (loading) return <LoadingScreen />;
+  useEffect(() => {
+    setQueue([...initialQueue]);
+    setPosition(0);
+    setIsFlipped(false);
+    setSessionStats({ reviewed: 0, again: 0, hard: 0, good: 0, easy: 0 });
+  }, [initialQueue]);
+
+  const totalUnique = flashcards?.length || 0;
+  const currentCard = queue[position];
+  const isComplete = position >= queue.length;
+
+  // Notify parent when session completes
+  useEffect(() => {
+    if (isComplete && totalUnique > 0) onComplete?.();
+  }, [isComplete, totalUnique, onComplete]);
+
+  const gradeCard = useCallback((grade) => {
+    if (isComplete || !currentCard) return;
+    const { interval, ease, requeue } = computeNextInterval(currentCard, grade);
+
+    // Update DB
+    const updates = {
+      due: new Date(Date.now() + interval * 24 * 60 * 60 * 1000).toISOString(),
+      reviews: (currentCard.reviews || 0) + 1,
+      is_new: false,
+      next_review_days: interval,
+      ease_factor: ease,
+      mastered: interval >= 256,
+    };
+
+    if (grade === "again") {
+      // Don't increment retention on again
+      updates.again_count = (currentCard.again_count || 0) + 1;
+    } else {
+      updates.retention = (currentCard.retention || 0) + 1;
+    }
+
+    updateStudentCard(currentCard.id, updates);
+
+    // Update session stats
+    setSessionStats(prev => ({
+      ...prev,
+      reviewed: prev.reviewed + 1,
+      [grade]: prev[grade] + 1,
+    }));
+
+    // Re-queue "Again" cards
+    if (requeue) {
+      const reinsertAt = Math.min(position + 3 + Math.floor(Math.random() * 3), queue.length);
+      setQueue(prev => {
+        const next = [...prev];
+        next.splice(reinsertAt, 0, {
+          ...currentCard,
+          again_count: (currentCard.again_count || 0) + 1,
+          next_review_days: 1,
+          ease_factor: ease,
+        });
+        return next;
+      });
+    }
+
+    setIsFlipped(false);
+    setPosition(prev => prev + 1);
+
+    // Notify parent of progress
+    onProgress?.(currentCard.id, grade, position + 1, queue.length);
+  }, [isComplete, currentCard, position, queue.length, updateStudentCard, onProgress]);
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (isComplete) return;
+      if (srsMode === "simple") {
+        if (e.key === "1") gradeCard("again");
+        else if (e.key === "2") gradeCard("good"); // "Know" = good
+      } else {
+        if (e.key === "1") gradeCard("again");
+        else if (e.key === "2") gradeCard("hard");
+        else if (e.key === "3") gradeCard("good");
+        else if (e.key === "4") gradeCard("easy");
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown, true);
+    return () => window.removeEventListener("keydown", handleKeyDown, true);
+  }, [gradeCard, isComplete, srsMode]);
+
+  if (!flashcards) return <LoadingScreen />;
 
   if (flashcards.length === 0) {
     return (
       <div className={styles.layout}>
         <div className={styles.content}>
-          <h1>You don't have any cards to practice right now!</h1>
-        </div>
-      </div>
-    );
-  } else if (flashcards.length === currentFlashcard) {
-    return (
-      <div className={styles.layout}>
-        <div className={styles.content}>
-          <h1>Practice complete!</h1>
-        </div>
-      </div>
-    );
-  } else {
-    return (
-      <div className={styles.layout}>
-        <div className={styles.header}>
-          <h1>
-            Practice {currentFlashcard}/{flashcards.length}
-          </h1>
-          <ProgressBar
-            completed={(currentFlashcard / flashcards.length) * 100}
-          />
-        </div>
-        <div className={styles.content}>
-          {flashcards[currentFlashcard] && (
-            <FlipCard
-              flashcard={flashcards[currentFlashcard]}
-              isFlipped={isFlipped}
-              setIsFlipped={setIsFlipped}
-            />
-          )}
-        </div>
-        <div className={styles.footer}>
-          <Button callback={forgot}>
-            Forgot <code>F</code>
-          </Button>
-          <Button callback={remembered}>
-            Remembered <code>R</code>
-          </Button>
+          <h1>{t("noPracticeCards")}</h1>
         </div>
       </div>
     );
   }
+
+  if (isComplete) {
+    const accuracy = sessionStats.reviewed > 0
+      ? Math.round(((sessionStats.good + sessionStats.easy) / sessionStats.reviewed) * 100)
+      : 0;
+    return (
+      <div className={styles.layout}>
+        <div className={styles.content}>
+          <div className={styles.sessionSummary}>
+            <h1>{t("practiceComplete")}</h1>
+            <div className={styles.summaryStats}>
+              <div className={styles.statItem}>
+                <span className={styles.statValue}>{totalUnique}</span>
+                <span className={styles.statLabel}>{t("cards")}</span>
+              </div>
+              <div className={styles.statItem}>
+                <span className={styles.statValue}>{sessionStats.reviewed}</span>
+                <span className={styles.statLabel}>{t("reviewsLabel")}</span>
+              </div>
+              <div className={styles.statItem}>
+                <span className={styles.statValue}>{accuracy}%</span>
+                <span className={styles.statLabel}>{t("accuracy")}</span>
+              </div>
+            </div>
+            <div className={styles.gradeBreakdown}>
+              <span className={styles.gradeAgain}>{t("again")}: {sessionStats.again}</span>
+              {srsMode === "full" && (
+                <span className={styles.gradeHard}>{t("hardGrade")}: {sessionStats.hard}</span>
+              )}
+              <span className={styles.gradeGood}>{srsMode === "simple" ? t("know") : t("good")}: {sessionStats.good}</span>
+              {srsMode === "full" && (
+                <span className={styles.gradeEasy}>{t("easy")}: {sessionStats.easy}</span>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const progressPct = (Math.min(position, totalUnique) / totalUnique) * 100;
+
+  return (
+    <div className={styles.layout}>
+      <div className={styles.header}>
+        <h1>
+          {t("practiceProgress")} {Math.min(position + 1, totalUnique)}/{totalUnique}
+        </h1>
+        <ProgressBar completed={progressPct} />
+      </div>
+      <div className={styles.content}>
+        {currentCard && (
+          <FlipCard
+            flashcard={currentCard}
+            isFlipped={isFlipped}
+            setIsFlipped={setIsFlipped}
+            showTermFirst={showTermFirst}
+            onSwipeLeft={() => gradeCard("again")}
+            onSwipeRight={() => gradeCard("good")}
+          />
+        )}
+      </div>
+      {isFlipped && currentCard && (
+        <div className={styles.footer}>
+          {srsMode === "simple" ? (
+            <>
+              <button className={styles.againBtn} onClick={() => gradeCard("again")}>
+                {t("again")} <code>{formatInterval(computeNextInterval(currentCard, "again").interval, t)}</code>
+              </button>
+              <button className={styles.goodBtn} onClick={() => gradeCard("good")}>
+                {t("know")} <code>{formatInterval(computeNextInterval(currentCard, "good").interval, t)}</code>
+              </button>
+            </>
+          ) : (
+            <>
+              <button className={styles.againBtn} onClick={() => gradeCard("again")}>
+                {t("again")} <code>{formatInterval(computeNextInterval(currentCard, "again").interval, t)}</code>
+              </button>
+              <button className={styles.hardBtn} onClick={() => gradeCard("hard")}>
+                {t("hardGrade")} <code>{formatInterval(computeNextInterval(currentCard, "hard").interval, t)}</code>
+              </button>
+              <button className={styles.goodBtn} onClick={() => gradeCard("good")}>
+                {t("good")} <code>{formatInterval(computeNextInterval(currentCard, "good").interval, t)}</code>
+              </button>
+              <button className={styles.easyBtn} onClick={() => gradeCard("easy")}>
+                {t("easy")} <code>{formatInterval(computeNextInterval(currentCard, "easy").interval, t)}</code>
+              </button>
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
 };
 
 export default Practice;

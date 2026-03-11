@@ -4,7 +4,7 @@
   align-items: center;
   justify-content: space-between;
   text-decoration: none;
-  margin: 0.2em 0;
+  margin: 0.15em 0;
 }
 
 .deckLink:hover .deleteIcon {
@@ -19,12 +19,19 @@
 
 .deleteIcon {
   opacity: 0;
-  color: var(--color-red);
-  height: 1em;
+  color: var(--danger);
+  height: 0.85em;
   cursor: pointer;
+  stroke: var(--danger);
 }
 
 .link {
   width: 100%;
   cursor: pointer;
+  color: var(--fg-muted);
+  font-size: 0.85em;
+}
+
+.link:hover {
+  color: var(--fg);
 }

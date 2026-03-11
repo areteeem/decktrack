@@ -21,6 +21,8 @@
   </p>
 </div>
 
+> Note: this repository is now being wired into the TutPro Supabase stack. For the current local setup flow, use [LOCAL_SETUP.md](LOCAL_SETUP.md).
+
 
 <!-- ABOUT THE PROJECT -->
 ## About The Project

@@ -1,28 +1,21 @@
-import { useApolloClient, gql } from "@apollo/client";
 import { useNavigate } from "react-router";
 import { toast } from "react-toastify";
+import { useAuth } from "../../contexts/AuthContext";
+import { applyPendingStudentAppBridge } from "../../lib/studentAppBridge";
 
 export const useSignUp = () => {
-  const client = useApolloClient();
+  const { signUp } = useAuth();
   const navigate = useNavigate();
 
-  const signup = async (variables) => {
-    client
-      .mutate({
-        mutation: gql`
-          mutation createUser($email: String!, $password: String!) {
-            createUser(email: $email, password: $password)
-          }
-        `,
-        variables,
-      })
-      .then((data) => {
-        if (data.data === null) {
-          toast.error("Something went wrong :(");
-        } else {
-          client.resetStore().then(() => navigate("/", { replace: true }));
-        }
-      });
+  const signup = async ({ email, password }) => {
+    try {
+      await signUp(email, password);
+      await applyPendingStudentAppBridge();
+      toast.success("Account created!");
+      navigate("/", { replace: true });
+    } catch (err) {
+      toast.error(err.message || "Something went wrong :(");
+    }
   };
   return signup;
 };

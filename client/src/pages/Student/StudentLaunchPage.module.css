@@ -1,0 +1,74 @@
+.layout {
+  min-height: calc(100vh - 3.5rem);
+  display: grid;
+  place-items: center;
+  padding: 1.5rem 1rem;
+}
+
+.card {
+  width: 100%;
+  max-width: 28rem;
+  padding: 1.5rem;
+  border: var(--border);
+  border-radius: var(--radius);
+  background: var(--card-bg);
+  text-align: center;
+}
+
+.loaderWrap {
+  height: 8rem;
+  display: grid;
+  place-items: center;
+  margin-bottom: 0.35rem;
+}
+
+.badge {
+  display: inline-flex;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--fg-faint);
+  margin-bottom: 0.5rem;
+}
+
+.title {
+  margin: 0;
+  font-size: 1.3rem;
+}
+
+.description {
+  margin: 0.5rem 0 0;
+  color: var(--fg-muted);
+  font-size: 0.85rem;
+  line-height: 1.55;
+}
+
+.actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.linkButton,
+.secondaryLink {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem 0.85rem;
+  border-radius: var(--radius);
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+
+.linkButton {
+  border: var(--border);
+  background: var(--fg);
+  color: var(--bg);
+}
+
+.secondaryLink {
+  color: var(--fg-muted);
+}

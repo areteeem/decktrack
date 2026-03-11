@@ -2,12 +2,13 @@
   height: 100vh;
   width: 100vw;
   display: grid;
-  grid-template-columns: auto minmax(min-content, 1080px) auto;
-  grid-template-rows: 2em auto;
+  grid-template-columns: auto minmax(min-content, 960px) auto;
+  grid-template-rows: 2.5rem auto;
   grid-template-areas:
     "header header header"
     ".  content  .";
-  grid-gap: 1rem;
+  gap: 1rem;
+  background: var(--bg);
 }
 
 .content {
@@ -21,14 +22,15 @@
 
 .header {
   grid-area: header;
-  font-size: 1em;
-  margin-top: 0.25em;
+  font-size: 0.85rem;
   text-align: right;
-  padding-right: 2em;
+  padding-right: 2rem;
+  padding-top: 0.5rem;
 }
 
 .link {
   text-decoration: underline;
+  color: var(--fg);
 }
 
 .column1 {
@@ -36,9 +38,10 @@
 }
 
 .column1 p {
-  font-size: 1.3em;
-  padding-right: 1em;
-  margin-top: 0.5em;
+  font-size: 1.05rem;
+  padding-right: 1rem;
+  margin-top: 0.5rem;
+  color: var(--fg-muted);
 }
 
 .column2 {
@@ -47,7 +50,8 @@
 
 .screenshot {
   max-width: 100%;
-  border: var(--border-thick);
+  border: var(--border);
+  border-radius: var(--radius);
 }
 
 @media (max-width: 1200px) {
@@ -60,6 +64,6 @@
     width: 100%;
   }
   .header {
-    padding-right: 0.5em;
+    padding-right: 0.5rem;
   }
 }

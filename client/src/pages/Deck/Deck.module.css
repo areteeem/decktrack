@@ -1,36 +1,194 @@
 .flashcardContainer {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(15em, max-content));
-  grid-template-rows: repeat(auto-fit, minmax(10em, max-content));
-  grid-gap: 0.25em;
-  grid-auto-flow: dense;
+  grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
+  grid-gap: 0.5rem;
+}
+
+.flashcardContainer.tableView {
+  grid-template-columns: 1fr;
 }
 
 .menu {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   flex-wrap: wrap-reverse;
   max-width: 100vw;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
 }
 
 .title {
   display: flex;
   align-items: center;
-  gap: 0.2em;
+  gap: 0.35em;
+  flex-wrap: wrap;
 }
 
-@media (max-width: 1200px) {
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.35rem;
+}
+
+.viewToggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: var(--border);
+  border-radius: var(--radius);
+  background: var(--card-bg);
+  padding: 0.35rem 0.6rem;
+  cursor: pointer;
+  font-size: 0.9rem;
+  color: var(--fg-muted);
+  line-height: 1;
+}
+
+.viewToggle:hover {
+  color: var(--fg);
+}
+
+.addToggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border: var(--border);
+  border-radius: var(--radius);
+  background: var(--card-bg);
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--fg);
+  cursor: pointer;
+  line-height: 1;
+  transition: background 0.12s;
+  flex-shrink: 0;
+}
+
+.addToggle:hover {
+  background: var(--card-hover);
+}
+
+@media (min-width: 1200px) {
   .flashcardContainer {
-    grid-template-columns: 100%;
-    grid-template-rows: repeat(auto-fit, minmax(7.5em, max-content));
+    grid-template-columns: repeat(auto-fill, minmax(13rem, 1fr));
+  }
+}
+
+@media (max-width: 768px) {
+  .flashcardContainer {
+    grid-template-columns: repeat(2, 1fr);
   }
   .title {
-    margin-bottom: 0.33em;
+    margin-bottom: 0.25em;
   }
   .menu {
     flex-direction: column;
-    align-items: flex-end;
-    margin-bottom: 1.5em;
+    align-items: stretch;
+    overflow-x: hidden;
   }
+  .actions {
+    justify-content: flex-start;
+    overflow-x: auto;
+    max-width: 100%;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .actions::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+@media (max-width: 420px) {
+  .flashcardContainer {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* table row card style */
+.tableRow {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.5rem 0.75rem;
+  border: var(--border);
+  border-radius: var(--radius);
+  cursor: pointer;
+  background: var(--card-bg);
+  transition: background 0.12s;
+}
+
+.tableRow:hover {
+  background: var(--card-hover);
+}
+
+.tableRow .tableCol {
+  flex: 1;
+  min-width: 0;
+}
+
+.tableRow .tableCol:first-child {
+  font-weight: 600;
+  color: var(--fg);
+}
+
+.tableRow .tableCol:nth-child(2) {
+  color: var(--fg-muted);
+}
+
+.tableView {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.tableRowTerm {
+  flex: 1;
+  min-width: 0;
+  font-weight: 600;
+  font-size: 0.85rem;
+  color: var(--fg);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tableRowDef {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.85rem;
+  color: var(--fg-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tableHeader {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.35rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--fg-faint);
+  border-bottom: var(--border);
+}
+
+.tableRowDue {
+  width: 5.5rem;
+  flex-shrink: 0;
+  text-align: right;
+  font-size: 0.78rem;
+  color: var(--fg-faint);
+  white-space: nowrap;
+}
+
+.overdue {
+  color: var(--danger);
+  font-weight: 600;
 }

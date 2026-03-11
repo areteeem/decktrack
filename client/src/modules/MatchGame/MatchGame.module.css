@@ -1,0 +1,122 @@
+.layout {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  grid-template-columns: 100%;
+  height: calc(100vh - 4rem);
+  padding-bottom: 1rem;
+}
+
+.header {
+  margin-bottom: 1rem;
+}
+
+.header h1 {
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.headerRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.25rem;
+}
+
+.timer {
+  font-size: 0.85rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--fg-muted);
+}
+
+.board {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+  max-width: 44rem;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.column {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.tile {
+  padding: 0.55rem 0.75rem;
+  border: 1.5px solid var(--border-color);
+  border-radius: var(--radius);
+  background: var(--card-bg);
+  color: var(--fg);
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s, opacity 0.2s;
+  text-align: center;
+  min-height: 2.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tile:hover {
+  background: var(--card-hover);
+}
+
+.tileSelected {
+  border-color: var(--fg);
+  background: var(--bg-secondary);
+}
+
+.tileMatched {
+  border-color: var(--success);
+  background: rgba(34, 197, 94, 0.08);
+  opacity: 0.6;
+  cursor: default;
+  pointer-events: none;
+}
+
+.tileWrong {
+  border-color: var(--danger);
+  background: rgba(239, 68, 68, 0.08);
+  animation: shake 0.3s;
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-4px); }
+  75% { transform: translateX(4px); }
+}
+
+/* Results */
+.results {
+  text-align: center;
+  place-self: center;
+}
+
+.results h2 {
+  font-size: 1.2rem;
+  margin: 0 0 0.5rem;
+}
+
+.score {
+  font-size: 2rem;
+  font-weight: 700;
+  margin: 0.5rem 0;
+}
+
+.scoreLabel {
+  font-size: 0.8rem;
+  color: var(--fg-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+@media (max-width: 480px) {
+  .tile {
+    font-size: 0.78rem;
+    padding: 0.45rem 0.5rem;
+  }
+}

@@ -1,18 +1,27 @@
 .button {
   display: inline-flex;
   justify-content: center;
-  gap: 0.5em;
+  gap: 0.4em;
   align-items: center;
   user-select: none;
-  max-height: 2.5em;
-  margin: 0.2em;
-  padding: 0.5em;
-  background-color: var(--primary-color);
-  color: var(--bg-color);
-  border: none;
-  border-radius: 0.25em;
-  font-size: 1em;
-  font-weight: bold;
+  margin: 0;
+  padding: 0.45em 0.85em;
+  background-color: var(--accent);
+  color: var(--accent-fg);
+  border: 1.5px solid var(--border-color);
+  border-radius: var(--radius);
+  font-size: 0.85rem;
+  font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s ease-in-out;
+  letter-spacing: -0.01em;
+  transition: background 0.12s, opacity 0.12s;
+}
+
+.button:hover:not(:disabled) {
+  opacity: 0.85;
+}
+
+.button:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
 }

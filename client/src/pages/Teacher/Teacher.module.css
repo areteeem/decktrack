@@ -1,0 +1,358 @@
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.headerActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.backLink {
+  display: inline-block;
+  margin-bottom: 0.65rem;
+  color: var(--fg-muted);
+  text-decoration: none;
+  font-size: 0.8rem;
+}
+
+.backLink:hover {
+  text-decoration: underline;
+  color: var(--fg);
+}
+
+.helperText {
+  color: var(--fg-muted);
+  font-size: 0.85rem;
+  line-height: 1.5;
+  margin: 0 0 0.5rem;
+}
+
+.modalActions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 0.65rem;
+}
+
+.summaryGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 0.65rem;
+  margin-bottom: 0.75rem;
+}
+
+.summaryCard {
+  padding: 0.65rem 0.75rem;
+  border: var(--border);
+  border-radius: var(--radius);
+  background: var(--card-bg);
+}
+
+.summaryLabel {
+  display: block;
+  color: var(--fg-faint);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.summaryValue {
+  display: block;
+  margin-top: 0.2rem;
+  font-size: 1.6rem;
+  line-height: 1.1;
+  color: var(--fg);
+}
+
+.syncBanner {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.65rem;
+  padding: 0.65rem 0.75rem;
+  margin-bottom: 0.75rem;
+  border: var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-secondary);
+}
+
+.syncBanner p {
+  margin: 0.2rem 0 0;
+  color: var(--fg-muted);
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+
+.empty {
+  text-align: center;
+  padding: 2rem;
+  color: var(--fg-muted);
+}
+
+.empty h2 {
+  margin-bottom: 0.35rem;
+  font-size: 1.1rem;
+}
+
+/* ── Grid layouts ─────────────────── */
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
+  gap: 0.65rem;
+}
+
+.studentCard {
+  border: var(--border);
+  border-radius: var(--radius);
+  padding: 0.85rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  background: var(--card-bg);
+  overflow: hidden;
+  min-width: 0;
+}
+
+.studentCardTop {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.65rem;
+  flex-wrap: wrap;
+}
+
+.badgeRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.studentInfo h3 {
+  margin: 0 0 0.15rem;
+  font-size: 1rem;
+}
+
+.email {
+  color: var(--fg-muted);
+  font-size: 0.8rem;
+  margin: 0;
+}
+
+.lastActive {
+  color: var(--fg-faint);
+  font-size: 0.7rem;
+  margin: 0.15rem 0 0;
+}
+
+.detailsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+  gap: 0.5rem;
+}
+
+.detailLabel {
+  display: block;
+  font-size: 0.65rem;
+  color: var(--fg-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 0.1rem;
+}
+
+.detailValue {
+  color: var(--fg);
+  font-weight: 600;
+  font-size: 0.85rem;
+  word-break: break-word;
+}
+
+.cardNote {
+  margin: 0;
+  padding: 0.55rem 0.65rem;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  background: var(--bg-secondary);
+  color: var(--fg-muted);
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+
+.studentActions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.actionLink {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.45rem 0.75rem;
+  border: var(--border);
+  border-radius: var(--radius);
+  background: var(--card-bg);
+  color: var(--fg);
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 0.8rem;
+}
+
+.pendingHint {
+  color: var(--warning);
+  font-size: 0.8rem;
+  line-height: 1.4;
+}
+
+/* ── Assign modal ─────────────────── */
+
+.deckList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.assignRow {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  background: var(--bg-secondary);
+  font-size: 0.85rem;
+}
+
+.assignRow span:first-child {
+  flex: 1;
+  font-weight: 500;
+}
+
+/* ── Stats grid ───────────────────── */
+
+.statsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 0.65rem;
+  margin-bottom: 1.25rem;
+}
+
+.statBox {
+  border: var(--border);
+  border-radius: var(--radius);
+  padding: 0.65rem;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.statNumber {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: var(--fg);
+}
+
+.statLabel {
+  font-size: 0.7rem;
+  color: var(--fg-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.masteryBar {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  margin-bottom: 1.25rem;
+}
+
+.masteryTrack {
+  flex: 1;
+  height: 5px;
+  background: var(--border-light);
+  border-radius: 99px;
+  overflow: hidden;
+}
+
+.masteryFill {
+  height: 100%;
+  background: var(--fg);
+  border-radius: 99px;
+  transition: width 0.4s ease;
+}
+
+.masteryPct {
+  font-size: 0.72rem;
+  color: var(--fg-muted);
+  white-space: nowrap;
+}
+
+/* ── Assignment cards ─────────────── */
+
+.assignmentCard {
+  border: var(--border);
+  border-radius: var(--radius);
+  padding: 0.75rem;
+}
+
+.assignmentCard h3 {
+  margin: 0 0 0.15rem;
+  font-size: 0.95rem;
+}
+
+.assignmentCard p {
+  color: var(--fg-muted);
+  font-size: 0.8rem;
+  margin: 0 0 0.35rem;
+}
+
+.assignmentMeta {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.7rem;
+  color: var(--fg-faint);
+}
+
+/* ── Sessions ─────────────────────── */
+
+.sessionsList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.sessionRow {
+  display: flex;
+  gap: 1rem;
+  padding: 0.5rem 0.65rem;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  font-size: 0.8rem;
+}
+
+@media (max-width: 720px) {
+  .studentCardTop,
+  .syncBanner {
+    flex-direction: column;
+  }
+
+  .headerActions {
+    width: 100%;
+  }
+
+  .headerActions > * {
+    flex: 1 1 100%;
+  }
+}

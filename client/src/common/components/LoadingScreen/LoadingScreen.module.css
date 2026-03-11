@@ -4,8 +4,8 @@
 }
 
 .container {
-  width: 50px;
-  height: 60px;
+  width: 36px;
+  height: 46px;
   position: relative;
   transform-style: preserve-3d;
   animation: flip-card 2s infinite ease-in-out;
@@ -13,11 +13,11 @@
 
 .front,
 .back {
-  /* fix jagged edges in firefox */
   padding: 1px;
   margin: -1px;
-  border: 1px solid transparent;
-
+  border: 1.5px solid var(--border-color);
+  border-radius: var(--radius);
+  background: var(--card-bg);
   transform-style: preserve-3d;
   position: absolute;
   width: 100%;
@@ -35,8 +35,8 @@
 }
 
 .spinner {
-  width: 50px;
-  height: 60px;
+  width: 36px;
+  height: 46px;
   margin: auto;
 }
 

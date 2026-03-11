@@ -2,56 +2,101 @@ import "./App.css";
 import Landing from "./pages/Landing/";
 import Sidebar from "./modules/Sidebar";
 import Dashboard from "./pages/Dashboard";
-import { Route, Routes } from "react-router";
-import SignIn from "./pages/SignIn";
+import { Route, Routes, Navigate, useLocation } from "react-router";
 import Deck from "./pages/Deck";
-import { gql, useQuery } from "@apollo/client";
+import SignIn from "./pages/SignIn";
 import LoadingScreen from "./common/components/LoadingScreen";
 import DeckPracticeDue from "./pages/Deck/DeckPracticeDue";
+import DeckQuiz from "./pages/Deck/DeckQuiz";
+import DeckStudy from "./pages/Deck/DeckStudy";
 import PracticeDue from "./pages/PracticeDue";
 import LearnNew from "./pages/LearnNew";
 import DeckLearnNew from "./pages/Deck/DeckLearnNew";
 import SignUp from "./pages/SignUp";
 import { useState } from "react";
 import Navbar from "./modules/Navbar";
-
+import { useAuth } from "./contexts/AuthContext";
+import StudentsPage from "./pages/Teacher/StudentsPage";
+import StudentDetailPage from "./pages/Teacher/StudentDetailPage";
+import GroupsPage from "./pages/Teacher/GroupsPage";
+import StudentDashboard from "./pages/Student/StudentDashboard";
+import StudentDeckBrowse from "./pages/Student/StudentDeckBrowse";
+import { StudentLearnNew, StudentPracticeDue } from "./pages/Student/StudentStudy";
+import { CrossDeckLearnNew, CrossDeckPracticeDue } from "./pages/Student/CrossDeckStudy";
+import StudentLaunchPage from "./pages/Student/StudentLaunchPage";
+import Settings from "./pages/Settings";
 export default function Home() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const { isAuthenticated, loading, isTeacher, isStudent } = useAuth();
 
-  const IS_AUTHENTICATED = gql`
-    query isAuthenticated {
-      isAuthenticated
-    }
-  `;
+  const location = useLocation();
 
-  const { loading, error, data } = useQuery(IS_AUTHENTICATED);
-
+  if (location.pathname === "/launch/student-app") {
+    return (
+      <Routes>
+        <Route path="/launch/student-app" element={<StudentLaunchPage />} />
+        <Route path="*" element={<Navigate to="/launch/student-app" replace />} />
+      </Routes>
+    );
+  }
   if (loading) return <LoadingScreen fullscreen={true} />;
-
-  if (error) return <p>Error :(</p>;
 
   return (
     <div>
-      {data.isAuthenticated ? (
+      {isAuthenticated ? (
         <div className="layout">
           <Sidebar isOpen={sidebarOpen} setIsOpen={setSidebarOpen} />
           <Navbar isOpen={sidebarOpen} setIsOpen={setSidebarOpen} />
           <div className="main">
             <Routes>
-              <Route index path="/" element={<Dashboard />} />
-              <Route path="/deck/:id" element={<Deck />} />
-              <Route path="/deck/:id/new" element={<DeckLearnNew />} />
-              <Route path="/deck/:id/due" element={<DeckPracticeDue />} />
-              <Route path="/new" element={<LearnNew />} />
-              <Route path="/due" element={<PracticeDue />} />
+              <Route path="/launch/student-app" element={<StudentLaunchPage />} />
+
+              {/* Shared routes */}
+              <Route
+                index
+                path="/"
+                element={isStudent ? <StudentDashboard /> : <Dashboard />}
+              />
+              <Route path="/settings" element={<Settings />} />
+
+              {/* Teacher routes */}
+              {isTeacher && (
+                <>
+                  <Route path="/deck/:id" element={<Deck />} />
+                  <Route path="/deck/:id/new" element={<DeckLearnNew />} />
+                  <Route path="/deck/:id/due" element={<DeckPracticeDue />} />
+                  <Route path="/deck/:id/quiz" element={<DeckQuiz />} />
+                  <Route path="/deck/:id/study" element={<DeckStudy />} />
+                  <Route path="/new" element={<LearnNew />} />
+                  <Route path="/due" element={<PracticeDue />} />
+                  <Route path="/students" element={<StudentsPage />} />
+                  <Route path="/students/:studentId" element={<StudentDetailPage />} />
+                  <Route path="/groups" element={<GroupsPage />} />
+                </>
+              )}
+
+              {/* Student routes */}
+              {isStudent && (
+                <>
+                  <Route path="/study/:assignmentId/new" element={<StudentLearnNew />} />
+                  <Route path="/study/:assignmentId/due" element={<StudentPracticeDue />} />
+                  <Route path="/deck/:assignmentId/browse" element={<StudentDeckBrowse />} />
+                  <Route path="/study/all/new" element={<CrossDeckLearnNew />} />
+                  <Route path="/study/all/due" element={<CrossDeckPracticeDue />} />
+                </>
+              )}
+
+              <Route path="*" element={<Navigate to="/" />} />
             </Routes>
           </div>
         </div>
       ) : (
         <Routes>
           <Route path="/" element={<Landing />} />
+          <Route path="/launch/student-app" element={<StudentLaunchPage />} />
           <Route path="/signin" element={<SignIn />} />
           <Route path="/signup" element={<SignUp />} />
+          <Route path="*" element={<Navigate to="/" />} />
         </Routes>
       )}
     </div>

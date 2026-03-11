@@ -1,0 +1,90 @@
+.wrapper {
+  border: var(--border);
+  border-radius: var(--radius);
+  padding: 0.75rem;
+  background: var(--card-bg);
+  margin-bottom: 0.75rem;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.header h3 {
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.form {
+  display: flex;
+  gap: 0.35rem;
+  align-items: flex-end;
+}
+
+.inputGroup {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.inputGroup label {
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--fg-faint);
+  font-weight: 600;
+}
+
+.inputGroup input {
+  padding: 0.4rem 0.5rem;
+  border: 1px solid var(--input-border);
+  border-radius: var(--radius);
+  background: var(--input-bg);
+  color: var(--fg);
+  font-size: 0.85rem;
+  font-family: inherit;
+  outline: none;
+}
+
+.inputGroup input:focus {
+  border-color: var(--input-focus);
+}
+
+.addBtn {
+  padding: 0.4rem 0.7rem;
+  border: var(--border);
+  border-radius: var(--radius);
+  background: var(--fg);
+  color: var(--bg);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  white-space: nowrap;
+}
+
+.addBtn:hover {
+  opacity: 0.85;
+}
+
+.addBtn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.hint {
+  margin: 0.35rem 0 0;
+  font-size: 0.75rem;
+  color: var(--fg-faint);
+}
+
+.added {
+  margin: 0.25rem 0 0;
+  font-size: 0.75rem;
+  color: var(--success);
+}

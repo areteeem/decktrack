@@ -1,0 +1,107 @@
+.wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.subTabs {
+  display: flex;
+  gap: 0.25rem;
+  margin-bottom: 0.35rem;
+}
+
+.subTab {
+  padding: 0.3rem 0.6rem;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--fg-muted);
+  font-size: 0.72rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+}
+
+.subTab:hover {
+  background: var(--card-hover);
+  color: var(--fg);
+}
+
+.subTabActive {
+  composes: subTab;
+  background: var(--fg);
+  color: var(--bg);
+  border-color: var(--fg);
+}
+
+.uploadBox {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.uploadBox input[type="file"] {
+  font-size: 0.8rem;
+  font-family: inherit;
+}
+
+.hint {
+  font-size: 0.7rem;
+  color: var(--fg-faint);
+}
+
+.pasteSection {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.select {
+  padding: 0.35rem 0.5rem;
+  border: 1px solid var(--input-border);
+  border-radius: var(--radius);
+  background: var(--input-bg);
+  color: var(--fg);
+  font-size: 0.8rem;
+  font-family: inherit;
+  width: fit-content;
+}
+
+.previewSection {
+  margin-top: 0.5rem;
+}
+
+.previewTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.78rem;
+  margin-top: 0.35rem;
+}
+
+.previewTable th {
+  text-align: left;
+  font-weight: 600;
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--fg-faint);
+  padding: 0.25rem 0.35rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.previewTable td {
+  padding: 0.25rem 0.35rem;
+  color: var(--fg-muted);
+  border-bottom: 1px solid var(--border-color);
+  max-width: 10rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 0.5rem;
+}

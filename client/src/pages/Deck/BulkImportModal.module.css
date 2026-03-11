@@ -1,0 +1,155 @@
+.modal {
+  max-width: 52rem;
+}
+
+.header {
+  display: grid;
+  gap: 0.3rem;
+  padding-right: 2rem;
+}
+
+.header h2,
+.header p {
+  margin: 0;
+}
+
+.header h2 {
+  font-size: 1.15rem;
+}
+
+.header p {
+  color: var(--fg-muted);
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.segmented {
+  display: inline-flex;
+  gap: 2px;
+  border: var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.segmented button {
+  border: none;
+  background: transparent;
+  color: var(--fg-muted);
+  padding: 0.4rem 0.75rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.segmented .activeMode {
+  background: var(--fg);
+  color: var(--bg);
+}
+
+.form {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.uploadBox {
+  border: 1.5px dashed var(--border-color);
+  border-radius: var(--radius);
+  padding: 0.85rem;
+  background: var(--bg-secondary);
+}
+
+.uploadBox input {
+  width: 100%;
+}
+
+.hint {
+  color: var(--fg-muted);
+  font-size: 0.8rem;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.select {
+  border: 1px solid var(--input-border);
+  border-radius: var(--radius);
+  padding: 0.5rem 0.65rem;
+  font-size: 0.85rem;
+  background: var(--input-bg);
+  color: var(--fg);
+}
+
+.previewHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.previewTable {
+  width: 100%;
+  border-collapse: collapse;
+  border: 1px solid var(--border-color);
+}
+
+.previewTable th,
+.previewTable td {
+  padding: 0.5rem 0.65rem;
+  border-bottom: 1px solid var(--border-color);
+  text-align: left;
+  vertical-align: top;
+  font-size: 0.85rem;
+}
+
+.previewTable thead {
+  background: var(--bg-secondary);
+}
+
+.previewTable tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.previewWrapper {
+  overflow: auto;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+}
+
+.actions {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.primaryActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.sourceNote {
+  color: var(--fg-muted);
+  font-size: 0.8rem;
+}
+
+@media (max-width: 720px) {
+  .toolbar,
+  .previewHeader,
+  .actions,
+  .primaryActions {
+    width: 100%;
+  }
+  .actions > *,
+  .primaryActions > * {
+    flex: 1 1 100%;
+  }
+}

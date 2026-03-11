@@ -1,21 +1,13 @@
-import { useApolloClient, gql } from "@apollo/client";
 import { useNavigate } from "react-router";
+import { useAuth } from "../../contexts/AuthContext";
 
 export const useLogout = () => {
-  const client = useApolloClient();
+  const { signOut } = useAuth();
   const navigate = useNavigate();
 
-  const logout = async (variables) => {
-    client
-      .query({
-        query: gql`
-          query logout {
-            logout
-          }
-        `,
-      })
-      .then(() => navigate("/", { replace: true }))
-      .then(() => client.resetStore());
+  const logout = async () => {
+    await signOut();
+    navigate("/", { replace: true });
   };
   return logout;
 };

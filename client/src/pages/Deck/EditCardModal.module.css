@@ -1,0 +1,80 @@
+.modal {
+  max-width: 44rem;
+}
+
+.header {
+  display: grid;
+  gap: 0.3rem;
+  padding-right: 2rem;
+}
+
+.eyebrow {
+  display: inline-flex;
+  width: fit-content;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--fg-faint);
+}
+
+.header h2 {
+  margin: 0;
+  font-size: 1.15rem;
+}
+
+.header p {
+  margin: 0;
+  color: var(--fg-muted);
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+
+.form {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.toolbar {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.actions {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-top: 0.35rem;
+  flex-wrap: wrap;
+}
+
+.primaryActions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.tipBox {
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--input-border);
+  border-radius: var(--radius);
+  background: var(--bg-secondary);
+  color: var(--fg-muted);
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
+
+.tipBox strong {
+  color: var(--fg);
+}
+
+@media (max-width: 640px) {
+  .actions,
+  .primaryActions {
+    width: 100%;
+  }
+  .actions > *,
+  .primaryActions > * {
+    flex: 1 1 100%;
+  }
+}

@@ -12,7 +12,8 @@ const SignUp = () => {
     <div className={styles.layout}>
       <form
         className={styles.form}
-        onSubmit={() => {
+        onSubmit={(event) => {
+          event.preventDefault();
           signup({ email, password });
         }}
       >

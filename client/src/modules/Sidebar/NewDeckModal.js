@@ -1,58 +1,31 @@
 import Modal from "../../common/components/Modal";
-import { gql, useMutation } from "@apollo/client";
 import TextInput from "../../common/components/TextInput";
 import Button from "../../common/components/Button";
 import { useState } from "react";
+import { useCreateDeck } from "../../hooks/useSupabaseData";
+import { toast } from "react-toastify";
 
-const CREATE_DECK = gql`
-  mutation createDeck($name: String!) {
-    createDeck(name: $name) {
-      id
-      name
-    }
-  }
-`;
-
-const NewDeckModal = ({ open, setOpen }) => {
-  const [createDeck] = useMutation(CREATE_DECK, {
-    update(cache, { data: { createDeck } }) {
-      const { user } = cache.readQuery({
-        query: gql`
-          query getUserDecks {
-            user {
-              decks {
-                id
-                name
-              }
-            }
-          }
-        `,
-      });
-      cache.writeQuery({
-        query: gql`
-          query getUserDecks {
-            user {
-              decks {
-                id
-                name
-              }
-            }
-          }
-        `,
-        data: {
-          user: { ...user, decks: [...user.decks, createDeck] },
-        },
-      });
-    },
-  });
+const NewDeckModal = ({ open, setOpen, onCreated }) => {
+  const { createDeck } = useCreateDeck();
   const [name, setName] = useState("");
   return (
     <Modal open={open} setOpen={setOpen}>
       <TextInput placeholder="Deck name" state={name} setState={setName} />
       <Button
-        callback={() => {
-          createDeck({ variables: { name } });
-          setOpen(false);
+        callback={async () => {
+          if (!name.trim()) {
+            toast.error("Deck name is required");
+            return;
+          }
+
+          try {
+            await createDeck({ name: name.trim() });
+            setName("");
+            setOpen(false);
+            if (onCreated) onCreated();
+          } catch (err) {
+            toast.error(err.message || "Failed to create deck");
+          }
         }}
       >
         Save

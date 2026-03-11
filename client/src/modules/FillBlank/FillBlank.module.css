@@ -1,0 +1,158 @@
+.layout {
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  grid-template-columns: 100%;
+  grid-template-areas:
+    "header"
+    "content"
+    "footer";
+  height: calc(100vh - 4rem);
+  padding-bottom: 1rem;
+}
+
+.content {
+  grid-area: content;
+  place-self: center;
+  width: 100%;
+  max-width: 36rem;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+}
+
+.header {
+  grid-area: header;
+}
+
+.header h1 {
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.footer {
+  grid-area: footer;
+  place-self: end center;
+  display: flex;
+  gap: 0.5rem;
+}
+
+.quizCard {
+  width: 100%;
+  border: var(--border);
+  border-radius: var(--radius);
+  padding: 1.5rem;
+  background: var(--card-bg);
+  text-align: center;
+}
+
+.prompt {
+  font-size: 1.3rem;
+  font-weight: 600;
+  margin: 0 0 1rem;
+}
+
+.inputRow {
+  display: flex;
+  gap: 0.35rem;
+  justify-content: center;
+}
+
+.answerInput {
+  padding: 0.5rem 0.65rem;
+  border: 1.5px solid var(--border-color);
+  border-radius: var(--radius);
+  background: var(--input-bg);
+  color: var(--fg);
+  font-size: 0.95rem;
+  font-family: inherit;
+  outline: none;
+  width: 16rem;
+  text-align: center;
+}
+
+.answerInput:focus {
+  border-color: var(--input-focus);
+}
+
+.answerInput.correct {
+  border-color: var(--success);
+  background: rgba(34, 197, 94, 0.06);
+}
+
+.answerInput.wrong {
+  border-color: var(--danger);
+  background: rgba(239, 68, 68, 0.06);
+}
+
+.checkBtn {
+  padding: 0.5rem 0.85rem;
+  border: var(--border);
+  border-radius: var(--radius);
+  background: var(--fg);
+  color: var(--bg);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.checkBtn:disabled {
+  opacity: 0.4;
+}
+
+.feedback {
+  margin-top: 0.5rem;
+  font-size: 0.85rem;
+  color: var(--fg-muted);
+}
+
+.feedback.correct {
+  color: var(--success);
+}
+
+.feedback.wrong {
+  color: var(--danger);
+}
+
+.correctAnswer {
+  margin-top: 0.25rem;
+  font-size: 0.8rem;
+  color: var(--fg-faint);
+}
+
+.nextBtn {
+  padding: 0.45rem 1rem;
+  border: var(--border);
+  border-radius: var(--radius);
+  background: var(--card-bg);
+  color: var(--fg);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  margin-top: 0.5rem;
+}
+
+.results {
+  text-align: center;
+}
+
+.results h2 {
+  font-size: 1.2rem;
+  margin: 0 0 0.5rem;
+}
+
+.score {
+  font-size: 2rem;
+  font-weight: 700;
+  margin: 0.5rem 0;
+}
+
+.scoreLabel {
+  font-size: 0.8rem;
+  color: var(--fg-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}

@@ -1,0 +1,335 @@
+.subtitle {
+  color: var(--fg-muted);
+  font-size: 0.85rem;
+  margin-bottom: 1rem;
+}
+
+/* ── Analytics ───────────────────── */
+
+.statsSection {
+  margin-bottom: 1.25rem;
+}
+
+.statsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+  gap: 0.65rem;
+  margin-bottom: 0.65rem;
+}
+
+.statBox {
+  border: var(--border);
+  border-radius: var(--radius);
+  padding: 0.65rem;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.statNumber {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: var(--fg);
+}
+
+.statLabel {
+  font-size: 0.7rem;
+  color: var(--fg-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.masteryBar {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.masteryBarInner {
+  flex: 1;
+  height: 5px;
+  background: var(--border-light);
+  border-radius: 99px;
+  overflow: hidden;
+}
+
+.masteryBarFill {
+  height: 100%;
+  background: var(--fg);
+  border-radius: 99px;
+  transition: width 0.4s ease;
+}
+
+.masteryLabel {
+  font-size: 0.72rem;
+  color: var(--fg-muted);
+  white-space: nowrap;
+}
+
+.empty {
+  text-align: center;
+  padding: 2rem;
+  color: var(--fg-muted);
+}
+
+.empty h2 {
+  margin-bottom: 0.35rem;
+  font-size: 1.1rem;
+}
+
+.deckGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(13rem, 1fr));
+  gap: 0.75rem;
+}
+
+@media (max-width: 640px) {
+  .deckGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.deckCard {
+  border: var(--border);
+  border-radius: var(--radius);
+  padding: 0.85rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  background: var(--card-bg);
+}
+
+.deckCard h2 {
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+.deckDesc {
+  color: var(--fg-muted);
+  font-size: 0.8rem;
+  margin: 0;
+}
+
+.deckMeta {
+  display: flex;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+}
+
+.deckActions {
+  display: flex;
+  gap: 0.35rem;
+  margin-top: 0.25rem;
+}
+
+/* ── Per-deck progress bar ──────── */
+.deckProgress {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.15rem;
+}
+
+.deckProgressTrack {
+  flex: 1;
+  height: 4px;
+  background: var(--border-light);
+  border-radius: 99px;
+  overflow: hidden;
+}
+
+.deckProgressFill {
+  height: 100%;
+  border-radius: 99px;
+  transition: width 0.4s ease;
+}
+
+.deckProgressLabel {
+  font-size: 0.7rem;
+  color: var(--fg-muted);
+  white-space: nowrap;
+}
+
+.deckStatsRow {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  font-size: 0.72rem;
+  color: var(--fg-faint);
+}
+
+/* ── Browse page ────────────────── */
+.backLink {
+  display: inline-block;
+  margin-bottom: 0.65rem;
+  color: var(--fg-muted);
+  text-decoration: none;
+  font-size: 0.8rem;
+}
+.backLink:hover {
+  text-decoration: underline;
+  color: var(--fg);
+}
+
+.browseHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.browseActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.filterPills {
+  display: flex;
+  gap: 0.3rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.65rem;
+}
+
+.filterPill {
+  all: unset;
+  cursor: pointer;
+  padding: 0.3rem 0.65rem;
+  border: 1px solid var(--border-color);
+  border-radius: 99px;
+  font-size: 0.72rem;
+  color: var(--fg-muted);
+  background: transparent;
+  transition: all 0.15s;
+}
+
+.filterPill:hover {
+  background: var(--bg-secondary);
+}
+
+.filterPillActive {
+  background: var(--fg);
+  color: var(--card-bg);
+  border-color: var(--fg);
+}
+
+/* ── Cards grid ─────────────────── */
+.cardsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
+  gap: 0.6rem;
+}
+
+@media (max-width: 640px) {
+  .cardsGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.browseCard {
+  position: relative;
+  border: var(--border);
+  border-radius: var(--radius);
+  padding: 0.7rem;
+  background: var(--card-bg);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  min-height: 6.5rem;
+  transition: box-shadow 0.15s;
+}
+.browseCard:hover {
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+}
+
+.browseCardHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.browseCardText {
+  flex: 1;
+  margin: 0;
+  font-size: 0.85rem;
+  line-height: 1.45;
+  word-break: break-word;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+}
+
+.browseCardHint {
+  font-size: 0.65rem;
+  color: var(--fg-faint);
+  text-align: center;
+}
+
+.browseCardInfoBtn {
+  all: unset;
+  position: absolute;
+  bottom: 0.45rem;
+  right: 0.45rem;
+  cursor: pointer;
+  font-size: 0.85rem;
+  opacity: 0.4;
+  transition: opacity 0.15s;
+}
+.browseCard:hover .browseCardInfoBtn {
+  opacity: 0.9;
+}
+
+/* ── Card detail modal ──────────── */
+.cardDetailHeader {
+  display: flex;
+  gap: 0.35rem;
+  margin-bottom: 0.5rem;
+}
+
+.cardPreview {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.cardSide {
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  padding: 0.65rem;
+  background: var(--bg-secondary);
+}
+
+.cardSideLabel {
+  display: block;
+  font-size: 0.65rem;
+  color: var(--fg-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 0.25rem;
+}
+
+.cardSideText {
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.cardStats {
+  display: flex;
+  gap: 1rem;
+  font-size: 0.75rem;
+  color: var(--fg-faint);
+  margin-top: 0.5rem;
+}
+
+/* ── Section headers ────────────── */
+.sectionTitle {
+  margin: 1.25rem 0 0.5rem;
+  font-size: 1rem;
+  font-weight: 700;
+}
