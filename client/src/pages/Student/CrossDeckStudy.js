@@ -1,8 +1,9 @@
 import { useMemo, useState, useCallback, useRef, useEffect } from "react";
+import { useNavigate } from "react-router";
 import LoadingScreen from "../../common/components/LoadingScreen";
 import Learn from "../../modules/Learn";
 import Practice from "../../modules/Practice";
-import { useAssignments, useStudentDeckCards } from "../../hooks/useSupabaseData";
+import { useAssignments, useStudentDeckCards, useAllOwnDeckCards } from "../../hooks/useSupabaseData";
 
 /**
  * Aggregates cards across all assignments and passes them to Learn / Practice.
@@ -42,10 +43,13 @@ const AssignmentCards = ({ assignmentId, onCards }) => {
 /**
  * Cross-deck wrapper component.
  * Renders invisible <AssignmentCards> fetchers, then merges results.
+ * Now also includes cards from student's own personal decks.
  */
 
 const CrossDeckStudy = ({ mode }) => {
+  const navigate = useNavigate();
   const { assignments, loading } = useAllStudentCards();
+  const { data: personalCards, loading: personalLoading } = useAllOwnDeckCards();
   const [cardMap, setCardMap] = useState({});
   const readyRef = useRef(new Set());
   const [allReady, setAllReady] = useState(false);
@@ -55,18 +59,29 @@ const CrossDeckStudy = ({ mode }) => {
     readyRef.current.add(assignmentId);
   }, []);
 
+  const assignmentsReady = !loading && (assignments.length === 0 || readyRef.current.size >= assignments.length);
+
   useEffect(() => {
-    if (!loading && assignments.length > 0 && readyRef.current.size >= assignments.length) {
+    if (assignmentsReady && !personalLoading) {
       setAllReady(true);
     }
-  }, [loading, assignments, cardMap]);
+  }, [assignmentsReady, personalLoading, cardMap]);
 
-  if (loading) return <LoadingScreen />;
-  if (assignments.length === 0) return <p>No decks assigned yet.</p>;
+  const isLoading = loading || personalLoading;
+  if (isLoading && !allReady) return <LoadingScreen />;
 
-  const allCards = Object.values(cardMap)
+  const hasAssignments = assignments.length > 0;
+  const hasPersonalCards = (personalCards || []).length > 0;
+
+  if (!hasAssignments && !hasPersonalCards) {
+    return <p>No decks yet. Create a personal deck or wait for your teacher to assign one.</p>;
+  }
+
+  // Merge assigned cards + personal cards
+  const assignedCards = Object.values(cardMap)
     .flat()
     .map((c) => ({ ...c, new: c.is_new, nextReview: c.next_review_days }));
+  const allCards = [...assignedCards, ...(personalCards || [])];
 
   if (!allReady) {
     return (
@@ -86,7 +101,7 @@ const CrossDeckStudy = ({ mode }) => {
         {assignments.map((a) => (
           <AssignmentCards key={a.id} assignmentId={a.id} onCards={handleCards} />
         ))}
-        <Learn flashcards={newCards} />
+        <Learn flashcards={newCards} onQuit={() => navigate(-1)} />
       </>
     );
   }
@@ -100,7 +115,7 @@ const CrossDeckStudy = ({ mode }) => {
       {assignments.map((a) => (
         <AssignmentCards key={a.id} assignmentId={a.id} onCards={handleCards} />
       ))}
-      <Practice flashcards={dueCards} />
+      <Practice flashcards={dueCards} onQuit={() => navigate(-1)} />
     </>
   );
 };

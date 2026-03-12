@@ -1,8 +1,9 @@
 import { createContext, useContext, useState, useEffect, useCallback } from "react";
+import { STORAGE_KEYS } from "../lib/storageKeys";
 
 const ThemeContext = createContext({ theme: "light", toggle: () => {} });
 
-const STORAGE_KEY = "flashy.theme";
+const STORAGE_KEY = STORAGE_KEYS.theme;
 
 export const ThemeProvider = ({ children }) => {
   const [theme, setTheme] = useState(() => {

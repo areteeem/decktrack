@@ -21,7 +21,9 @@
  *   stats           – { reviewed, again, hard, good, easy }
  */
 
-const KEY_PREFIX = 'flashy.session.';
+import { STORAGE_KEYS } from './storageKeys';
+
+const KEY_PREFIX = STORAGE_KEYS.sessionPrefix;
 
 const getKey = (deckId) => `${KEY_PREFIX}${deckId}`;
 

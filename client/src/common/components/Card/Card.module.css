@@ -9,6 +9,8 @@
   background: var(--card-bg);
   gap: 0.5rem;
   transition: background 0.12s;
+  min-height: 8rem;
+  height: 100%;
 }
 
 .card:hover {
@@ -39,6 +41,10 @@
   color: var(--fg);
   font-weight: 600;
   line-height: 1.3;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
 }
 
 .definition {
@@ -47,6 +53,10 @@
   font-weight: 400;
   font-size: 0.85rem;
   line-height: 1.4;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
 }
 
 .example {

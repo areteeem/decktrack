@@ -146,11 +146,15 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     let subscription;
     let timeoutId;
+    let cancelled = false;
+    let lastUserId = null;  // Dedup profile fetches
 
     const init = async () => {
       try {
         // Get existing session
         const { data: { session: existing }, error: sessionError } = await supabase.auth.getSession();
+
+        if (cancelled) return;
 
         if (sessionError) {
           console.warn('[Flashy] getSession error:', sessionError.message);
@@ -162,24 +166,47 @@ export const AuthProvider = ({ children }) => {
 
         setSession(existing);
         if (existing?.user) {
+          lastUserId = existing.user.id;
           await fetchProfile(existing.user);
-          touchActive(existing.user.id);
+          if (!cancelled) touchActive(existing.user.id);
         }
       } catch (err) {
         console.warn('[Flashy] Auth init error:', err);
-        setSession(null);
-        setProfile(null);
+        if (!cancelled) {
+          setSession(null);
+          setProfile(null);
+        }
       } finally {
-        setLoading(false);
+        if (!cancelled) {
+          setLoading(false);
+        }
       }
 
-      // Listen for auth changes
-      const { data } = supabase.auth.onAuthStateChange(async (_event, newSession) => {
+      // Listen for auth changes (fires after init is done)
+      const { data } = supabase.auth.onAuthStateChange(async (event, newSession) => {
+        if (cancelled) return;
+
+        // Skip INITIAL_SESSION event — we already handled it above
+        if (event === 'INITIAL_SESSION') return;
+
+        const newUserId = newSession?.user?.id || null;
+
+        // Skip if same user (e.g., token refresh on tab focus)
+        if (event === 'TOKEN_REFRESHED' && newUserId === lastUserId) {
+          setSession(newSession); // Update session tokens silently
+          return;
+        }
+
         setSession(newSession);
         if (newSession?.user) {
-          await fetchProfile(newSession.user);
-          touchActive(newSession.user.id);
+          // Only re-fetch profile if user changed
+          if (newUserId !== lastUserId) {
+            lastUserId = newUserId;
+            await fetchProfile(newSession.user);
+            if (!cancelled) touchActive(newSession.user.id);
+          }
         } else {
+          lastUserId = null;
           setProfile(null);
         }
       });
@@ -190,15 +217,16 @@ export const AuthProvider = ({ children }) => {
     timeoutId = setTimeout(() => {
       setLoading((current) => {
         if (current) {
-          console.warn('[Flashy] Auth init timed out, forcing loading=false');
+          console.warn('[Flashy] Auth init timed out after 5s, forcing loading=false');
           return false;
         }
         return current;
       });
-    }, 8000);
+    }, 5000);
 
     init();
     return () => {
+      cancelled = true;
       clearTimeout(timeoutId);
       subscription?.unsubscribe?.();
     };
@@ -248,7 +276,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   const deriveStudentEmail = (token) => `${toSafeStudentKey(token)}@flashyapp.com`;
-  const deriveStudentPassword = (token) => `flashy_${toSafeStudentKey(token)}_2025`;
+  const deriveStudentPassword = (token) => `flashy_${toSafeStudentKey(token)}_${new Date().getFullYear()}`;
 
   /**
    * Generate a random 8-char alphanumeric token.

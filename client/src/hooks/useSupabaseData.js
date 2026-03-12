@@ -19,31 +19,78 @@ export const useDecks = () => {
   const [error, setError] = useState(null);
 
   const refetch = useCallback(async () => {
-    if (!user) return;
+    if (!user) {
+      setData([]);
+      setError(null);
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
-    const { data: decks, error: err } = await supabase
-      .from('flashy_decks')
-      .select('*, flashy_cards(id)')
-      .eq('owner_id', user.id)
-      .eq('is_archived', false)
-      .order('sort_order', { ascending: true })
-      .order('created_at', { ascending: false });
+    try {
+      const { data: decks, error: err } = await supabase
+        .from('flashy_decks')
+        .select('*, flashy_cards(id)')
+        .eq('owner_id', user.id)
+        .eq('is_archived', false)
+        .order('sort_order', { ascending: true })
+        .order('created_at', { ascending: false });
 
-    if (err) { setError(err); setLoading(false); return; }
+      if (err) {
+        setError(err);
+        setData([]);
+        return;
+      }
 
-    // Attach card count
-    const enriched = (decks || []).map(d => ({
-      ...d,
-      cardCount: d.flashy_cards?.length ?? 0,
-      flashcards: d.flashy_cards || [],
-    }));
-    setData(enriched);
-    setError(null);
-    setLoading(false);
+      // Attach card count
+      const enriched = (decks || []).map(d => ({
+        ...d,
+        cardCount: d.flashy_cards?.length ?? 0,
+        flashcards: d.flashy_cards || [],
+      }));
+      setData(enriched);
+      setError(null);
+    } catch (err) {
+      console.error('[useDecks] refetch failed:', err?.message || err);
+      setError(err);
+      setData([]);
+    } finally {
+      setLoading(false);
+    }
   }, [user]);
 
   useEffect(() => { refetch(); }, [refetch]);
   return { data, loading, error, refetch };
+};
+
+/** Fetch archived decks for the current user */
+export const useArchivedDecks = () => {
+  const { user } = useAuth();
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  const refetch = useCallback(async () => {
+    if (!user) { setData([]); setLoading(false); return; }
+    setLoading(true);
+    try {
+      const { data: decks, error: err } = await supabase
+        .from('flashy_decks')
+        .select('*, flashy_cards(id)')
+        .eq('owner_id', user.id)
+        .eq('is_archived', true)
+        .order('created_at', { ascending: false });
+      if (err) { setData([]); return; }
+      const enriched = (decks || []).map(d => ({
+        ...d,
+        cardCount: d.flashy_cards?.length ?? 0,
+      }));
+      setData(enriched);
+    } catch { setData([]); }
+    finally { setLoading(false); }
+  }, [user]);
+
+  useEffect(() => { refetch(); }, [refetch]);
+  return { data, loading, refetch };
 };
 
 /** Fetch a single deck with all its cards */
@@ -54,24 +101,42 @@ export const useDeck = (deckId) => {
   const [error, setError] = useState(null);
 
   const refetch = useCallback(async () => {
-    if (!user || !deckId) return;
-    setLoading(true);
-    const { data: deck, error: err } = await supabase
-      .from('flashy_decks')
-      .select('*, flashy_cards(*)')
-      .eq('id', deckId)
-      .maybeSingle();
-
-    if (err) { setError(err); setLoading(false); return; }
-    if (deck) {
-      deck.flashcards = (deck.flashy_cards || []).sort(
-        (a, b) => (b.retention || 0) - (a.retention || 0)
-      );
-      delete deck.flashy_cards;
+    if (!user || !deckId) {
+      setData(null);
+      setError(null);
+      setLoading(false);
+      return;
     }
-    setData(deck);
-    setError(null);
-    setLoading(false);
+
+    setLoading(true);
+    try {
+      const { data: deck, error: err } = await supabase
+        .from('flashy_decks')
+        .select('*, flashy_cards(*)')
+        .eq('id', deckId)
+        .maybeSingle();
+
+      if (err) {
+        setError(err);
+        setData(null);
+        return;
+      }
+
+      if (deck) {
+        deck.flashcards = (deck.flashy_cards || []).sort(
+          (a, b) => (b.retention || 0) - (a.retention || 0)
+        );
+        delete deck.flashy_cards;
+      }
+      setData(deck);
+      setError(null);
+    } catch (err) {
+      console.error('[useDeck] refetch failed:', err?.message || err);
+      setError(err);
+      setData(null);
+    } finally {
+      setLoading(false);
+    }
   }, [user, deckId]);
 
   useEffect(() => { refetch(); }, [refetch]);
@@ -222,24 +287,86 @@ export const useStudentDeckCards = (assignmentId) => {
   const [error, setError] = useState(null);
 
   const refetch = useCallback(async () => {
-    if (!user || !assignmentId) return;
+    if (!user || !assignmentId) {
+      setData([]);
+      setError(null);
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
-    const { data: cards, error: err } = await supabase
-      .from('flashy_student_cards')
-      .select('*')
-      .eq('assignment_id', assignmentId)
-      .eq('student_id', user.id)
-      .eq('is_deleted_by_teacher', false)
-      .order('sort_order')
-      .order('created_at');
-    if (err) { setError(err); setLoading(false); return; }
-    setData(cards);
-    setError(null);
-    setLoading(false);
+    try {
+      const { data: cards, error: err } = await supabase
+        .from('flashy_student_cards')
+        .select('*')
+        .eq('assignment_id', assignmentId)
+        .eq('student_id', user.id)
+        .eq('is_deleted_by_teacher', false)
+        .order('sort_order')
+        .order('created_at');
+
+      if (err) {
+        setError(err);
+        setData([]);
+        return;
+      }
+
+      setData(cards || []);
+      setError(null);
+    } catch (err) {
+      console.error('[useStudentDeckCards] refetch failed:', err?.message || err);
+      setError(err);
+      setData([]);
+    } finally {
+      setLoading(false);
+    }
   }, [user, assignmentId]);
 
   useEffect(() => { refetch(); }, [refetch]);
   return { data, loading, error, refetch };
+};
+
+/**
+ * Fetch ALL cards from the current user's own (personal) decks.
+ * Cards are in flashy_cards → flashy_decks with owner_id = current user.
+ * Used for cross-deck study so personal deck cards are included.
+ */
+export const useAllOwnDeckCards = () => {
+  const { user } = useAuth();
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  const refetch = useCallback(async () => {
+    if (!user) {
+      setData([]);
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const { data: cards } = await supabase
+        .from('flashy_cards')
+        .select('*, flashy_decks!inner(id, name, owner_id, is_archived)')
+        .eq('flashy_decks.owner_id', user.id)
+        .eq('flashy_decks.is_archived', false);
+
+      setData((cards || []).map(c => ({
+        ...c,
+        new: c.is_new,
+        nextReview: c.next_review_days,
+        _personal: true,
+      })));
+    } catch (err) {
+      console.error('[useAllOwnDeckCards] refetch failed:', err?.message || err);
+      setData([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [user]);
+
+  useEffect(() => { refetch(); }, [refetch]);
+  return { data, loading, refetch };
 };
 
 /**
@@ -252,46 +379,63 @@ export const useDueCards = (deckId) => {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  const refetch = useCallback(async () => {
-    if (!user) return;
-    setLoading(true);
+  // When deckId is provided we always use flashy_cards (owner path)
+  // because both teacher and student-created decks store cards there.
+  // The student-assignment path (flashy_student_cards) is only used for
+  // cross-deck mode (no deckId) which is a teacher-only route.
+  const useOwnerPath = isTeacher || !!deckId;
 
-    if (isTeacher) {
-      let query = supabase
-        .from('flashy_cards')
-        .select('*, flashy_decks!inner(owner_id)')
-        .eq('flashy_decks.owner_id', user.id)
-        .eq('is_new', false)
-        .eq('mastered', false)
-        .lt('due', new Date().toISOString());
-      if (deckId) query = query.eq('deck_id', deckId);
-      const { data: cards } = await query;
-      // Normalize field names for components
-      setData((cards || []).map(c => ({
-        ...c,
-        new: c.is_new,
-        nextReview: c.next_review_days,
-      })));
-    } else {
-      let query = supabase
-        .from('flashy_student_cards')
-        .select('*')
-        .eq('student_id', user.id)
-        .eq('is_new', false)
-        .eq('mastered', false)
-        .eq('is_deleted_by_teacher', false)
-        .lt('due', new Date().toISOString());
-      if (deckId) query = query.eq('assignment_id', deckId);
-      const { data: cards } = await query;
-      setData((cards || []).map(c => ({
-        ...c,
-        new: c.is_new,
-        nextReview: c.next_review_days,
-      })));
+  const refetch = useCallback(async () => {
+    if (!user) {
+      setData([]);
+      setLoading(false);
+      return;
     }
 
-    setLoading(false);
-  }, [user, isTeacher, deckId]);
+    setLoading(true);
+    try {
+      if (useOwnerPath) {
+        let query = supabase
+          .from('flashy_cards')
+          .select('*, flashy_decks!inner(owner_id, is_archived)')
+          .eq('flashy_decks.owner_id', user.id)
+          .eq('flashy_decks.is_archived', false)
+          .eq('is_new', false)
+          .eq('mastered', false)
+          .lt('due', new Date().toISOString());
+        if (deckId) query = query.eq('deck_id', deckId);
+        const { data: cards } = await query;
+        // Normalize field names for components
+        setData((cards || []).map(c => ({
+          ...c,
+          new: c.is_new,
+          nextReview: c.next_review_days,
+        })));
+      } else {
+        let query = supabase
+          .from('flashy_student_cards')
+          .select('*, flashy_deck_assignments!inner(id, is_archived)')
+          .eq('student_id', user.id)
+          .eq('is_new', false)
+          .eq('mastered', false)
+          .eq('is_deleted_by_teacher', false)
+          .eq('flashy_deck_assignments.is_archived', false)
+          .lt('due', new Date().toISOString());
+        if (deckId) query = query.eq('assignment_id', deckId);
+        const { data: cards } = await query;
+        setData((cards || []).map(c => ({
+          ...c,
+          new: c.is_new,
+          nextReview: c.next_review_days,
+        })));
+      }
+    } catch (err) {
+      console.error('[useDueCards] refetch failed:', err?.message || err);
+      setData([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [user, useOwnerPath, deckId]);
 
   useEffect(() => { refetch(); }, [refetch]);
   return { data, loading, refetch };
@@ -306,41 +450,55 @@ export const useNewCards = (deckId) => {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  const refetch = useCallback(async () => {
-    if (!user) return;
-    setLoading(true);
+  // Same logic as useDueCards — own-deck path when deckId is provided
+  const useOwnerPath = isTeacher || !!deckId;
 
-    if (isTeacher) {
-      let query = supabase
-        .from('flashy_cards')
-        .select('*, flashy_decks!inner(owner_id)')
-        .eq('flashy_decks.owner_id', user.id)
-        .eq('is_new', true);
-      if (deckId) query = query.eq('deck_id', deckId);
-      const { data: cards } = await query;
-      setData((cards || []).map(c => ({
-        ...c,
-        new: c.is_new,
-        nextReview: c.next_review_days,
-      })));
-    } else {
-      let query = supabase
-        .from('flashy_student_cards')
-        .select('*')
-        .eq('student_id', user.id)
-        .eq('is_new', true)
-        .eq('is_deleted_by_teacher', false);
-      if (deckId) query = query.eq('assignment_id', deckId);
-      const { data: cards } = await query;
-      setData((cards || []).map(c => ({
-        ...c,
-        new: c.is_new,
-        nextReview: c.next_review_days,
-      })));
+  const refetch = useCallback(async () => {
+    if (!user) {
+      setData([]);
+      setLoading(false);
+      return;
     }
 
-    setLoading(false);
-  }, [user, isTeacher, deckId]);
+    setLoading(true);
+    try {
+      if (useOwnerPath) {
+        let query = supabase
+          .from('flashy_cards')
+          .select('*, flashy_decks!inner(owner_id, is_archived)')
+          .eq('flashy_decks.owner_id', user.id)
+          .eq('flashy_decks.is_archived', false)
+          .eq('is_new', true);
+        if (deckId) query = query.eq('deck_id', deckId);
+        const { data: cards } = await query;
+        setData((cards || []).map(c => ({
+          ...c,
+          new: c.is_new,
+          nextReview: c.next_review_days,
+        })));
+      } else {
+        let query = supabase
+          .from('flashy_student_cards')
+          .select('*, flashy_deck_assignments!inner(id, is_archived)')
+          .eq('student_id', user.id)
+          .eq('is_new', true)
+          .eq('is_deleted_by_teacher', false)
+          .eq('flashy_deck_assignments.is_archived', false);
+        if (deckId) query = query.eq('assignment_id', deckId);
+        const { data: cards } = await query;
+        setData((cards || []).map(c => ({
+          ...c,
+          new: c.is_new,
+          nextReview: c.next_review_days,
+        })));
+      }
+    } catch (err) {
+      console.error('[useNewCards] refetch failed:', err?.message || err);
+      setData([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [user, useOwnerPath, deckId]);
 
   useEffect(() => { refetch(); }, [refetch]);
   return { data, loading, refetch };
@@ -384,16 +542,27 @@ export const useAssignments = () => {
   const [loading, setLoading] = useState(true);
 
   const refetch = useCallback(async () => {
-    if (!user) return;
+    if (!user) {
+      setData([]);
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
-    const col = isTeacher ? 'teacher_id' : 'student_id';
-    const { data: assignments } = await supabase
-      .from('flashy_deck_assignments')
-      .select('*, flashy_decks(name, description, category, tags, difficulty_level)')
-      .eq(col, user.id)
-      .order('assigned_at', { ascending: false });
-    setData(assignments || []);
-    setLoading(false);
+    try {
+      const col = isTeacher ? 'teacher_id' : 'student_id';
+      const { data: assignments } = await supabase
+        .from('flashy_deck_assignments')
+        .select('*, flashy_decks(name, description, category, tags, difficulty_level)')
+        .eq(col, user.id)
+        .order('assigned_at', { ascending: false });
+      setData(assignments || []);
+    } catch (err) {
+      console.error('[useAssignments] refetch failed:', err?.message || err);
+      setData([]);
+    } finally {
+      setLoading(false);
+    }
   }, [user, isTeacher]);
 
   useEffect(() => { refetch(); }, [refetch]);
@@ -463,16 +632,27 @@ export const useStudents = () => {
   const [loading, setLoading] = useState(true);
 
   const refetch = useCallback(async () => {
-    if (!user) return;
+    if (!user) {
+      setData([]);
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
-    const { data: students } = await supabase
-      .from('flashy_profiles')
-      .select('*')
-      .eq('teacher_id', user.id)
-      .eq('role', 'student')
-      .order('display_name');
-    setData(students || []);
-    setLoading(false);
+    try {
+      const { data: students } = await supabase
+        .from('flashy_profiles')
+        .select('*')
+        .eq('teacher_id', user.id)
+        .eq('role', 'student')
+        .order('display_name');
+      setData(students || []);
+    } catch (err) {
+      console.error('[useStudents] refetch failed:', err?.message || err);
+      setData([]);
+    } finally {
+      setLoading(false);
+    }
   }, [user]);
 
   useEffect(() => { refetch(); }, [refetch]);
@@ -491,30 +671,37 @@ export const useTutproRoster = () => {
     if (!user || !isTeacher) {
       setData([]);
       setLastUpdatedAt(null);
+      setError(null);
       setLoading(false);
       return;
     }
 
     setLoading(true);
+    try {
+      const { data: backupRow, error: backupError } = await supabase
+        .from('lesson_manager_backups')
+        .select('snapshot, exported_at, updated_at')
+        .eq('user_id', user.id)
+        .maybeSingle();
 
-    const { data: backupRow, error: backupError } = await supabase
-      .from('lesson_manager_backups')
-      .select('snapshot, exported_at, updated_at')
-      .eq('user_id', user.id)
-      .maybeSingle();
+      if (backupError) {
+        setError(backupError);
+        setData([]);
+        setLastUpdatedAt(null);
+        return;
+      }
 
-    if (backupError) {
-      setError(backupError);
+      setData(backupRow?.snapshot ? extractRosterStudents(backupRow.snapshot) : []);
+      setLastUpdatedAt(backupRow?.updated_at || backupRow?.exported_at || null);
+      setError(null);
+    } catch (err) {
+      console.error('[useTutproRoster] refetch failed:', err?.message || err);
+      setError(err);
       setData([]);
       setLastUpdatedAt(null);
+    } finally {
       setLoading(false);
-      return;
     }
-
-    setData(backupRow?.snapshot ? extractRosterStudents(backupRow.snapshot) : []);
-    setLastUpdatedAt(backupRow?.updated_at || backupRow?.exported_at || null);
-    setError(null);
-    setLoading(false);
   }, [user, isTeacher]);
 
   useEffect(() => { refetch(); }, [refetch]);
@@ -538,37 +725,57 @@ export const useStudentStats = (studentId) => {
   const [loading, setLoading] = useState(true);
 
   const refetch = useCallback(async () => {
-    if (!studentId) return;
+    if (!studentId) {
+      setData(null);
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
+    try {
+      const [
+        { count: totalCards },
+        { count: masteredCards },
+        { count: dueCards },
+        { count: newCards },
+        { data: sessions },
+      ] = await Promise.all([
+        supabase.from('flashy_student_cards').select('id, flashy_deck_assignments!inner(id)', { count: 'exact', head: true })
+          .eq('student_id', studentId).eq('is_deleted_by_teacher', false)
+          .eq('flashy_deck_assignments.is_archived', false),
+        supabase.from('flashy_student_cards').select('id, flashy_deck_assignments!inner(id)', { count: 'exact', head: true })
+          .eq('student_id', studentId).eq('mastered', true).eq('is_deleted_by_teacher', false)
+          .eq('flashy_deck_assignments.is_archived', false),
+        supabase.from('flashy_student_cards').select('id, flashy_deck_assignments!inner(id)', { count: 'exact', head: true })
+          .eq('student_id', studentId).eq('is_new', false).eq('mastered', false)
+          .eq('is_deleted_by_teacher', false).lt('due', new Date().toISOString())
+          .eq('flashy_deck_assignments.is_archived', false),
+        supabase.from('flashy_student_cards').select('id, flashy_deck_assignments!inner(id)', { count: 'exact', head: true })
+          .eq('student_id', studentId).eq('is_new', true).eq('is_deleted_by_teacher', false)
+          .eq('flashy_deck_assignments.is_archived', false),
+        supabase.from('flashy_study_sessions').select('*')
+          .eq('student_id', studentId).order('started_at', { ascending: false }).limit(20),
+      ]);
 
-    const [
-      { count: totalCards },
-      { count: masteredCards },
-      { count: dueCards },
-      { count: newCards },
-      { data: sessions },
-    ] = await Promise.all([
-      supabase.from('flashy_student_cards').select('id', { count: 'exact', head: true })
-        .eq('student_id', studentId).eq('is_deleted_by_teacher', false),
-      supabase.from('flashy_student_cards').select('id', { count: 'exact', head: true })
-        .eq('student_id', studentId).eq('mastered', true),
-      supabase.from('flashy_student_cards').select('id', { count: 'exact', head: true })
-        .eq('student_id', studentId).eq('is_new', false).eq('mastered', false)
-        .eq('is_deleted_by_teacher', false).lt('due', new Date().toISOString()),
-      supabase.from('flashy_student_cards').select('id', { count: 'exact', head: true })
-        .eq('student_id', studentId).eq('is_new', true).eq('is_deleted_by_teacher', false),
-      supabase.from('flashy_study_sessions').select('*')
-        .eq('student_id', studentId).order('started_at', { ascending: false }).limit(20),
-    ]);
-
-    setData({
-      totalCards: totalCards ?? 0,
-      masteredCards: masteredCards ?? 0,
-      dueCards: dueCards ?? 0,
-      newCards: newCards ?? 0,
-      recentSessions: sessions || [],
-    });
-    setLoading(false);
+      setData({
+        totalCards: totalCards ?? 0,
+        masteredCards: masteredCards ?? 0,
+        dueCards: dueCards ?? 0,
+        newCards: newCards ?? 0,
+        recentSessions: sessions || [],
+      });
+    } catch (err) {
+      console.error('[useStudentStats] refetch failed:', err?.message || err);
+      setData({
+        totalCards: 0,
+        masteredCards: 0,
+        dueCards: 0,
+        newCards: 0,
+        recentSessions: [],
+      });
+    } finally {
+      setLoading(false);
+    }
   }, [studentId]);
 
   useEffect(() => { refetch(); }, [refetch]);
@@ -622,15 +829,26 @@ export const useRecentActivity = (limit = 20) => {
   const [loading, setLoading] = useState(true);
 
   const refetch = useCallback(async () => {
-    if (!user) return;
+    if (!user) {
+      setData([]);
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
-    const { data: activity } = await supabase
-      .from('flashy_activity_log')
-      .select('*')
-      .order('created_at', { ascending: false })
-      .limit(limit);
-    setData(activity || []);
-    setLoading(false);
+    try {
+      const { data: activity } = await supabase
+        .from('flashy_activity_log')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(limit);
+      setData(activity || []);
+    } catch (err) {
+      console.error('[useRecentActivity] refetch failed:', err?.message || err);
+      setData([]);
+    } finally {
+      setLoading(false);
+    }
   }, [user, limit]);
 
   useEffect(() => { refetch(); }, [refetch]);
@@ -648,18 +866,31 @@ export const useNotifications = () => {
   const [loading, setLoading] = useState(true);
 
   const refetch = useCallback(async () => {
-    if (!user) return;
+    if (!user) {
+      setData([]);
+      setUnreadCount(0);
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
-    const { data: notifs } = await supabase
-      .from('flashy_notifications')
-      .select('*')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false })
-      .limit(50);
-    const list = notifs || [];
-    setData(list);
-    setUnreadCount(list.filter(n => !n.read).length);
-    setLoading(false);
+    try {
+      const { data: notifs } = await supabase
+        .from('flashy_notifications')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(50);
+      const list = notifs || [];
+      setData(list);
+      setUnreadCount(list.filter(n => !n.read).length);
+    } catch (err) {
+      console.error('[useNotifications] refetch failed:', err?.message || err);
+      setData([]);
+      setUnreadCount(0);
+    } finally {
+      setLoading(false);
+    }
   }, [user]);
 
   const markRead = async (id) => {
@@ -691,21 +922,38 @@ export const useGroups = () => {
   const [loading, setLoading] = useState(true);
 
   const refetch = useCallback(async () => {
-    if (!user) return;
+    if (!user) {
+      setData([]);
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
-    const { data: groups, error } = await supabase
-      .from('flashy_groups')
-      .select('*, flashy_group_members(id, student_id)')
-      .eq('teacher_id', user.id)
-      .order('sort_order')
-      .order('created_at', { ascending: false });
-    if (error) { console.error('[Groups] fetch error:', error.message); }
-    setData((groups || []).map(g => ({
-      ...g,
-      memberCount: g.flashy_group_members?.length ?? 0,
-      memberIds: (g.flashy_group_members || []).map(m => m.student_id),
-    })));
-    setLoading(false);
+    try {
+      const { data: groups, error } = await supabase
+        .from('flashy_groups')
+        .select('*, flashy_group_members(id, student_id)')
+        .eq('teacher_id', user.id)
+        .order('sort_order')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('[Groups] fetch error:', error.message);
+        setData([]);
+        return;
+      }
+
+      setData((groups || []).map(g => ({
+        ...g,
+        memberCount: g.flashy_group_members?.length ?? 0,
+        memberIds: (g.flashy_group_members || []).map(m => m.student_id),
+      })));
+    } catch (err) {
+      console.error('[useGroups] refetch failed:', err?.message || err);
+      setData([]);
+    } finally {
+      setLoading(false);
+    }
   }, [user]);
 
   useEffect(() => { refetch(); }, [refetch]);
@@ -870,6 +1118,72 @@ export const useUnassignDeck = () => {
   return { unassign, unassignDeck: unassign, loading };
 };
 
+/** Permanently delete a deck assignment and all its student cards */
+export const useDeleteAssignment = () => {
+  const deleteAssignment = async (assignmentId) => {
+    // Student cards cascade-delete via FK
+    const { error } = await supabase
+      .from('flashy_deck_assignments')
+      .delete()
+      .eq('id', assignmentId);
+    if (error) throw error;
+  };
+
+  return { deleteAssignment };
+};
+
+/** Teacher deletes a student card (hard delete) */
+export const useTeacherDeleteStudentCard = () => {
+  const teacherDeleteStudentCard = async (cardId) => {
+    const { error } = await supabase
+      .from('flashy_student_cards')
+      .delete()
+      .eq('id', cardId);
+    if (error) throw error;
+  };
+
+  return { teacherDeleteStudentCard };
+};
+
+/** Teacher bulk-deletes multiple student cards */
+export const useTeacherBulkDeleteStudentCards = () => {
+  const bulkDelete = async (cardIds) => {
+    const { error } = await supabase
+      .from('flashy_student_cards')
+      .delete()
+      .in('id', cardIds);
+    if (error) throw error;
+  };
+
+  return { bulkDelete };
+};
+
+/** Teacher resets a student card's SRS progress */
+export const useTeacherResetStudentCard = () => {
+  const resetCard = async (cardId) => {
+    const { data, error } = await supabase
+      .from('flashy_student_cards')
+      .update({
+        is_new: true,
+        mastered: false,
+        reviews: 0,
+        retention: 0,
+        due: new Date().toISOString(),
+        interval_days: 0,
+        ease_factor: 2.5,
+        consecutive_correct: 0,
+        again_count: 0,
+      })
+      .eq('id', cardId)
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  };
+
+  return { resetCard };
+};
+
 // ─────────────────────────────────────────────────────
 // Student Custom Cards (student adds cards to assigned decks)
 // ─────────────────────────────────────────────────────
@@ -936,6 +1250,57 @@ export const useUpdateStudentCardContent = () => {
   return { updateContent };
 };
 
+/** Teacher edits a student card's content via assignment ownership */
+export const useTeacherUpdateStudentCard = () => {
+  const { user } = useAuth();
+
+  const updateCard = async (cardId, fields) => {
+    if (!user) throw new Error('Not authenticated');
+    const payload = { updated_at: new Date().toISOString() };
+    if (fields.front !== undefined) payload.front = fields.front;
+    if (fields.back !== undefined) payload.back = fields.back;
+    if (fields.example_sentence !== undefined) payload.example_sentence = fields.example_sentence;
+    if (fields.notes !== undefined) payload.notes = fields.notes;
+    if (fields.pronunciation !== undefined) payload.pronunciation = fields.pronunciation;
+    if (fields.image_url !== undefined) payload.image_url = fields.image_url;
+    if (fields.difficulty !== undefined) payload.difficulty = fields.difficulty;
+    const { data, error } = await supabase
+      .from('flashy_student_cards')
+      .update(payload)
+      .eq('id', cardId)
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  };
+
+  return { updateCard };
+};
+
+/** Teacher creates a new card in a student's assignment */
+export const useTeacherCreateStudentCard = () => {
+  const createStudentCard = async (assignmentId, studentId, fields) => {
+    const { data, error } = await supabase
+      .from('flashy_student_cards')
+      .insert({
+        assignment_id: assignmentId,
+        student_id: studentId,
+        front: fields.front || '',
+        back: fields.back || '',
+        example_sentence: fields.example_sentence || '',
+        notes: fields.notes || '',
+        is_custom: false,
+        is_new: true,
+      })
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  };
+
+  return { createStudentCard };
+};
+
 // ─────────────────────────────────────────────────────
 // Student Favorites & Notes
 // ─────────────────────────────────────────────────────
@@ -964,17 +1329,29 @@ export const useFavoriteCards = () => {
   const [loading, setLoading] = useState(true);
 
   const refetch = useCallback(async () => {
-    if (!user) return;
+    if (!user) {
+      setData([]);
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
-    const { data: cards } = await supabase
-      .from('flashy_student_cards')
-      .select('*, flashy_deck_assignments(flashy_decks(name))')
-      .eq('student_id', user.id)
-      .eq('is_favorite', true)
-      .eq('is_deleted_by_teacher', false)
-      .order('updated_at', { ascending: false });
-    setData(cards || []);
-    setLoading(false);
+    try {
+      const { data: cards } = await supabase
+        .from('flashy_student_cards')
+        .select('*, flashy_deck_assignments!inner(is_archived, flashy_decks(name))')
+        .eq('student_id', user.id)
+        .eq('is_favorite', true)
+        .eq('is_deleted_by_teacher', false)
+        .eq('flashy_deck_assignments.is_archived', false)
+        .order('updated_at', { ascending: false });
+      setData(cards || []);
+    } catch (err) {
+      console.error('[useFavoriteCards] refetch failed:', err?.message || err);
+      setData([]);
+    } finally {
+      setLoading(false);
+    }
   }, [user]);
 
   useEffect(() => { refetch(); }, [refetch]);
@@ -992,30 +1369,40 @@ export const usePerDeckStats = () => {
   const [loading, setLoading] = useState(true);
 
   const refetch = useCallback(async () => {
-    if (!user) return;
-    setLoading(true);
-
-    const { data: cards } = await supabase
-      .from('flashy_student_cards')
-      .select('assignment_id, is_new, mastered, due, is_deleted_by_teacher')
-      .eq('student_id', user.id)
-      .eq('is_deleted_by_teacher', false);
-
-    const byAssignment = {};
-    const now = new Date();
-    for (const c of cards || []) {
-      if (!byAssignment[c.assignment_id]) {
-        byAssignment[c.assignment_id] = { total: 0, mastered: 0, due: 0, newCards: 0 };
-      }
-      const s = byAssignment[c.assignment_id];
-      s.total++;
-      if (c.mastered) s.mastered++;
-      else if (c.is_new) s.newCards++;
-      else if (new Date(c.due) < now) s.due++;
+    if (!user) {
+      setData({});
+      setLoading(false);
+      return;
     }
 
-    setData(byAssignment);
-    setLoading(false);
+    setLoading(true);
+    try {
+      const { data: cards } = await supabase
+        .from('flashy_student_cards')
+        .select('assignment_id, is_new, mastered, due, is_deleted_by_teacher')
+        .eq('student_id', user.id)
+        .eq('is_deleted_by_teacher', false);
+
+      const byAssignment = {};
+      const now = new Date();
+      for (const c of cards || []) {
+        if (!byAssignment[c.assignment_id]) {
+          byAssignment[c.assignment_id] = { total: 0, mastered: 0, due: 0, newCards: 0 };
+        }
+        const s = byAssignment[c.assignment_id];
+        s.total++;
+        if (c.mastered) s.mastered++;
+        else if (c.is_new) s.newCards++;
+        else if (new Date(c.due) < now) s.due++;
+      }
+
+      setData(byAssignment);
+    } catch (err) {
+      console.error('[usePerDeckStats] refetch failed:', err?.message || err);
+      setData({});
+    } finally {
+      setLoading(false);
+    }
   }, [user]);
 
   useEffect(() => { refetch(); }, [refetch]);

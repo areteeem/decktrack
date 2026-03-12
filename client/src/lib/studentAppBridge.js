@@ -1,7 +1,8 @@
 import { supabase } from './supabaseClient';
 import { normalizeStudentId } from './tutproRoster';
+import { STORAGE_KEYS } from './storageKeys';
 
-const BRIDGE_STORAGE_KEY = 'flashy.studentAppBridge.v1';
+const BRIDGE_STORAGE_KEY = STORAGE_KEYS.studentAppBridge;
 const BRIDGE_TTL_MS = 30 * 60 * 1000;
 
 const isSettingsObject = (value) => (

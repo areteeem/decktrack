@@ -12,10 +12,54 @@
   height: 3rem;
 }
 
+.left {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  min-width: 0;
+  overflow: hidden;
+}
+
 .right {
   display: flex;
   align-items: center;
   gap: 0.75rem;
+}
+
+.breadcrumbs {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  font-size: 0.78rem;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.crumbItem {
+  display: flex;
+  align-items: center;
+  white-space: nowrap;
+}
+
+.crumbSep {
+  color: var(--fg-faint);
+  margin: 0 0.25rem;
+  font-weight: 400;
+}
+
+.crumbLink {
+  color: var(--fg-muted);
+  text-decoration: none;
+  font-weight: 500;
+  transition: color 0.12s;
+}
+.crumbLink:hover {
+  color: var(--fg);
+}
+
+.crumbCurrent {
+  color: var(--fg);
+  font-weight: 600;
 }
 
 .studyTime {
@@ -33,7 +77,8 @@
 }
 
 .logo {
-  width: 6rem;
+  height: 1.6rem;
+  width: auto;
 }
 
 @media (min-width: 1200px) {

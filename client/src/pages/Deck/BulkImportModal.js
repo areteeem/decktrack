@@ -205,7 +205,7 @@ const BulkImportModal = ({ open, setOpen, deckId, startSortOrder = 0, onImported
         )}
 
         <div className={styles.actions}>
-          <Button callback={handleClose} bgcolor="#eef2ff" color="#2f4bb8">
+          <Button callback={handleClose} bgcolor="transparent" color="var(--fg-muted)">
             Cancel
           </Button>
           <div className={styles.primaryActions}>

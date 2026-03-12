@@ -26,7 +26,7 @@ const parseLaunchParams = (search) => {
 const getFriendlyError = (error) => {
   const message = String(error?.message || "").trim();
   if (!message) {
-    return "Flashy could not start a student session.";
+    return "TutPro could not start a student session.";
   }
 
   if (message.toLowerCase().includes("anonymous")) {
@@ -61,7 +61,7 @@ const StudentLaunchPage = () => {
 
       try {
         storeStudentAppBridge(launchData);
-        setStatus("Connecting to Flashy...");
+        setStatus("Connecting to TutPro...");
 
         let activeUser = user;
 
@@ -110,7 +110,7 @@ const StudentLaunchPage = () => {
         ) : (
           <>
             <span className={styles.badge}>Student launch</span>
-            <h1 className={styles.title}>Could not open Flashy</h1>
+            <h1 className={styles.title}>Could not open TutPro</h1>
             <p className={styles.description}>{error}</p>
             <div className={styles.actions}>
               <Button callback={() => window.location.reload()}>Try again</Button>

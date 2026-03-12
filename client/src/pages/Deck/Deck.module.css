@@ -192,3 +192,90 @@
   color: var(--danger);
   font-weight: 600;
 }
+
+/* ── Selection mode ── */
+
+.viewToggleActive {
+  background: var(--fg);
+  color: var(--bg);
+}
+
+.cardWrapper {
+  position: relative;
+}
+
+.cardSelected {
+  outline: 2px solid var(--fg);
+  border-radius: var(--radius);
+}
+
+.cardCheckbox {
+  position: absolute;
+  top: 0.4rem;
+  left: 0.4rem;
+  z-index: 2;
+  width: 1rem;
+  height: 1rem;
+  accent-color: var(--fg);
+  cursor: pointer;
+}
+
+.tableCheckCol {
+  width: 1.5rem;
+  flex-shrink: 0;
+}
+
+.tableCheckbox {
+  width: 1rem;
+  height: 1rem;
+  accent-color: var(--fg);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.tableRowSelected {
+  outline: 2px solid var(--fg);
+}
+
+.bulkBar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  border: var(--border);
+  border-radius: var(--radius);
+  background: var(--card-bg);
+  margin-bottom: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.bulkCount {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--fg);
+}
+
+.bulkBtn {
+  font-size: 0.78rem;
+  padding: 0.25rem 0.6rem;
+  border: var(--border);
+  border-radius: var(--radius);
+  background: var(--card-bg);
+  color: var(--fg);
+  cursor: pointer;
+  transition: background 0.12s;
+}
+
+.bulkBtn:hover {
+  background: var(--card-hover);
+}
+
+.bulkBtnDanger {
+  color: var(--danger, #dc2626);
+  border-color: var(--danger, #dc2626);
+}
+
+.bulkBtnDanger:hover {
+  background: var(--danger, #dc2626);
+  color: #fff;
+}

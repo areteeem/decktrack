@@ -9,7 +9,9 @@
  * Call getTotalTime() to read the formatted string.
  */
 
-const KEY = 'flashy.studyTime';
+import { STORAGE_KEYS } from './storageKeys';
+
+const KEY = STORAGE_KEYS.studyTime;
 
 const load = () => {
   try {

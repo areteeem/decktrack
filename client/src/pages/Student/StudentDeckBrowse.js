@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import { toast } from "react-toastify";
 import styles from "./Student.module.css";
@@ -139,7 +139,7 @@ const StudentDeckBrowse = () => {
   const { createCard, loading: creating } = useCreateStudentCard();
   const { deleteCard } = useDeleteStudentCard();
   const { updateContent, loading: updating } = useUpdateStudentCardContent();
-  const { toggle } = useToggleFavorite();
+  const { toggleFavorite: toggle } = useToggleFavorite();
 
   const [filter, setFilter] = useState("all");
   const [search, setSearch] = useState("");
@@ -155,6 +155,13 @@ const StudentDeckBrowse = () => {
 
   const deckName =
     assignment?.custom_name || assignment?.flashy_decks?.name || "Deck";
+  useEffect(() => {
+    if (deckName && deckName !== "Deck") {
+      document.title = `${deckName} | TutPro`;
+      return () => { document.title = 'Flashcards | TutPro'; };
+    }
+  }, [deckName]);
+
 
   const allowStudentCards = assignment?.allow_student_cards !== false;
   const allowStudentEdit = assignment?.allow_student_edit !== false;

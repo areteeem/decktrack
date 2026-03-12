@@ -56,7 +56,7 @@ const CopyLoginLink = ({ profile, teacherId }) => {
   };
 
   return (
-    <Button callback={handleCopy} bgcolor="#f0f4ff" color="#2f4bb8">
+    <Button callback={handleCopy} bgcolor="transparent" color="var(--fg)">
       {copied ? "Copied ✓" : "Copy login link"}
     </Button>
   );
@@ -99,7 +99,7 @@ const AddStudentModal = ({ open, setOpen, onAdded }) => {
     <Modal open={open} setOpen={setOpen}>
       <h3>Link existing student account</h3>
       <p className={styles.helperText}>
-        TutPro students sync automatically from your latest backup. Use this only if a student already created a Flashy account manually and you want to link it by email.
+        TutPro students sync automatically from your latest backup. Use this only if a student already created a DeckTrack account manually and you want to link it by email.
       </p>
       <TextInput label="Student email" placeholder="student@example.com" state={email} setState={setEmail} />
       <TextInput
@@ -316,15 +316,15 @@ const StudentsPage = () => {
         <div>
           <h1>My Students</h1>
           <p className={styles.helperText}>
-            TutPro students sync from your latest backup automatically. Students become assignable in Flashy after they open the flashcards link in the student app once.
+            TutPro students sync from your latest backup automatically. Students become assignable in DeckTrack after they open the flashcards link in the student app once.
           </p>
         </div>
         <div className={styles.headerActions}>
-          <Button callback={refreshAll}>Refresh roster</Button>
-          <Button callback={() => setShowBulkAssign(true)} bgcolor="#6366f1" color="#fff">
+          <Button callback={refreshAll} bgcolor="transparent" color="var(--fg)">Refresh roster</Button>
+          <Button callback={() => setShowBulkAssign(true)}>
             Bulk assign deck
           </Button>
-          <Button callback={() => setShowAddModal(true)} bgcolor="#eef2ff" color="#2f4bb8">
+          <Button callback={() => setShowAddModal(true)} bgcolor="transparent" color="var(--fg)">
             Link existing account
           </Button>
         </div>
@@ -336,7 +336,7 @@ const StudentsPage = () => {
           <strong className={styles.summaryValue}>{rosterStudents?.length || 0}</strong>
         </div>
         <div className={styles.summaryCard}>
-          <span className={styles.summaryLabel}>Ready in Flashy</span>
+          <span className={styles.summaryLabel}>Ready in DeckTrack</span>
           <strong className={styles.summaryValue}>{linkedCount}</strong>
         </div>
         <div className={styles.summaryCard}>
@@ -355,7 +355,7 @@ const StudentsPage = () => {
           </p>
         </div>
         {rosterError && (
-          <Badge style={{ backgroundColor: "#fff4e5", color: "#9a5b00" }}>
+          <Badge>
             {rosterError.message || "Could not read TutPro roster"}
           </Badge>
         )}
@@ -364,7 +364,7 @@ const StudentsPage = () => {
       {studentRows.length === 0 ? (
         <div className={styles.empty}>
           <h2>No students yet</h2>
-          <p>Sync your TutPro backup or link an existing Flashy student account to get started.</p>
+          <p>Sync your TutPro backup or link an existing DeckTrack student account to get started.</p>
         </div>
       ) : (
         <div className={styles.grid}>
@@ -384,8 +384,8 @@ const StudentsPage = () => {
                   </div>
                   <div className={styles.badgeRow}>
                     {student.source === "tutpro" && <Badge>TutPro</Badge>}
-                    {linkedProfile && <Badge style={{ backgroundColor: "#e9f8ef", color: "#1d7a47" }}>Ready in Flashy</Badge>}
-                    {!linkedProfile && <Badge style={{ backgroundColor: "#fff4e5", color: "#9a5b00" }}>Needs first student-app launch</Badge>}
+                    {linkedProfile && <Badge>Ready in DeckTrack</Badge>}
+                    {!linkedProfile && <Badge>Needs first launch</Badge>}
                   </div>
                 </div>
 

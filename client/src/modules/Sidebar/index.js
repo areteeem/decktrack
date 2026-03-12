@@ -1,12 +1,12 @@
 /* eslint-disable jsx-a11y/anchor-is-valid */
 import "./Sidebar.css";
 import { useState, useMemo, useEffect } from "react";
-import logo from "../../common/logo.svg";
+import logo from "../../common/logo1.svg";
 import { Link } from "react-router-dom";
 import { useLogout } from "../../common/hooks/useLogout";
 import NewDeckModal from "./NewDeckModal";
 import DeckLink from "./DeckLink";
-import { useDecks } from "../../hooks/useSupabaseData";
+import { useDecks, useStudentStats } from "../../hooks/useSupabaseData";
 import { useAuth } from "../../contexts/AuthContext";
 import { useSettings } from "../../contexts/SettingsContext";
 import { getSessionProgress, getActiveSessionDeckIds } from "../../lib/studySession";
@@ -14,9 +14,10 @@ import { getTotalSeconds, formatStudyTime } from "../../lib/studyTimer";
 
 const Sidebar = ({ isOpen, setIsOpen }) => {
   const logout = useLogout();
-  const { isTeacher } = useAuth();
+  const { isTeacher, isStudent, user } = useAuth();
   const { t } = useSettings();
   const { data: decks, loading, error, refetch } = useDecks();
+  const { data: studentStats } = useStudentStats(!isTeacher ? user?.id : null);
 
   const [showModal, setShowModal] = useState(false);
   const [studyTime, setStudyTime] = useState(() => formatStudyTime(getTotalSeconds()));
@@ -137,6 +138,44 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
             </Link>
           </>
         )}
+        {isStudent && (
+          <>
+            <Link className="icon-link" to="/study/all/due" onClick={() => setIsOpen(false)}>
+              <svg
+                className="w-6 h-6"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                />
+              </svg>
+              <p>{t("dueToday")} {studentStats?.dueCards ? `(${studentStats.dueCards})` : ""}</p>
+            </Link>
+            <Link className="icon-link" to="/study/all/new" onClick={() => setIsOpen(false)}>
+              <svg
+                className="w-6 h-6"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"
+                />
+              </svg>
+              <p>{t("learnNew")} {studentStats?.newCards ? `(${studentStats.newCards})` : ""}</p>
+            </Link>
+          </>
+        )}
         <br></br>
         {/* Continue study sessions */}
         {continueSessions.length > 0 && (
@@ -157,39 +196,37 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
             ))}
           </div>
         )}
-        {isTeacher && (
-          <div className="decks">
-            <strong className="link new-deck">
-              <strong>{t("decks")}</strong>
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="new-deck-icon"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                onClick={() => setShowModal(true)}
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"
-                />
-              </svg>
-            </strong>
-            {loading ? (
-              <p>{t("loadingDecks")}</p>
-            ) : error ? (
-              <p>{t("couldntLoadDecks")}</p>
-            ) : (
-              (decks || []).map((deck) => (
-                <span key={deck.id} onClick={() => setIsOpen(false)}>
-                  <DeckLink id={deck.id} name={deck.name} onDeleted={refetch} />
-                </span>
-              ))
-            )}
-          </div>
-        )}
+        <div className="decks">
+          <strong className="link new-deck">
+            <strong>{t("decks")}</strong>
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="new-deck-icon"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              onClick={() => setShowModal(true)}
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
+            </svg>
+          </strong>
+          {loading ? (
+            <p>{t("loadingDecks")}</p>
+          ) : error ? (
+            <p>{t("couldntLoadDecks")}</p>
+          ) : (
+            (decks || []).map((deck) => (
+              <span key={deck.id} onClick={() => setIsOpen(false)}>
+                <DeckLink id={deck.id} name={deck.name} onDeleted={refetch} />
+              </span>
+            ))
+          )}
+        </div>
       </div>
       <div className="sidebar-footer">
         {getTotalSeconds() > 0 && (

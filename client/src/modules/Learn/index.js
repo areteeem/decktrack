@@ -33,7 +33,22 @@ const formatInterval = (days, t) => {
   return t("days", { n: days });
 };
 
-const Learn = ({ flashcards, showTermFirst = true, onProgress, onComplete }) => {
+/** Compute hardness score: higher = harder for the student */
+const computeHardness = (cardResult) => {
+  if (!cardResult || !cardResult.grades.length) return 0;
+  let score = 0;
+  for (const g of cardResult.grades) {
+    if (g === 'again') score += 3;
+    else if (g === 'hard') score += 1.5;
+    else if (g === 'good') score += 0;
+    else if (g === 'easy') score -= 1;
+  }
+  // Bonus for many attempts (re-queued cards)
+  score += Math.max(0, cardResult.attempts - 1) * 0.5;
+  return score;
+};
+
+const Learn = ({ flashcards, showTermFirst = true, onProgress, onComplete, onQuit }) => {
   const { updateStudentCard } = useUpdateStudentCard();
   const { srsMode, t } = useSettings();
 
@@ -53,12 +68,15 @@ const Learn = ({ flashcards, showTermFirst = true, onProgress, onComplete }) => 
   const [position, setPosition] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
   const [sessionStats, setSessionStats] = useState({ reviewed: 0, again: 0, hard: 0, good: 0, easy: 0 });
+  // Per-card difficulty tracking: { [cardId]: { front, back, grades: [], attempts: n } }
+  const [cardResults, setCardResults] = useState({});
 
   useEffect(() => {
     setQueue([...initialQueue]);
     setPosition(0);
     setIsFlipped(false);
     setSessionStats({ reviewed: 0, again: 0, hard: 0, good: 0, easy: 0 });
+    setCardResults({});
   }, [initialQueue]);
 
   const totalUnique = flashcards?.length || 0;
@@ -101,6 +119,21 @@ const Learn = ({ flashcards, showTermFirst = true, onProgress, onComplete }) => 
       [grade]: prev[grade] + 1,
     }));
 
+    // Track per-card difficulty
+    setCardResults(prev => {
+      const existing = prev[currentCard.id] || { front: currentCard.front, back: currentCard.back, grades: [], attempts: 0 };
+      return {
+        ...prev,
+        [currentCard.id]: {
+          ...existing,
+          front: currentCard.front,
+          back: currentCard.back,
+          grades: [...existing.grades, grade],
+          attempts: existing.attempts + 1,
+        }
+      };
+    });
+
     // Re-queue "Again" cards ~3-5 positions later
     if (grade === "again") {
       const reinsertAt = Math.min(position + 3 + Math.floor(Math.random() * 3), queue.length);
@@ -115,12 +148,13 @@ const Learn = ({ flashcards, showTermFirst = true, onProgress, onComplete }) => 
     setPosition(prev => prev + 1);
 
     // Notify parent of progress
-    onProgress?.(currentCard.id, grade, position + 1, queue.length);
+    onProgress?.(currentCard.id, grade, position + 1, queue.length, currentCard.front, currentCard.back);
   }, [isComplete, currentCard, position, queue.length, updateStudentCard, onProgress]);
 
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (isComplete) return;
+      if (e.key === "Escape" && onQuit) { onQuit(); return; }
       if (srsMode === "simple") {
         if (e.key === "1") gradeCard("again");
         else if (e.key === "2") gradeCard("good"); // "Know" = good
@@ -133,7 +167,7 @@ const Learn = ({ flashcards, showTermFirst = true, onProgress, onComplete }) => 
     };
     window.addEventListener("keydown", handleKeyDown, true);
     return () => window.removeEventListener("keydown", handleKeyDown, true);
-  }, [gradeCard, isComplete, srsMode]);
+  }, [gradeCard, isComplete, srsMode, onQuit]);
 
   if (!flashcards) return <LoadingScreen />;
 
@@ -151,6 +185,13 @@ const Learn = ({ flashcards, showTermFirst = true, onProgress, onComplete }) => 
     const accuracy = sessionStats.reviewed > 0
       ? Math.round(((sessionStats.good + sessionStats.easy) / sessionStats.reviewed) * 100)
       : 0;
+    // Find hardest cards
+    const hardestCards = Object.entries(cardResults)
+      .map(([id, result]) => ({ id, ...result, hardness: computeHardness(result) }))
+      .filter(c => c.hardness > 0)
+      .sort((a, b) => b.hardness - a.hardness)
+      .slice(0, 5);
+
     return (
       <div className={styles.layout}>
         <div className={styles.content}>
@@ -180,6 +221,25 @@ const Learn = ({ flashcards, showTermFirst = true, onProgress, onComplete }) => 
                 <span className={styles.gradeEasy}>{t("easy")}: {sessionStats.easy}</span>
               )}
             </div>
+            {hardestCards.length > 0 && (
+              <div className={styles.hardestSection}>
+                <h3 className={styles.hardestTitle}>Hardest Cards</h3>
+                {hardestCards.map(card => (
+                  <div key={card.id} className={styles.hardestCard}>
+                    <span className={styles.hardestTerm}>{(card.front || '').replace(/<[^>]*>/g, '')}</span>
+                    <span className={styles.hardestDef}>{(card.back || '').replace(/<[^>]*>/g, '').slice(0, 60)}</span>
+                    <span className={styles.hardestBadge}>
+                      {card.grades.filter(g => g === 'again').length}× again
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+            {onQuit && (
+              <button className={styles.quitBtn} onClick={onQuit} style={{ marginTop: '1rem' }}>
+                ← Back to deck
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -192,9 +252,16 @@ const Learn = ({ flashcards, showTermFirst = true, onProgress, onComplete }) => 
   return (
     <div className={styles.layout}>
       <div className={styles.header}>
-        <h1>
-          {t("learnProgress")} {Math.min(position + 1, totalUnique)}/{totalUnique}
-        </h1>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <h1>
+            {t("learnProgress")} {Math.min(position + 1, totalUnique)}/{totalUnique}
+          </h1>
+          {onQuit && (
+            <button className={styles.quitBtn} onClick={onQuit} title="Quit (Esc)">
+              ✕
+            </button>
+          )}
+        </div>
         <ProgressBar completed={progressPct} />
       </div>
       <div className={styles.content}>

@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { STORAGE_KEYS } from './storageKeys';
 
 // Singleton Supabase client — matches TutPro pattern.
 // Uses REACT_APP_ prefix for create-react-app compatibility.
@@ -19,7 +20,7 @@ export const getSupabase = () => {
   _client = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     auth: {
       persistSession: true,
-      storageKey: 'flashy_auth_v1',
+      storageKey: STORAGE_KEYS.auth,
       autoRefreshToken: true,
       detectSessionInUrl: true,
     },

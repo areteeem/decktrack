@@ -8,7 +8,7 @@ import LoadingScreen from "../../common/components/LoadingScreen";
  * Shows the term and 4 definition options (1 correct + 3 distractors).
  * Requires at least 4 cards in the deck.
  */
-const MultipleChoice = ({ flashcards, showTermFirst = true }) => {
+const MultipleChoice = ({ flashcards, showTermFirst = true, onQuit }) => {
   const shuffled = useMemo(() => {
     if (!flashcards) return [];
     return [...flashcards].sort(() => Math.random() - 0.5);
@@ -17,6 +17,7 @@ const MultipleChoice = ({ flashcards, showTermFirst = true }) => {
   const [current, setCurrent] = useState(0);
   const [selected, setSelected] = useState(null);
   const [correctCount, setCorrectCount] = useState(0);
+  const [cardResults, setCardResults] = useState({});
 
   // Generate 4 options for the current card
   const options = useMemo(() => {
@@ -43,10 +44,22 @@ const MultipleChoice = ({ flashcards, showTermFirst = true }) => {
   const handleSelect = useCallback((index) => {
     if (selected !== null) return;
     setSelected(index);
-    if (options[index]?.isCorrect) {
+    const isCorrect = options[index]?.isCorrect;
+    if (isCorrect) {
       setCorrectCount(c => c + 1);
     }
-  }, [selected, options]);
+    // Track per-card result
+    const card = shuffled[current];
+    setCardResults(prev => ({
+      ...prev,
+      [current]: {
+        front: card?.front || '',
+        back: card?.back || '',
+        correct: isCorrect,
+        selectedText: options[index]?.text || '',
+      }
+    }));
+  }, [selected, options, shuffled, current]);
 
   const handleNext = useCallback(() => {
     setSelected(null);
@@ -55,6 +68,7 @@ const MultipleChoice = ({ flashcards, showTermFirst = true }) => {
 
   useEffect(() => {
     const handleKeyDown = (e) => {
+      if (e.key === "Escape" && onQuit) { onQuit(); return; }
       if (current >= shuffled.length) return;
       
       if (selected !== null) {
@@ -72,7 +86,7 @@ const MultipleChoice = ({ flashcards, showTermFirst = true }) => {
     };
     window.addEventListener("keydown", handleKeyDown, true);
     return () => window.removeEventListener("keydown", handleKeyDown, true);
-  }, [selected, options, current, shuffled.length, handleSelect, handleNext]);
+  }, [selected, options, current, shuffled.length, handleSelect, handleNext, onQuit]);
 
   if (!flashcards) return <LoadingScreen />;
 
@@ -88,6 +102,7 @@ const MultipleChoice = ({ flashcards, showTermFirst = true }) => {
 
   if (current >= shuffled.length) {
     const pct = Math.round((correctCount / shuffled.length) * 100);
+    const wrongCards = Object.values(cardResults).filter(r => !r.correct).slice(0, 5);
     return (
       <div className={styles.layout}>
         <div className={styles.content}>
@@ -97,6 +112,26 @@ const MultipleChoice = ({ flashcards, showTermFirst = true }) => {
             <div className={styles.scoreLabel}>
               {correctCount} / {shuffled.length} correct
             </div>
+            {wrongCards.length > 0 && (
+              <div style={{ marginTop: '1rem', textAlign: 'left', width: '100%', maxWidth: 360 }}>
+                <h3 style={{ fontSize: '0.85rem', fontWeight: 700, marginBottom: '0.5rem', color: 'var(--fg-muted)' }}>Hardest Cards</h3>
+                {wrongCards.map((r, i) => (
+                  <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.35rem 0', borderBottom: '1px solid var(--border-color)', fontSize: '0.8rem' }}>
+                    <span style={{ fontWeight: 600 }}>{(r.front || '').replace(/<[^>]*>/g, '')}</span>
+                    <span style={{ color: 'var(--danger)', fontSize: '0.75rem' }}>
+                      You: {(r.selectedText || '').replace(/<[^>]*>/g, '').slice(0, 30)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+            {onQuit && (
+              <button onClick={onQuit} style={{
+                marginTop: '1rem', padding: '0.45rem 1rem', border: '1.5px solid var(--border-color)',
+                borderRadius: 'var(--radius)', background: 'var(--card-bg)', color: 'var(--fg)',
+                fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit'
+              }}>← Back to deck</button>
+            )}
           </div>
         </div>
       </div>
@@ -109,9 +144,17 @@ const MultipleChoice = ({ flashcards, showTermFirst = true }) => {
   return (
     <div className={styles.layout}>
       <div className={styles.header}>
-        <h1>
-          Multiple choice {current + 1}/{shuffled.length}
-        </h1>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <h1>
+            Multiple choice {current + 1}/{shuffled.length}
+          </h1>
+          {onQuit && (
+            <button onClick={onQuit} title="Quit (Esc)" style={{
+              background: 'none', border: '1.5px solid var(--border-color)', borderRadius: 'var(--radius)',
+              color: 'var(--fg-muted)', cursor: 'pointer', padding: '0.25rem 0.5rem', fontSize: '0.8rem', fontFamily: 'inherit'
+            }}>✕</button>
+          )}
+        </div>
         <ProgressBar completed={(current / shuffled.length) * 100} />
       </div>
       <div className={styles.content}>

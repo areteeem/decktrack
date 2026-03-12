@@ -18,6 +18,7 @@ import Navbar from "./modules/Navbar";
 import { useAuth } from "./contexts/AuthContext";
 import StudentsPage from "./pages/Teacher/StudentsPage";
 import StudentDetailPage from "./pages/Teacher/StudentDetailPage";
+import TeacherCardBrowser from "./pages/Teacher/TeacherCardBrowser";
 import GroupsPage from "./pages/Teacher/GroupsPage";
 import StudentDashboard from "./pages/Student/StudentDashboard";
 import StudentDeckBrowse from "./pages/Student/StudentDeckBrowse";
@@ -59,18 +60,21 @@ export default function Home() {
               />
               <Route path="/settings" element={<Settings />} />
 
-              {/* Teacher routes */}
+              {/* Deck routes — shared for teachers and students (own decks) */}
+              <Route path="/deck/:id" element={<Deck />} />
+              <Route path="/deck/:id/new" element={<DeckLearnNew />} />
+              <Route path="/deck/:id/due" element={<DeckPracticeDue />} />
+              <Route path="/deck/:id/quiz" element={<DeckQuiz />} />
+              <Route path="/deck/:id/study" element={<DeckStudy />} />
+
+              {/* Teacher-only routes */}
               {isTeacher && (
                 <>
-                  <Route path="/deck/:id" element={<Deck />} />
-                  <Route path="/deck/:id/new" element={<DeckLearnNew />} />
-                  <Route path="/deck/:id/due" element={<DeckPracticeDue />} />
-                  <Route path="/deck/:id/quiz" element={<DeckQuiz />} />
-                  <Route path="/deck/:id/study" element={<DeckStudy />} />
                   <Route path="/new" element={<LearnNew />} />
                   <Route path="/due" element={<PracticeDue />} />
                   <Route path="/students" element={<StudentsPage />} />
                   <Route path="/students/:studentId" element={<StudentDetailPage />} />
+                  <Route path="/students/:studentId/cards/:assignmentId" element={<TeacherCardBrowser />} />
                   <Route path="/groups" element={<GroupsPage />} />
                 </>
               )}

@@ -3,7 +3,25 @@ import styles from "./FillBlank.module.css";
 import { useState, useRef, useEffect, useMemo } from "react";
 import LoadingScreen from "../../common/components/LoadingScreen";
 
-const FillBlank = ({ flashcards }) => {
+/**
+ * Build a prompt from the definition (card.back) with the term (card.front) replaced by a blank.
+ * If the term doesn't appear in the definition, just show the definition as-is with a "___" prefix.
+ */
+const buildBlankPrompt = (definition, term) => {
+  if (!definition || !term) return { parts: [definition || ''], hasBlank: false };
+  const plainTerm = (term || '').replace(/<[^>]*>/g, '').trim();
+  if (!plainTerm) return { parts: [definition], hasBlank: false };
+  const regex = new RegExp(`(${plainTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+  const parts = definition.split(regex);
+  if (parts.length <= 1) return { parts: [definition], hasBlank: false };
+  // Replace matched parts with blank markers
+  const result = parts.map((part, i) =>
+    regex.test(part) ? { type: 'blank', index: i } : part
+  );
+  return { parts: result, hasBlank: true };
+};
+
+const FillBlank = ({ flashcards, onQuit }) => {
   const shuffled = useMemo(() => {
     if (!flashcards) return [];
     return [...flashcards].sort(() => Math.random() - 0.5);
@@ -13,6 +31,8 @@ const FillBlank = ({ flashcards }) => {
   const [answer, setAnswer] = useState("");
   const [status, setStatus] = useState(null); // null | 'correct' | 'wrong'
   const [correctCount, setCorrectCount] = useState(0);
+  // Per-card tracking: { [index]: { front, back, correct: bool, userAnswer } }
+  const [cardResults, setCardResults] = useState({});
   const inputRef = useRef(null);
 
   useEffect(() => {
@@ -33,6 +53,11 @@ const FillBlank = ({ flashcards }) => {
 
   if (current >= shuffled.length) {
     const pct = Math.round((correctCount / shuffled.length) * 100);
+    // Wrong cards = hardest
+    const wrongCards = Object.values(cardResults)
+      .filter(r => !r.correct)
+      .slice(0, 5);
+
     return (
       <div className={styles.layout}>
         <div className={styles.content}>
@@ -42,6 +67,24 @@ const FillBlank = ({ flashcards }) => {
             <div className={styles.scoreLabel}>
               {correctCount} / {shuffled.length} correct
             </div>
+            {wrongCards.length > 0 && (
+              <div style={{ marginTop: '1rem', textAlign: 'left', width: '100%', maxWidth: 360 }}>
+                <h3 style={{ fontSize: '0.85rem', fontWeight: 700, marginBottom: '0.5rem', color: 'var(--fg-muted)' }}>Hardest Cards</h3>
+                {wrongCards.map((r, i) => (
+                  <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.35rem 0', borderBottom: '1px solid var(--border-color)', fontSize: '0.8rem' }}>
+                    <span style={{ fontWeight: 600 }}>{(r.front || '').replace(/<[^>]*>/g, '')}</span>
+                    <span style={{ color: 'var(--danger)', fontSize: '0.75rem' }}>
+                      You: {r.userAnswer || '—'}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+            {onQuit && (
+              <button className={styles.nextBtn} onClick={onQuit} style={{ marginTop: '1rem' }}>
+                ← Back to deck
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -49,13 +92,21 @@ const FillBlank = ({ flashcards }) => {
   }
 
   const card = shuffled[current];
+  // The correct answer is the term (card.front), stripped of HTML
+  const correctAnswer = (card.front || '').replace(/<[^>]*>/g, '').trim();
+  const { parts, hasBlank } = buildBlankPrompt(card.back, card.front);
 
   const handleCheck = () => {
     if (status) return;
     const isCorrect =
-      answer.trim().toLowerCase() === card.back.trim().toLowerCase();
+      answer.trim().toLowerCase() === correctAnswer.toLowerCase();
     setStatus(isCorrect ? "correct" : "wrong");
     if (isCorrect) setCorrectCount((c) => c + 1);
+    // Track result
+    setCardResults(prev => ({
+      ...prev,
+      [current]: { front: card.front, back: card.back, correct: isCorrect, userAnswer: answer.trim() }
+    }));
   };
 
   const handleNext = () => {
@@ -65,6 +116,7 @@ const FillBlank = ({ flashcards }) => {
   };
 
   const handleKeyDown = (e) => {
+    if (e.key === "Escape" && onQuit) { onQuit(); return; }
     if (e.key === "Enter") {
       e.preventDefault();
       if (status) {
@@ -75,17 +127,52 @@ const FillBlank = ({ flashcards }) => {
     }
   };
 
+  // Render the prompt: definition with blanks where the term appears
+  const renderPrompt = () => {
+    if (!hasBlank) {
+      return (
+        <div>
+          <p className={styles.prompt} style={{ marginBottom: 8 }}>{card.back}</p>
+          <p style={{ fontSize: '0.85em', opacity: 0.7 }}>What term matches this definition?</p>
+        </div>
+      );
+    }
+    return (
+      <p className={styles.prompt}>
+        {parts.map((part, i) =>
+          typeof part === 'object' && part.type === 'blank'
+            ? <span key={i} style={{ display: 'inline-block', minWidth: 80, borderBottom: '2px solid currentColor', margin: '0 4px', textAlign: 'center' }}>
+                {status ? (
+                  <span style={{ color: status === 'correct' ? 'var(--success)' : 'var(--danger)', fontWeight: 600 }}>
+                    {correctAnswer}
+                  </span>
+                ) : '______'}
+              </span>
+            : <span key={i}>{part}</span>
+        )}
+      </p>
+    );
+  };
+
   return (
     <div className={styles.layout}>
       <div className={styles.header}>
-        <h1>
-          Fill in the blank {current + 1}/{shuffled.length}
-        </h1>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <h1>
+            Fill in the blank {current + 1}/{shuffled.length}
+          </h1>
+          {onQuit && (
+            <button onClick={onQuit} title="Quit (Esc)" style={{
+              background: 'none', border: '1.5px solid var(--border-color)', borderRadius: 'var(--radius)',
+              color: 'var(--fg-muted)', cursor: 'pointer', padding: '0.25rem 0.5rem', fontSize: '0.8rem', fontFamily: 'inherit'
+            }}>✕</button>
+          )}
+        </div>
         <ProgressBar completed={((current) / shuffled.length) * 100} />
       </div>
       <div className={styles.content}>
         <div className={styles.quizCard}>
-          <p className={styles.prompt}>{card.front}</p>
+          {renderPrompt()}
           <div className={styles.inputRow}>
             <input
               ref={inputRef}
@@ -93,7 +180,7 @@ const FillBlank = ({ flashcards }) => {
               value={answer}
               onChange={(e) => setAnswer(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="Type the definition..."
+              placeholder="Type the term..."
               disabled={!!status}
               autoComplete="off"
             />
@@ -114,7 +201,7 @@ const FillBlank = ({ flashcards }) => {
             <>
               <p className={`${styles.feedback} ${styles.wrong}`}>Not quite</p>
               <p className={styles.correctAnswer}>
-                Answer: {card.back}
+                Answer: {correctAnswer}
               </p>
             </>
           )}

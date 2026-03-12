@@ -36,7 +36,7 @@ const FlipCard = ({ flashcard, isFlipped, setIsFlipped, showTermFirst = true, on
     }
   };
 
-  // Bold term occurrences in text (definition or example)
+  // Highlight term occurrences in text (definition or example) with yellow background
   const boldTermIn = (text, term) => {
     if (!text || !term) return text;
     const plainTerm = (term || "").replace(/<[^>]*>/g, "").trim();
@@ -45,11 +45,11 @@ const FlipCard = ({ flashcard, isFlipped, setIsFlipped, showTermFirst = true, on
     const parts = text.split(regex);
     if (parts.length <= 1) return text;
     return parts.map((part, i) =>
-      regex.test(part) ? <strong key={i}>{part}</strong> : part
+      regex.test(part) ? <mark key={i} style={{ background: 'var(--badge-bg)', borderRadius: 2, padding: '0 2px' }}>{part}</mark> : part
     );
   };
 
-  // Bold term occurrences in example sentence
+  // Highlight term occurrences in example sentence
   const renderExample = (example, term) => {
     if (!example || !term) return null;
     const plainTerm = (term || "").replace(/<[^>]*>/g, "").trim();
@@ -59,7 +59,7 @@ const FlipCard = ({ flashcard, isFlipped, setIsFlipped, showTermFirst = true, on
     return (
       <p className={styles.example}>
         {parts.map((part, i) =>
-          regex.test(part) ? <strong key={i}>{part}</strong> : part
+          regex.test(part) ? <mark key={i} style={{ background: 'var(--badge-bg)', borderRadius: 2, padding: '0 2px' }}>{part}</mark> : part
         )}
       </p>
     );

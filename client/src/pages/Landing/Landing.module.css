@@ -1,69 +1,83 @@
 .layout {
   height: 100vh;
   width: 100vw;
-  display: grid;
-  grid-template-columns: auto minmax(min-content, 960px) auto;
-  grid-template-rows: 2.5rem auto;
-  grid-template-areas:
-    "header header header"
-    ".  content  .";
-  gap: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   background: var(--bg);
 }
 
-.content {
-  width: 100%;
-  grid-area: content;
+.center {
   display: flex;
-  flex-direction: row;
-  justify-content: space-between;
+  flex-direction: column;
   align-items: center;
+  gap: 1.25rem;
+  text-align: center;
+  padding: 2rem;
+  max-width: 380px;
+  width: 100%;
 }
 
-.header {
-  grid-area: header;
-  font-size: 0.85rem;
-  text-align: right;
-  padding-right: 2rem;
-  padding-top: 0.5rem;
+.logo {
+  height: 2.6rem;
+  width: auto;
 }
 
-.link {
-  text-decoration: underline;
-  color: var(--fg);
-}
-
-.column1 {
-  width: 35%;
-}
-
-.column1 p {
-  font-size: 1.05rem;
-  padding-right: 1rem;
-  margin-top: 0.5rem;
+.tagline {
+  font-size: 0.9rem;
   color: var(--fg-muted);
+  line-height: 1.5;
+  margin: 0;
 }
 
-.column2 {
-  width: 65%;
+.actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  width: 100%;
+  margin-top: 0.25rem;
 }
 
-.screenshot {
-  max-width: 100%;
-  border: var(--border);
+.btnPrimary {
+  display: block;
+  width: 100%;
+  padding: 0.7rem 1.5rem;
+  background: var(--fg);
+  color: var(--bg);
+  border: none;
   border-radius: var(--radius);
+  font-size: 0.95rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  text-decoration: none;
+  text-align: center;
+  transition: opacity 0.15s;
+  box-sizing: border-box;
 }
 
-@media (max-width: 1200px) {
-  .content {
-    flex-direction: column;
-    justify-content: center;
-  }
-  .column1,
-  .column2 {
-    width: 100%;
-  }
-  .header {
-    padding-right: 0.5rem;
-  }
+.btnPrimary:hover {
+  opacity: 0.82;
+}
+
+.btnSecondary {
+  display: block;
+  width: 100%;
+  padding: 0.7rem 1.5rem;
+  background: transparent;
+  color: var(--fg);
+  border: 1px solid var(--border-color, var(--fg));
+  border-radius: var(--radius);
+  font-size: 0.95rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  text-decoration: none;
+  text-align: center;
+  transition: background 0.15s, opacity 0.15s;
+  box-sizing: border-box;
+}
+
+.btnSecondary:hover {
+  background: var(--card-hover, rgba(0,0,0,0.05));
 }

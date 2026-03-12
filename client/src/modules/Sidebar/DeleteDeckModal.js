@@ -6,7 +6,7 @@ const DeleteDeckModal = ({ open, setOpen, callback }) => {
     <Modal open={open} setOpen={setOpen}>
       <h4>Delete this deck?</h4>
       <Button callback={() => setOpen(false)}>Cancel</Button>
-      <Button callback={callback} bgcolor="#e34b4b">
+      <Button callback={callback} bgcolor="var(--danger)" color="#fff">
         Delete
       </Button>
     </Modal>

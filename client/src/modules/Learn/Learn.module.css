@@ -122,6 +122,69 @@
 .gradeGood { color: var(--success); }
 .gradeEasy { color: #3b82f6; }
 
+/* Quit button */
+.quitBtn {
+  background: none;
+  border: 1.5px solid var(--border-color);
+  border-radius: var(--radius);
+  color: var(--fg-muted);
+  cursor: pointer;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.8rem;
+  font-family: inherit;
+  transition: border-color 0.12s;
+}
+.quitBtn:hover {
+  border-color: var(--fg);
+  color: var(--fg);
+}
+
+/* Hardest cards section */
+.hardestSection {
+  width: 100%;
+  max-width: 360px;
+  text-align: left;
+  margin-top: 0.5rem;
+}
+.hardestTitle {
+  font-size: 0.85rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+  color: var(--fg-muted);
+}
+.hardestCard {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.35rem 0;
+  border-bottom: 1px solid var(--border-color);
+  font-size: 0.8rem;
+  gap: 0.5rem;
+}
+.hardestTerm {
+  font-weight: 600;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.hardestDef {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--fg-faint);
+  font-size: 0.75rem;
+}
+.hardestBadge {
+  color: var(--danger);
+  font-size: 0.7rem;
+  white-space: nowrap;
+  font-weight: 600;
+}
+
 @media (max-width: 480px) {
   .footer {
     gap: 0.25rem;

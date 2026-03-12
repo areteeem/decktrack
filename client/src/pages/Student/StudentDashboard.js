@@ -1,28 +1,48 @@
+import { useState, useMemo } from "react";
 import styles from "./Student.module.css";
-import { useAssignments, useStudentStats, usePerDeckStats } from "../../hooks/useSupabaseData";
+import { useAssignments, useStudentStats, usePerDeckStats, useDecks, useAllOwnDeckCards } from "../../hooks/useSupabaseData";
 import { useAuth } from "../../contexts/AuthContext";
 import LoadingScreen from "../../common/components/LoadingScreen";
 import Badge from "../../common/components/Badge";
 import Button from "../../common/components/Button";
 import { Link } from "react-router-dom";
+import NewDeckModal from "../../modules/Sidebar/NewDeckModal";
+import DeckCard from "../../common/components/DeckCard";
 
 const StudentDashboard = () => {
   const { profile, user } = useAuth();
   const { data: assignments, loading } = useAssignments();
   const { data: stats } = useStudentStats(user?.id);
   const { data: deckStats } = usePerDeckStats(user?.id);
+  const { data: ownDecks, loading: ownDecksLoading, refetch: refetchOwn } = useDecks();
+  const { data: personalCards } = useAllOwnDeckCards();
+  const [showNewDeckModal, setShowNewDeckModal] = useState(false);
+
+  // Personal deck card stats
+  const personalStats = useMemo(() => {
+    const cards = personalCards || [];
+    const now = new Date();
+    return {
+      total: cards.length,
+      mastered: cards.filter(c => c.mastered).length,
+      due: cards.filter(c => !c.is_new && !c.mastered && new Date(c.due) < now).length,
+      new: cards.filter(c => c.is_new).length,
+    };
+  }, [personalCards]);
 
   if (loading) return <LoadingScreen />;
 
   const activeAssignments = (assignments || []).filter((a) => !a.is_archived);
 
-  const masteryPct = stats?.totalCards > 0
-    ? Math.round((stats.masteredCards / stats.totalCards) * 100)
-    : null;
+  // Combined stats (assigned + personal)
+  const combinedTotal = (stats?.totalCards || 0) + personalStats.total;
+  const combinedMastered = (stats?.masteredCards || 0) + personalStats.mastered;
+  const combinedDue = (stats?.dueCards || 0) + personalStats.due;
+  const combinedNew = (stats?.newCards || 0) + personalStats.new;
 
-  // Global due / new totals
-  const totalDue = stats?.dueCards || 0;
-  const totalNew = stats?.newCards || 0;
+  const masteryPct = combinedTotal > 0
+    ? Math.round((combinedMastered / combinedTotal) * 100)
+    : null;
 
   return (
     <div>
@@ -31,23 +51,23 @@ const StudentDashboard = () => {
         Welcome back{profile?.display_name ? `, ${profile.display_name}` : ""}!
       </p>
 
-      {stats && stats.totalCards > 0 && (
+      {combinedTotal > 0 && (
         <div className={styles.statsSection}>
           <div className={styles.statsGrid}>
             <div className={styles.statBox}>
-              <span className={styles.statNumber}>{stats.totalCards}</span>
+              <span className={styles.statNumber}>{combinedTotal}</span>
               <span className={styles.statLabel}>Total Cards</span>
             </div>
             <div className={styles.statBox}>
-              <span className={styles.statNumber}>{stats.masteredCards}</span>
+              <span className={styles.statNumber}>{combinedMastered}</span>
               <span className={styles.statLabel}>Mastered</span>
             </div>
             <div className={styles.statBox}>
-              <span className={styles.statNumber}>{stats.dueCards}</span>
+              <span className={styles.statNumber}>{combinedDue}</span>
               <span className={styles.statLabel}>Due Now</span>
             </div>
             <div className={styles.statBox}>
-              <span className={styles.statNumber}>{stats.newCards}</span>
+              <span className={styles.statNumber}>{combinedNew}</span>
               <span className={styles.statLabel}>New</span>
             </div>
           </div>
@@ -65,29 +85,56 @@ const StudentDashboard = () => {
         </div>
       )}
 
+      {/* Cross-deck quick actions — covers both assigned + personal */}
+      {(combinedDue > 0 || combinedNew > 0) && (
+        <div className={styles.deckActions} style={{ marginBottom: "1rem" }}>
+          {combinedNew > 0 && (
+            <Link to="/study/all/new">
+              <Button>Learn All New ({combinedNew})</Button>
+            </Link>
+          )}
+          {combinedDue > 0 && (
+            <Link to="/study/all/due">
+              <Button>Study All Due ({combinedDue})</Button>
+            </Link>
+          )}
+        </div>
+      )}
+
+      {/* ── My Decks (student-created) ─────────── */}
+      <NewDeckModal
+        open={showNewDeckModal}
+        setOpen={setShowNewDeckModal}
+        onCreated={refetchOwn}
+      />
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "0.5rem" }}>
+        <h2 style={{ margin: 0 }}>My Decks</h2>
+        <Button callback={() => setShowNewDeckModal(true)}>+ New deck</Button>
+      </div>
+      {ownDecksLoading ? (
+        <p style={{ color: "var(--fg-muted)", fontSize: "0.85rem" }}>Loading...</p>
+      ) : (!ownDecks || ownDecks.length === 0) ? (
+        <div className={styles.empty} style={{ marginBottom: "1.5rem" }}>
+          <h2>No decks yet</h2>
+          <p>Create your own flashcard deck to start studying.</p>
+          <Button callback={() => setShowNewDeckModal(true)}>Create first deck</Button>
+        </div>
+      ) : (
+        <div className={styles.deckGrid} style={{ marginBottom: "1.5rem" }}>
+          {ownDecks.map((deck) => (
+            <DeckCard key={deck.id} deck={deck} />
+          ))}
+        </div>
+      )}
+
+      {/* ── Assigned Decks ─────────────────────── */}
       {(!activeAssignments || activeAssignments.length === 0) ? (
         <div className={styles.empty}>
-          <h2>No decks assigned yet</h2>
-          <p>Your teacher will assign flashcard decks for you to study.</p>
+          <p style={{ color: "var(--fg-muted)", fontSize: "0.85rem" }}>No decks assigned by your teacher yet.</p>
         </div>
       ) : (
         <>
-          {/* Cross-deck quick actions */}
-          {(totalDue > 0 || totalNew > 0) && (
-            <div className={styles.deckActions} style={{ marginBottom: "0.75rem" }}>
-              {totalNew > 0 && (
-                <Link to="/study/all/new">
-                  <Button>Learn All New ({totalNew})</Button>
-                </Link>
-              )}
-              {totalDue > 0 && (
-                <Link to="/study/all/due">
-                  <Button>Study All Due ({totalDue})</Button>
-                </Link>
-              )}
-            </div>
-          )}
-
+          <h2 style={{ marginBottom: "0.5rem" }}>Assigned Decks</h2>
           <div className={styles.deckGrid}>
             {activeAssignments.map((a) => (
               <AssignedDeckCard key={a.id} assignment={a} deckStats={deckStats} />

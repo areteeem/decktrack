@@ -121,6 +121,7 @@
   display: flex;
   gap: 0.35rem;
   margin-top: 0.25rem;
+  flex-wrap: wrap;
 }
 
 /* ── Per-deck progress bar ──────── */

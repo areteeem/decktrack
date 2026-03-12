@@ -9,7 +9,7 @@ import EditCardModal from "./EditCardModal";
 import AddCardTabs from "./AddCardTabs";
 import { useState, useEffect, useCallback } from "react";
 import RetentionBadge from "./RetentionBadge";
-import { useDeck } from "../../hooks/useSupabaseData";
+import { useDeck, useDeleteDeck, useDeleteCard, useUpdateDeck } from "../../hooks/useSupabaseData";
 import { useSettings } from "../../contexts/SettingsContext";
 import { getSessionProgress } from "../../lib/studySession";
 import dayjs from "dayjs";
@@ -47,10 +47,80 @@ const Deck = () => {
     back: "",
     id: "",
   });
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedCards, setSelectedCards] = useState(new Set());
+  const [bulkDeleting, setBulkDeleting] = useState(false);
   const navigate = useNavigate();
   const params = useParams();
   const { data: deck, loading, refetch } = useDeck(params.id);
+  const { deleteDeck, loading: deleting } = useDeleteDeck();
+  const { deleteCard } = useDeleteCard();
+  const { updateDeck } = useUpdateDeck();
   const { t } = useSettings();
+
+  const toggleCard = (cardId) => {
+    setSelectedCards((prev) => {
+      const next = new Set(prev);
+      if (next.has(cardId)) next.delete(cardId);
+      else next.add(cardId);
+      return next;
+    });
+  };
+
+  const selectAll = () => {
+    if (deck) setSelectedCards(new Set(deck.flashcards.map((c) => c.id)));
+  };
+
+  const deselectAll = () => setSelectedCards(new Set());
+
+  const toggleSelectionMode = useCallback(() => {
+    setSelectionMode((prev) => {
+      if (prev) setSelectedCards(new Set());
+      return !prev;
+    });
+  }, []);
+
+  const handleBulkDelete = async () => {
+    if (selectedCards.size === 0) return;
+    if (!window.confirm(`Delete ${selectedCards.size} card(s)? This cannot be undone.`)) return;
+    setBulkDeleting(true);
+    try {
+      for (const id of selectedCards) {
+        await deleteCard(id);
+      }
+      toast.success(`Deleted ${selectedCards.size} card(s)`);
+      setSelectedCards(new Set());
+      setSelectionMode(false);
+      refetch();
+    } catch (err) {
+      toast.error(err.message || "Failed to delete some cards");
+    } finally {
+      setBulkDeleting(false);
+    }
+  };
+
+  const handleDeleteDeck = async () => {
+    if (!deck) return;
+    if (!window.confirm(`Delete "${deck.name}" and all its cards? This cannot be undone.`)) return;
+    try {
+      await deleteDeck(params.id);
+      toast.success("Deck deleted");
+      navigate("/", { replace: true });
+    } catch (err) {
+      toast.error(err.message || "Failed to delete deck");
+    }
+  };
+
+  const handleArchiveDeck = async () => {
+    if (!deck) return;
+    try {
+      await updateDeck(params.id, { is_archived: true });
+      toast.success("Deck archived");
+      navigate("/", { replace: true });
+    } catch (err) {
+      toast.error(err.message || "Failed to archive deck");
+    }
+  };
 
   // ── Keyboard shortcuts for study actions ──
   const handleKeyboard = useCallback(
@@ -69,14 +139,17 @@ const Deck = () => {
 
       switch (e.key.toLowerCase()) {
         case "s":
+          if (selectionMode) return;
           e.preventDefault();
           navigate("study");
           break;
         case "n":
+          if (selectionMode) return;
           e.preventDefault();
           navigate("new");
           break;
         case "d":
+          if (selectionMode) return;
           e.preventDefault();
           navigate("due");
           break;
@@ -84,17 +157,30 @@ const Deck = () => {
           e.preventDefault();
           setViewMode((m) => (m === "grid" ? "table" : "grid"));
           break;
+        case "escape":
+          if (selectionMode) {
+            e.preventDefault();
+            toggleSelectionMode();
+          }
+          break;
         default:
           break;
       }
     },
-    [navigate]
+    [navigate, selectionMode, toggleSelectionMode]
   );
 
   useEffect(() => {
     document.addEventListener("keydown", handleKeyboard);
     return () => document.removeEventListener("keydown", handleKeyboard);
   }, [handleKeyboard]);
+  useEffect(() => {
+    if (deck?.name) {
+      document.title = `${deck.name} | TutPro`;
+      return () => { document.title = 'Flashcards | TutPro'; };
+    }
+  }, [deck?.name]);
+
 
   if (loading) return <LoadingScreen />;
   if (deck) {
@@ -194,38 +280,94 @@ const Deck = () => {
               </Button>
             )}
             <button
+              className={`${styles.viewToggle} ${selectionMode ? styles.viewToggleActive : ""}`}
+              onClick={toggleSelectionMode}
+              title={selectionMode ? "Exit selection" : "Select cards"}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+            </button>
+            <button
               className={styles.viewToggle}
               onClick={() => setViewMode(viewMode === "grid" ? "table" : "grid")}
               title={viewMode === "grid" ? t("switchToTable") + " (V)" : t("switchToGrid") + " (V)"}
             >
-              {viewMode === "grid" ? "☰" : "▦"}
+              {viewMode === "grid"
+                ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+                : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+              }
             </button>
             <button
               className={styles.viewToggle}
               onClick={() => exportDeckCsv(deck.name, deck.flashcards)}
               title={t("exportDeck")}
             >
-              ⤓
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            </button>
+            <button
+              className={styles.viewToggle}
+              onClick={handleArchiveDeck}
+              title="Archive deck"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><line x1="10" y1="12" x2="14" y2="12"/></svg>
+            </button>
+            <button
+              className={styles.viewToggle}
+              onClick={handleDeleteDeck}
+              disabled={deleting}
+              title="Delete deck"
+              style={{ color: "var(--danger, #dc2626)" }}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
             </button>
           </div>
         </div>
         <AddCardTabs deckId={params.id} onChanged={refetch} startSortOrder={nextSortOrder} show={showAddPanel} />
+        {selectionMode && (
+          <div className={styles.bulkBar}>
+            <span className={styles.bulkCount}>{selectedCards.size} selected</span>
+            <button className={styles.bulkBtn} onClick={selectedCards.size === deck.flashcards.length ? deselectAll : selectAll}>
+              {selectedCards.size === deck.flashcards.length ? t("deselectAll") || "Deselect all" : t("selectAll") || "Select all"}
+            </button>
+            {selectedCards.size > 0 && (
+              <button className={`${styles.bulkBtn} ${styles.bulkBtnDanger}`} onClick={handleBulkDelete} disabled={bulkDeleting}>
+                {bulkDeleting ? "Deleting…" : `Delete ${selectedCards.size}`}
+              </button>
+            )}
+            <button className={styles.bulkBtn} onClick={toggleSelectionMode}>✕</button>
+          </div>
+        )}
         {viewMode === "grid" ? (
           <div className={styles.flashcardContainer}>
             {deck.flashcards.map((flashcard) => (
-              <Card
+              <div
                 key={flashcard.id}
-                flashcard={flashcard}
+                className={`${styles.cardWrapper} ${selectionMode && selectedCards.has(flashcard.id) ? styles.cardSelected : ""}`}
                 onClick={() => {
-                  setEditFlashcard(flashcard);
-                  setIsModalOpen(true);
+                  if (selectionMode) {
+                    toggleCard(flashcard.id);
+                  } else {
+                    setEditFlashcard(flashcard);
+                    setIsModalOpen(true);
+                  }
                 }}
-              />
+              >
+                {selectionMode && (
+                  <input
+                    type="checkbox"
+                    className={styles.cardCheckbox}
+                    checked={selectedCards.has(flashcard.id)}
+                    onChange={() => toggleCard(flashcard.id)}
+                    onClick={(e) => e.stopPropagation()}
+                  />
+                )}
+                <Card flashcard={flashcard} />
+              </div>
             ))}
           </div>
         ) : (
           <div className={styles.tableView}>
             <div className={styles.tableHeader}>
+              {selectionMode && <span className={styles.tableCheckCol} />}
               <span className={styles.tableRowTerm}>{t("term")}</span>
               <span className={styles.tableRowDef}>{t("definition")}</span>
               <span className={styles.tableRowDue}>{t("dueColumn")}</span>
@@ -236,12 +378,25 @@ const Deck = () => {
               return (
                 <div
                   key={flashcard.id}
-                  className={styles.tableRow}
+                  className={`${styles.tableRow} ${selectionMode && selectedCards.has(flashcard.id) ? styles.tableRowSelected : ""}`}
                   onClick={() => {
-                    setEditFlashcard(flashcard);
-                    setIsModalOpen(true);
+                    if (selectionMode) {
+                      toggleCard(flashcard.id);
+                    } else {
+                      setEditFlashcard(flashcard);
+                      setIsModalOpen(true);
+                    }
                   }}
                 >
+                  {selectionMode && (
+                    <input
+                      type="checkbox"
+                      className={styles.tableCheckbox}
+                      checked={selectedCards.has(flashcard.id)}
+                      onChange={() => toggleCard(flashcard.id)}
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                  )}
                   <span className={styles.tableRowTerm}>{flashcard.front}</span>
                   <span className={styles.tableRowDef}>{flashcard.back}</span>
                   <span className={`${styles.tableRowDue} ${isOverdue ? styles.overdue : ""}`}>

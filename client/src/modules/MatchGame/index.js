@@ -10,7 +10,7 @@ import LoadingScreen from "../../common/components/LoadingScreen";
  */
 const BATCH_SIZE = 6;
 
-const MatchGame = ({ flashcards }) => {
+const MatchGame = ({ flashcards, onQuit }) => {
   const shuffled = useMemo(() => {
     if (!flashcards) return [];
     return [...flashcards].sort(() => Math.random() - 0.5);
@@ -23,6 +23,7 @@ const MatchGame = ({ flashcards }) => {
   const [totalMatched, setTotalMatched] = useState(0);
   const [startTime] = useState(Date.now());
   const [elapsed, setElapsed] = useState(0);
+  const [missCount, setMissCount] = useState({});
   const timerRef = useRef(null);
 
   const isComplete = totalMatched >= shuffled.length;
@@ -75,7 +76,12 @@ const MatchGame = ({ flashcards }) => {
         }, 500);
       }
     } else {
-      // Wrong match
+      // Wrong match — track misses
+      setMissCount(prev => ({
+        ...prev,
+        [selectedTerm]: (prev[selectedTerm] || 0) + 1,
+        [cardId]: (prev[cardId] || 0) + 1,
+      }));
       setWrongPair({ term: selectedTerm, def: cardId });
       setTimeout(() => {
         setWrongPair(null);
@@ -83,6 +89,15 @@ const MatchGame = ({ flashcards }) => {
       }, 600);
     }
   }, [selectedTerm, matched, batch.length]);
+
+  // Keyboard: Escape to quit
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape" && onQuit) onQuit();
+    };
+    window.addEventListener("keydown", handleKeyDown, true);
+    return () => window.removeEventListener("keydown", handleKeyDown, true);
+  }, [onQuit]);
 
   const formatTime = (seconds) => {
     const m = Math.floor(seconds / 60);
@@ -103,6 +118,12 @@ const MatchGame = ({ flashcards }) => {
   }
 
   if (isComplete) {
+    // Find cards with most mismatches
+    const hardestCards = shuffled
+      .filter(c => (missCount[c.id] || 0) > 0)
+      .sort((a, b) => (missCount[b.id] || 0) - (missCount[a.id] || 0))
+      .slice(0, 5);
+
     return (
       <div className={styles.layout}>
         <div className={styles.results}>
@@ -111,6 +132,24 @@ const MatchGame = ({ flashcards }) => {
           <div className={styles.scoreLabel}>
             {shuffled.length} pairs matched
           </div>
+          {hardestCards.length > 0 && (
+            <div style={{ marginTop: '1rem', textAlign: 'left', width: '100%', maxWidth: 360 }}>
+              <h3 style={{ fontSize: '0.85rem', fontWeight: 700, marginBottom: '0.5rem', color: 'var(--fg-muted)' }}>Most Missed</h3>
+              {hardestCards.map(card => (
+                <div key={card.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.35rem 0', borderBottom: '1px solid var(--border-color)', fontSize: '0.8rem' }}>
+                  <span style={{ fontWeight: 600 }}>{(card.front || '').replace(/<[^>]*>/g, '')}</span>
+                  <span style={{ color: 'var(--danger)', fontSize: '0.75rem' }}>{missCount[card.id]}× missed</span>
+                </div>
+              ))}
+            </div>
+          )}
+          {onQuit && (
+            <button onClick={onQuit} style={{
+              marginTop: '1rem', padding: '0.45rem 1rem', border: '1.5px solid var(--border-color)',
+              borderRadius: 'var(--radius)', background: 'var(--card-bg)', color: 'var(--fg)',
+              fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit'
+            }}>← Back to deck</button>
+          )}
         </div>
       </div>
     );
@@ -123,7 +162,15 @@ const MatchGame = ({ flashcards }) => {
       <div className={styles.header}>
         <div className={styles.headerRow}>
           <h1>Match {totalMatched}/{shuffled.length}</h1>
-          <span className={styles.timer}>{formatTime(elapsed)}</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <span className={styles.timer}>{formatTime(elapsed)}</span>
+            {onQuit && (
+              <button onClick={onQuit} title="Quit (Esc)" style={{
+                background: 'none', border: '1.5px solid var(--border-color)', borderRadius: 'var(--radius)',
+                color: 'var(--fg-muted)', cursor: 'pointer', padding: '0.25rem 0.5rem', fontSize: '0.8rem', fontFamily: 'inherit'
+              }}>✕</button>
+            )}
+          </div>
         </div>
         <ProgressBar completed={progress} />
       </div>
