@@ -26,6 +26,7 @@ import { StudentLearnNew, StudentPracticeDue } from "./pages/Student/StudentStud
 import { CrossDeckLearnNew, CrossDeckPracticeDue } from "./pages/Student/CrossDeckStudy";
 import StudentLaunchPage from "./pages/Student/StudentLaunchPage";
 import Settings from "./pages/Settings";
+import SharedDeckPage from "./pages/SharedDeck";
 export default function Home() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { isAuthenticated, loading, isTeacher, isStudent } = useAuth();
@@ -51,6 +52,7 @@ export default function Home() {
           <div className="main">
             <Routes>
               <Route path="/launch/student-app" element={<StudentLaunchPage />} />
+              <Route path="/shared/:token" element={<SharedDeckPage />} />
 
               {/* Shared routes */}
               <Route
@@ -98,6 +100,7 @@ export default function Home() {
         <Routes>
           <Route path="/" element={<Landing />} />
           <Route path="/launch/student-app" element={<StudentLaunchPage />} />
+          <Route path="/shared/:token" element={<SharedDeckPage />} />
           <Route path="/signin" element={<SignIn />} />
           <Route path="/signup" element={<SignUp />} />
           <Route path="*" element={<Navigate to="/" />} />

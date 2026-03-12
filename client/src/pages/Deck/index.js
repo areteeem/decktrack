@@ -122,6 +122,35 @@ const Deck = () => {
     }
   };
 
+  const handleShareDeck = async () => {
+    if (!deck) return;
+    try {
+      let token = deck.share_token;
+      if (!token) {
+        // Generate a new share token
+        token = crypto.randomUUID ? crypto.randomUUID() : (`${Date.now()}-${Math.random().toString(36).slice(2)}`);
+        await updateDeck(params.id, { share_token: token });
+        refetch();
+      }
+      const shareUrl = `${window.location.origin}/shared/${token}`;
+      await navigator.clipboard.writeText(shareUrl);
+      toast.success("Share link copied to clipboard!");
+    } catch (err) {
+      toast.error(err.message || "Failed to generate share link");
+    }
+  };
+
+  const handleUnshare = async () => {
+    if (!deck) return;
+    try {
+      await updateDeck(params.id, { share_token: null });
+      refetch();
+      toast.success("Share link removed");
+    } catch (err) {
+      toast.error(err.message || "Failed to remove share link");
+    }
+  };
+
   // ── Keyboard shortcuts for study actions ──
   const handleKeyboard = useCallback(
     (e) => {
@@ -302,6 +331,13 @@ const Deck = () => {
               title={t("exportDeck")}
             >
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            </button>
+            <button
+              className={`${styles.viewToggle} ${deck.share_token ? styles.viewToggleActive : ""}`}
+              onClick={deck.share_token ? handleUnshare : handleShareDeck}
+              title={deck.share_token ? "Remove share link" : "Copy share link"}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
             </button>
             <button
               className={styles.viewToggle}
