@@ -1,7 +1,6 @@
 import { useParams, useNavigate } from "react-router";
 import { useState, useEffect } from "react";
 import { useAuth } from "../../contexts/AuthContext";
-import { useSettings } from "../../contexts/SettingsContext";
 import LoadingScreen from "../../common/components/LoadingScreen";
 import { toast } from "react-toastify";
 import { getSupabase } from "../../lib/supabaseClient";
@@ -16,7 +15,6 @@ export default function SharedDeckPage() {
   const { token } = useParams();
   const navigate = useNavigate();
   const { isAuthenticated, profile } = useAuth();
-  const { t } = useSettings();
 
   const [deck, setDeck] = useState(null);
   const [cards, setCards] = useState([]);
@@ -81,7 +79,6 @@ export default function SharedDeckPage() {
           tags: deck.tags || [],
           difficulty_level: deck.difficulty_level || null,
           language_pair: deck.language_pair || "en-native",
-          is_personal: true,
         })
         .select()
         .single();

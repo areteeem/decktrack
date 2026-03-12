@@ -1,30 +1,32 @@
--- 010_deck_share_links.sql
--- Add share_token to flashy_decks for sharing decks via links.
--- A NULL token means the deck is private; a non-NULL UUID enables public read access.
+-- ─────────────────────────────────────────────────────
+-- 010: Deck share links (public token-based read + clone flow)
+-- ─────────────────────────────────────────────────────
 
+-- Add token used in /shared/:token route.
 ALTER TABLE flashy_decks
-  ADD COLUMN IF NOT EXISTS share_token UUID DEFAULT NULL;
+  ADD COLUMN IF NOT EXISTS share_token UUID;
 
--- Index for fast lookup by share_token
+-- Share token must be unique when set.
 CREATE UNIQUE INDEX IF NOT EXISTS idx_flashy_decks_share_token
   ON flashy_decks (share_token)
   WHERE share_token IS NOT NULL;
 
--- RLS policy: allow anyone (authenticated) to read a deck by its share_token.
--- This lets students who receive a share link view and clone the deck.
-CREATE POLICY "read_shared_decks"
-  ON flashy_decks
-  FOR SELECT
+-- Recreate policies idempotently for local/dev re-runs.
+DROP POLICY IF EXISTS "decks_select_shared_by_token" ON flashy_decks;
+DROP POLICY IF EXISTS "cards_select_shared_deck_cards" ON flashy_cards;
+
+-- Allow reading decks that have a share token (works for anon + authenticated).
+CREATE POLICY "decks_select_shared_by_token"
+  ON flashy_decks FOR SELECT TO public
   USING (share_token IS NOT NULL);
 
--- Allow reading cards of a shared deck (cards reference deck_id)
-CREATE POLICY "read_shared_deck_cards"
-  ON flashy_cards
-  FOR SELECT
+-- Allow reading cards for decks that are shared.
+CREATE POLICY "cards_select_shared_deck_cards"
+  ON flashy_cards FOR SELECT TO public
   USING (
-    EXISTS (
-      SELECT 1 FROM flashy_decks
-      WHERE flashy_decks.id = flashy_cards.deck_id
-        AND flashy_decks.share_token IS NOT NULL
+    deck_id IN (
+      SELECT id
+      FROM flashy_decks
+      WHERE share_token IS NOT NULL
     )
   );

@@ -151,6 +151,22 @@ const Deck = () => {
     }
   };
 
+  const handleRenameDeck = async () => {
+    if (!deck) return;
+    const current = String(deck.name || "").trim();
+    const proposed = window.prompt("New deck name", current);
+    if (proposed == null) return;
+    const nextName = String(proposed).trim();
+    if (!nextName || nextName === current) return;
+    try {
+      await updateDeck(params.id, { name: nextName });
+      toast.success("Deck renamed");
+      refetch();
+    } catch (err) {
+      toast.error(err.message || "Failed to rename deck");
+    }
+  };
+
   // ── Keyboard shortcuts for study actions ──
   const handleKeyboard = useCallback(
     (e) => {
@@ -331,6 +347,13 @@ const Deck = () => {
               title={t("exportDeck")}
             >
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            </button>
+            <button
+              className={styles.viewToggle}
+              onClick={handleRenameDeck}
+              title="Rename deck"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg>
             </button>
             <button
               className={`${styles.viewToggle} ${deck.share_token ? styles.viewToggleActive : ""}`}
