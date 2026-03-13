@@ -2,7 +2,7 @@
  * Supabase data hooks — replaces all Apollo/GraphQL queries and mutations.
  * Provides React hooks for decks, cards, student cards, assignments, etc.
  */
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../contexts/AuthContext';
 import { extractRosterStudents } from '../lib/tutproRoster';
@@ -44,16 +44,21 @@ export const useDecks = () => {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const lastFetchedAt = useRef(0);
+  const isFetchingRef = useRef(false);
 
-  const refetch = useCallback(async () => {
+  const refetch = useCallback(async ({ background = false } = {}) => {
     if (!user) {
       setData([]);
       setError(null);
       setLoading(false);
       return;
     }
+    // Dedupe: skip if a fetch is already in-flight
+    if (isFetchingRef.current) return;
+    isFetchingRef.current = true;
 
-    setLoading(true);
+    if (!background) setLoading(true);
     try {
       const { data: decks, error: err } = await supabase
         .from('flashy_decks')
@@ -65,7 +70,7 @@ export const useDecks = () => {
 
       if (err) {
         setError(err);
-        setData([]);
+        if (!background) setData([]);
         return;
       }
 
@@ -77,16 +82,42 @@ export const useDecks = () => {
       }));
       setData(enriched);
       setError(null);
+      lastFetchedAt.current = Date.now();
     } catch (err) {
       console.error('[useDecks] refetch failed:', err?.message || err);
       setError(err);
-      setData([]);
+      if (!background) setData([]);
     } finally {
       setLoading(false);
+      isFetchingRef.current = false;
     }
   }, [user]);
 
+  // Initial fetch
   useEffect(() => { refetch(); }, [refetch]);
+
+  // Background refresh: re-fetch every 60 s and on tab focus (stale > 30 s)
+  useEffect(() => {
+    if (!user) return;
+    const STALE_MS = 30_000;
+    const bgRefetch = () => {
+      if (Date.now() - lastFetchedAt.current > STALE_MS) {
+        refetch({ background: true });
+      }
+    };
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') bgRefetch();
+    };
+    const intervalId = setInterval(bgRefetch, 60_000);
+    document.addEventListener('visibilitychange', handleVisibility);
+    window.addEventListener('focus', bgRefetch);
+    return () => {
+      clearInterval(intervalId);
+      document.removeEventListener('visibilitychange', handleVisibility);
+      window.removeEventListener('focus', bgRefetch);
+    };
+  }, [user, refetch]);
+
   return { data, loading, error, refetch };
 };
 
@@ -567,15 +598,18 @@ export const useAssignments = () => {
   const { user, isTeacher } = useAuth();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const lastFetchedAt = useRef(0);
+  const isFetchingRef = useRef(false);
 
-  const refetch = useCallback(async () => {
+  const refetch = useCallback(async ({ background = false } = {}) => {
     if (!user) {
       setData([]);
       setLoading(false);
       return;
     }
-
-    setLoading(true);
+    if (isFetchingRef.current) return;
+    isFetchingRef.current = true;
+    if (!background) setLoading(true);
     try {
       const col = isTeacher ? 'teacher_id' : 'student_id';
       const { data: assignments } = await supabase
@@ -584,15 +618,38 @@ export const useAssignments = () => {
         .eq(col, user.id)
         .order('assigned_at', { ascending: false });
       setData(assignments || []);
+      lastFetchedAt.current = Date.now();
     } catch (err) {
       console.error('[useAssignments] refetch failed:', err?.message || err);
-      setData([]);
+      if (!background) setData([]);
     } finally {
       setLoading(false);
+      isFetchingRef.current = false;
     }
   }, [user, isTeacher]);
 
   useEffect(() => { refetch(); }, [refetch]);
+
+  // Background refresh: 60 s interval + visibility/focus
+  useEffect(() => {
+    if (!user) return;
+    const STALE_MS = 30_000;
+    const bgRefetch = () => {
+      if (Date.now() - lastFetchedAt.current > STALE_MS) refetch({ background: true });
+    };
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') bgRefetch();
+    };
+    const id = setInterval(bgRefetch, 60_000);
+    document.addEventListener('visibilitychange', handleVisibility);
+    window.addEventListener('focus', bgRefetch);
+    return () => {
+      clearInterval(id);
+      document.removeEventListener('visibilitychange', handleVisibility);
+      window.removeEventListener('focus', bgRefetch);
+    };
+  }, [user, refetch]);
+
   return { data, loading, refetch };
 };
 
