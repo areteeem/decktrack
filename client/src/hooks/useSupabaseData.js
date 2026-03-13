@@ -30,15 +30,77 @@ const readFlashyCache = (cacheKey, maxAgeMs = FLASHY_CACHE_TTL_MS) => {
   }
 };
 
+const isLocalStorageQuotaError = (error) => {
+  if (!error) return false;
+  const code = Number(error?.code);
+  const name = String(error?.name || '').toLowerCase();
+  const message = String(error?.message || '').toLowerCase();
+  return code === 22
+    || code === 1014
+    || name.includes('quota')
+    || message.includes('quota')
+    || message.includes('storage full');
+};
+
+const getFlashyCacheEntriesByAge = () => {
+  if (typeof window === 'undefined') return [];
+  try {
+    const entries = [];
+    const prefix = `${FLASHY_CACHE_PREFIX}:`;
+    for (let i = 0; i < localStorage.length; i += 1) {
+      const key = localStorage.key(i);
+      if (!key || !key.startsWith(prefix)) continue;
+      const raw = localStorage.getItem(key);
+      if (!raw) continue;
+      let savedAt = 0;
+      try {
+        const parsed = JSON.parse(raw);
+        savedAt = Number(parsed?.savedAt || 0);
+      } catch {
+        savedAt = 0;
+      }
+      entries.push({ key, savedAt });
+    }
+    return entries.sort((a, b) => a.savedAt - b.savedAt);
+  } catch {
+    return [];
+  }
+};
+
+const evictOldestFlashyCacheEntry = (protectedKey = '') => {
+  const candidates = getFlashyCacheEntriesByAge().filter((entry) => entry.key !== protectedKey);
+  if (!candidates.length) return false;
+  try {
+    localStorage.removeItem(candidates[0].key);
+    return true;
+  } catch {
+    return false;
+  }
+};
+
 const writeFlashyCache = (cacheKey, payload) => {
   if (typeof window === 'undefined') return;
+  const serialized = JSON.stringify({
+    savedAt: Date.now(),
+    payload,
+  });
+
   try {
-    localStorage.setItem(cacheKey, JSON.stringify({
-      savedAt: Date.now(),
-      payload,
-    }));
-  } catch {
-    // ignore storage quota/permission errors
+    localStorage.setItem(cacheKey, serialized);
+    return;
+  } catch (error) {
+    if (!isLocalStorageQuotaError(error)) return;
+  }
+
+  for (let attempts = 0; attempts < 40; attempts += 1) {
+    const evicted = evictOldestFlashyCacheEntry(cacheKey);
+    if (!evicted) break;
+    try {
+      localStorage.setItem(cacheKey, serialized);
+      return;
+    } catch (retryError) {
+      if (!isLocalStorageQuotaError(retryError)) return;
+    }
   }
 };
 
@@ -110,10 +172,11 @@ export const useDecks = () => {
         cardCount: d.flashy_cards?.length ?? 0,
         flashcards: d.flashy_cards || [],
       }));
-      setData(enriched);
+      const nonArchivedDecks = enriched.filter((deck) => deck?.is_archived !== true);
+      setData(nonArchivedDecks);
       setError(null);
       lastFetchedAt.current = Date.now();
-      writeFlashyCache(buildFlashyCacheKey('decks', user.id), enriched);
+      writeFlashyCache(buildFlashyCacheKey('decks', user.id), nonArchivedDecks);
     } catch (err) {
       console.error('[useDecks] refetch failed:', err?.message || err);
       setError(err);
@@ -132,9 +195,12 @@ export const useDecks = () => {
     }
     const cacheKey = buildFlashyCacheKey('decks', user.id);
     const cachedDecks = readFlashyCache(cacheKey);
-    const hasCachedDecks = Array.isArray(cachedDecks);
+    const normalizedCachedDecks = Array.isArray(cachedDecks)
+      ? cachedDecks.filter((deck) => deck?.is_archived !== true)
+      : null;
+    const hasCachedDecks = Array.isArray(normalizedCachedDecks);
     if (hasCachedDecks) {
-      setData(cachedDecks);
+      setData(normalizedCachedDecks);
       setError(null);
       setLoading(false);
       lastFetchedAt.current = Date.now();
@@ -204,7 +270,7 @@ export const useDeck = (deckId) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const refetch = useCallback(async () => {
+  const refetch = useCallback(async ({ background = false } = {}) => {
     if (!user || !deckId) {
       setData(null);
       setError(null);
@@ -212,7 +278,7 @@ export const useDeck = (deckId) => {
       return;
     }
 
-    setLoading(true);
+    if (!background) setLoading(true);
     try {
       const { data: deck, error: err } = await supabase
         .from('flashy_decks')
@@ -234,16 +300,38 @@ export const useDeck = (deckId) => {
       }
       setData(deck);
       setError(null);
+
+      const cacheKey = buildFlashyCacheKey('deck_cards', user.id, deckId);
+      if (deck?.is_archived === true) {
+        try { localStorage.removeItem(cacheKey); } catch { /* ignore */ }
+      } else if (deck) {
+        writeFlashyCache(cacheKey, deck);
+      }
     } catch (err) {
       console.error('[useDeck] refetch failed:', err?.message || err);
       setError(err);
-      setData(null);
+      if (!background) setData(null);
     } finally {
       setLoading(false);
     }
   }, [user, deckId]);
 
-  useEffect(() => { refetch(); }, [refetch]);
+  useEffect(() => {
+    if (!user || !deckId) {
+      refetch();
+      return;
+    }
+    const cacheKey = buildFlashyCacheKey('deck_cards', user.id, deckId);
+    const cachedDeck = readFlashyCache(cacheKey);
+    const hasCachedDeck = Boolean(cachedDeck && typeof cachedDeck === 'object' && cachedDeck?.is_archived !== true);
+    if (hasCachedDeck) {
+      setData(cachedDeck);
+      setError(null);
+      setLoading(false);
+    }
+    refetch({ background: hasCachedDeck });
+  }, [deckId, refetch, user]);
+
   return { data, loading, error, refetch };
 };
 
@@ -390,7 +478,7 @@ export const useStudentDeckCards = (assignmentId) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const refetch = useCallback(async () => {
+  const refetch = useCallback(async ({ background = false } = {}) => {
     if (!user || !assignmentId) {
       setData([]);
       setError(null);
@@ -398,7 +486,7 @@ export const useStudentDeckCards = (assignmentId) => {
       return;
     }
 
-    setLoading(true);
+    if (!background) setLoading(true);
     try {
       const { data: cards, error: err } = await supabase
         .from('flashy_student_cards')
@@ -411,22 +499,38 @@ export const useStudentDeckCards = (assignmentId) => {
 
       if (err) {
         setError(err);
-        setData([]);
+        if (!background) setData([]);
         return;
       }
 
       setData(cards || []);
       setError(null);
+      writeFlashyCache(buildFlashyCacheKey('student_assignment_cards', user.id, assignmentId), cards || []);
     } catch (err) {
       console.error('[useStudentDeckCards] refetch failed:', err?.message || err);
       setError(err);
-      setData([]);
+      if (!background) setData([]);
     } finally {
       setLoading(false);
     }
   }, [user, assignmentId]);
 
-  useEffect(() => { refetch(); }, [refetch]);
+  useEffect(() => {
+    if (!user || !assignmentId) {
+      refetch();
+      return;
+    }
+    const cacheKey = buildFlashyCacheKey('student_assignment_cards', user.id, assignmentId);
+    const cachedCards = readFlashyCache(cacheKey, 2 * 60 * 1000);
+    const hasCachedCards = Array.isArray(cachedCards);
+    if (hasCachedCards) {
+      setData(cachedCards);
+      setError(null);
+      setLoading(false);
+    }
+    refetch({ background: hasCachedCards });
+  }, [assignmentId, refetch, user]);
+
   return { data, loading, error, refetch };
 };
 
@@ -662,10 +766,12 @@ export const useAssignments = () => {
         .from('flashy_deck_assignments')
         .select('*, flashy_decks(name, description, category, tags, difficulty_level)')
         .eq(col, user.id)
+        .eq('is_archived', false)
         .order('assigned_at', { ascending: false });
-      setData(assignments || []);
+      const nonArchivedAssignments = (assignments || []).filter((item) => item?.is_archived !== true);
+      setData(nonArchivedAssignments);
       lastFetchedAt.current = Date.now();
-      writeFlashyCache(buildFlashyCacheKey('assignments', user.id, isTeacher ? 'teacher' : 'student'), assignments || []);
+      writeFlashyCache(buildFlashyCacheKey('assignments', user.id, isTeacher ? 'teacher' : 'student'), nonArchivedAssignments);
     } catch (err) {
       console.error('[useAssignments] refetch failed:', err?.message || err);
       if (!background) setData([]);
@@ -682,9 +788,12 @@ export const useAssignments = () => {
     }
     const cacheKey = buildFlashyCacheKey('assignments', user.id, isTeacher ? 'teacher' : 'student');
     const cachedAssignments = readFlashyCache(cacheKey);
-    const hasCachedAssignments = Array.isArray(cachedAssignments);
+    const normalizedCachedAssignments = Array.isArray(cachedAssignments)
+      ? cachedAssignments.filter((item) => item?.is_archived !== true)
+      : null;
+    const hasCachedAssignments = Array.isArray(normalizedCachedAssignments);
     if (hasCachedAssignments) {
-      setData(cachedAssignments);
+      setData(normalizedCachedAssignments);
       setLoading(false);
       lastFetchedAt.current = Date.now();
     }
