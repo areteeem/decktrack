@@ -28,6 +28,7 @@ const BulkAssignModal = ({ open, setOpen, students, onAssigned }) => {
   const [studyGoalDaily, setStudyGoalDaily] = useState(0);
   const [allowStudentCards, setAllowStudentCards] = useState(true);
   const [allowStudentEdit, setAllowStudentEdit] = useState(true);
+  const [requiredPool, setRequiredPool] = useState("any");
   const [deckSearch, setDeckSearch] = useState("");
 
   const selectedDeck = useMemo(
@@ -54,6 +55,7 @@ const BulkAssignModal = ({ open, setOpen, students, onAssigned }) => {
     setStudyGoalDaily(0);
     setAllowStudentCards(true);
     setAllowStudentEdit(true);
+    setRequiredPool("any");
     setDeckSearch("");
   };
 
@@ -94,6 +96,7 @@ const BulkAssignModal = ({ open, setOpen, students, onAssigned }) => {
         studyGoalDaily: parseInt(studyGoalDaily) || 0,
         allowStudentCards,
         allowStudentEdit,
+        requiredPool,
       });
       const count = results?.length ?? 0;
       if (count > 0) {
@@ -286,6 +289,30 @@ const BulkAssignModal = ({ open, setOpen, students, onAssigned }) => {
               setState={(v) => setStudyGoalDaily(parseInt(v) || 0)}
               type="number"
             />
+
+            <div>
+              <label style={{ display: "block", fontSize: "0.78rem", fontWeight: 600, marginBottom: "0.2rem" }}>
+                Required study type
+              </label>
+              <select
+                value={requiredPool}
+                onChange={(e) => setRequiredPool(e.target.value)}
+                style={{
+                  width: "100%",
+                  padding: "0.45rem",
+                  border: "1px solid var(--border-color)",
+                  borderRadius: "var(--radius)",
+                  background: "var(--bg-secondary)",
+                  color: "var(--fg)",
+                  fontSize: "0.85rem",
+                }}
+              >
+                <option value="any">Any completion (student chooses)</option>
+                <option value="new">Learn new words only</option>
+                <option value="due">Review due cards only</option>
+                <option value="mixed">Mixed session (new + due)</option>
+              </select>
+            </div>
           </div>
 
           <div className={styles.modalActions} style={{ gap: "0.5rem" }}>

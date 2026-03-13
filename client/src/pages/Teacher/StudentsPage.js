@@ -121,11 +121,12 @@ const AssignDeckModal = ({ open, setOpen, studentId, studentName, onAssigned }) 
   const { data: decks, loading } = useDecks();
   const { assignDeck } = useAssignDeck();
   const [assigning, setAssigning] = useState(null);
+  const [requiredPool, setRequiredPool] = useState('any');
 
   const handleAssign = async (deckId) => {
     setAssigning(deckId);
     try {
-      await assignDeck(deckId, studentId);
+      await assignDeck(deckId, studentId, { requiredPool });
       toast.success("Deck assigned!");
       onAssigned?.();
       setOpen(false);
@@ -142,6 +143,29 @@ const AssignDeckModal = ({ open, setOpen, studentId, studentName, onAssigned }) 
   return (
     <Modal open={open} setOpen={setOpen}>
       <h3>Assign deck to {studentName}</h3>
+      <div style={{ marginBottom: '0.6rem' }}>
+        <label style={{ display: "block", fontSize: "0.78rem", fontWeight: 600, marginBottom: "0.2rem" }}>
+          Required study type
+        </label>
+        <select
+          value={requiredPool}
+          onChange={(e) => setRequiredPool(e.target.value)}
+          style={{
+            width: "100%",
+            padding: "0.45rem",
+            border: "1px solid var(--border-color)",
+            borderRadius: "var(--radius)",
+            background: "var(--bg-secondary)",
+            color: "var(--fg)",
+            fontSize: "0.85rem",
+          }}
+        >
+          <option value="any">Any completion (student chooses)</option>
+          <option value="new">Learn new words only</option>
+          <option value="due">Review due cards only</option>
+          <option value="mixed">Mixed session (new + due)</option>
+        </select>
+      </div>
       {loading ? (
         <p>Loading decks...</p>
       ) : (

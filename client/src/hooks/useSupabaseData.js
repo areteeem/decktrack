@@ -827,8 +827,11 @@ export const useAssignments = () => {
 export const useAssignDeck = () => {
   const { user } = useAuth();
 
-  const assignDeck = async (teacherDeckId, studentId) => {
+  const assignDeck = async (teacherDeckId, studentId, options = {}) => {
     if (!user) throw new Error('Not authenticated');
+    const requiredPoolRaw = String(options?.requiredPool || 'any').trim().toLowerCase();
+    const allowedPools = new Set(['any', 'new', 'due', 'mixed']);
+    const requiredPool = allowedPools.has(requiredPoolRaw) ? requiredPoolRaw : 'any';
     // Create assignment
     const { data: assignment, error: aErr } = await supabase
       .from('flashy_deck_assignments')
@@ -836,6 +839,7 @@ export const useAssignDeck = () => {
         teacher_deck_id: teacherDeckId,
         student_id: studentId,
         teacher_id: user.id,
+        required_pool: requiredPool,
       })
       .select()
       .single();
@@ -1448,6 +1452,7 @@ export const useBulkAssignDeck = () => {
         p_allow_student_cards: options.allowStudentCards ?? true,
         p_allow_student_edit: options.allowStudentEdit ?? true,
         p_group_assignment_id: options.groupAssignmentId ?? null,
+        p_required_pool: options.requiredPool ?? 'any',
       });
       if (error) throw error;
       return data || [];

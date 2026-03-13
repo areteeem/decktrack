@@ -9,6 +9,22 @@ import { Link } from "react-router-dom";
 import NewDeckModal from "../../modules/Sidebar/NewDeckModal";
 import DeckCard from "../../common/components/DeckCard";
 
+const requiredPoolLabel = (pool) => {
+  const normalizedPool = String(pool || 'any').trim().toLowerCase();
+  if (normalizedPool === 'new') return 'Required: Learn new';
+  if (normalizedPool === 'due') return 'Required: Review due';
+  if (normalizedPool === 'mixed') return 'Required: Mixed';
+  return 'Required: Any study';
+};
+
+const requiredPoolHint = (pool) => {
+  const normalizedPool = String(pool || 'any').trim().toLowerCase();
+  if (normalizedPool === 'new') return 'Complete a Learn New session to finish this assignment.';
+  if (normalizedPool === 'due') return 'Complete a Study Due session to finish this assignment.';
+  if (normalizedPool === 'mixed') return 'Complete a Mixed session (new + due cards) to finish this assignment.';
+  return 'Any completed study session for this deck will count.';
+};
+
 const StudentDashboard = () => {
   const { profile, user } = useAuth();
   const { data: assignments, loading } = useAssignments();
@@ -127,14 +143,14 @@ const StudentDashboard = () => {
         </div>
       )}
 
-      {/* ── Assigned Decks ─────────────────────── */}
+      {/* ── Assigned Studies ───────────────────── */}
       {(!activeAssignments || activeAssignments.length === 0) ? (
         <div className={styles.empty}>
-          <p style={{ color: "var(--fg-muted)", fontSize: "0.85rem" }}>No decks assigned by your teacher yet.</p>
+          <p style={{ color: "var(--fg-muted)", fontSize: "0.85rem" }}>No assigned studies yet.</p>
         </div>
       ) : (
         <>
-          <h2 style={{ marginBottom: "0.5rem" }}>Assigned Decks</h2>
+          <h2 style={{ marginBottom: "0.5rem" }}>Assigned Studies</h2>
           <div className={styles.deckGrid}>
             {activeAssignments.map((a) => (
               <AssignedDeckCard key={a.id} assignment={a} deckStats={deckStats} />
@@ -162,12 +178,28 @@ const AssignedDeckCard = ({ assignment, deckStats }) => {
   const due = ds.due || 0;
   const newCount = ds.new_count ?? ds.newCards ?? 0;
   const masteryPct = total > 0 ? Math.round((mastered / total) * 100) : 0;
+  const requiredPool = String(assignment?.required_pool || 'any').trim().toLowerCase();
+
+  const primaryRoute = (() => {
+    if (requiredPool === 'new') return `/study/${assignment.id}/new`;
+    if (requiredPool === 'due') return `/study/${assignment.id}/due`;
+    if (requiredPool === 'mixed') return `/study/${assignment.id}/mixed`;
+    if (newCount > 0) return `/study/${assignment.id}/new`;
+    if (due > 0) return `/study/${assignment.id}/due`;
+    return `/deck/${assignment.id}/browse`;
+  })();
+
+  const primaryLabel = requiredPool === 'any'
+    ? 'Start study'
+    : 'Start required study';
 
   return (
     <div className={styles.deckCard}>
       <h2>{deckName}</h2>
       {deckDesc && <p className={styles.deckDesc}>{deckDesc}</p>}
+      <p className={styles.deckDesc} style={{ marginTop: "0.1rem" }}>Assigned by teacher</p>
       <div className={styles.deckMeta}>
+        <Badge>{requiredPoolLabel(requiredPool)}</Badge>
         {assignment.flashy_decks?.category && (
           <Badge>{assignment.flashy_decks.category}</Badge>
         )}
@@ -178,6 +210,7 @@ const AssignedDeckCard = ({ assignment, deckStats }) => {
           <Badge>+ Cards</Badge>
         )}
       </div>
+      <p className={styles.deckDesc}>{requiredPoolHint(requiredPool)}</p>
 
       {/* Per-deck progress */}
       {total > 0 && (
@@ -204,12 +237,19 @@ const AssignedDeckCard = ({ assignment, deckStats }) => {
       )}
 
       <div className={styles.deckActions}>
-        <Link to={`/study/${assignment.id}/new`}>
-          <Button>Learn New</Button>
+        <Link to={primaryRoute}>
+          <Button>{primaryLabel}</Button>
         </Link>
-        <Link to={`/study/${assignment.id}/due`}>
-          <Button>Study Due</Button>
-        </Link>
+        {requiredPool === 'any' && (
+          <>
+            <Link to={`/study/${assignment.id}/new`}>
+              <Button bgcolor="transparent" color="var(--fg)">Learn New</Button>
+            </Link>
+            <Link to={`/study/${assignment.id}/due`}>
+              <Button bgcolor="transparent" color="var(--fg)">Study Due</Button>
+            </Link>
+          </>
+        )}
         <Link to={`/deck/${assignment.id}/browse`}>
           <Button bgcolor="transparent" color="var(--fg)">Browse</Button>
         </Link>
