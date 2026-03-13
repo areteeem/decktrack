@@ -27,6 +27,7 @@ import { CrossDeckLearnNew, CrossDeckPracticeDue } from "./pages/Student/CrossDe
 import StudentLaunchPage from "./pages/Student/StudentLaunchPage";
 import Settings from "./pages/Settings";
 import SharedDeckPage from "./pages/SharedDeck";
+import ProgressPage from "./pages/Progress";
 export default function Home() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { isAuthenticated, loading, isTeacher, isStudent } = useAuth();
@@ -60,6 +61,7 @@ export default function Home() {
                 path="/"
                 element={isStudent ? <StudentDashboard /> : <Dashboard />}
               />
+              <Route path="/progress" element={<ProgressPage />} />
               <Route path="/settings" element={<Settings />} />
 
               {/* Deck routes — shared for teachers and students (own decks) */}

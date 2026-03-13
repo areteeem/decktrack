@@ -7,7 +7,7 @@ import Practice from "../../modules/Practice";
 import FillBlank from "../../modules/FillBlank";
 import MultipleChoice from "../../modules/MultipleChoice";
 import MatchGame from "../../modules/MatchGame";
-import { useDeck, useNewCards, useDueCards } from "../../hooks/useSupabaseData";
+import { useDeck, useNewCards, useDueCards, useRecordSession } from "../../hooks/useSupabaseData";
 import { getStudySession, saveStudySession, clearStudySession } from "../../lib/studySession";
 
 /**
@@ -25,6 +25,7 @@ const DeckStudy = () => {
   const { data: deck, loading: deckLoading } = useDeck(deckId);
   const { data: newCards, loading: newLoading } = useNewCards(deckId);
   const { data: dueCards, loading: dueLoading } = useDueCards(deckId);
+  const { recordSession } = useRecordSession();
 
   const [config, setConfig] = useState(null);
   // "choose" = show resume/new choice, null = no saved session
@@ -106,6 +107,14 @@ const DeckStudy = () => {
     // Clear after a short delay to allow results screen to read data
     setTimeout(() => clearStudySession(deckId), 2000);
   }, [deckId]);
+
+  const handleSessionComplete = useCallback(async (summary) => {
+    await recordSession({
+      ...summary,
+      assignment_id: null,
+      deck_name: deck?.name || 'Deck Study',
+    });
+  }, [deck?.name, recordSession]);
 
   // Quit: save progress and navigate back to deck
   const handleQuit = useCallback(() => {
@@ -210,9 +219,9 @@ const DeckStudy = () => {
     default:
       // For new cards use Learn, for due/mixed/hard/all use Practice
       if (config.pool === "new") {
-        return <Learn flashcards={cards} showTermFirst={showTermFirst} onProgress={handleProgress} onComplete={handleComplete} {...sharedProps} />;
+        return <Learn flashcards={cards} showTermFirst={showTermFirst} onProgress={handleProgress} onComplete={handleComplete} onSessionComplete={handleSessionComplete} {...sharedProps} />;
       }
-      return <Practice flashcards={cards} showTermFirst={showTermFirst} onProgress={handleProgress} onComplete={handleComplete} {...sharedProps} />;
+      return <Practice flashcards={cards} showTermFirst={showTermFirst} onProgress={handleProgress} onComplete={handleComplete} onSessionComplete={handleSessionComplete} {...sharedProps} />;
   }
 };
 

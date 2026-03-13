@@ -9,6 +9,7 @@
 const en = {
   // ── Sidebar / nav ──
   dashboard: "Dashboard",
+  progress: "Progress",
   dueToday: "Due today",
   learnNew: "Learn new",
   students: "Students",
@@ -183,6 +184,7 @@ const en = {
 const uk = {
   // ── Sidebar / nav ──
   dashboard: "Головна",
+  progress: "Прогрес",
   dueToday: "На сьогодні",
   learnNew: "Вивчити нові",
   students: "Учні",

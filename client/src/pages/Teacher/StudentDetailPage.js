@@ -55,6 +55,66 @@ const RestoreIcon = () => (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
 );
 
+const escapeCsvCell = (value) => {
+  const text = String(value ?? '').replace(/"/g, '""');
+  return `"${text}"`;
+};
+
+const exportStudySessionsCsv = (sessions, studentLabel) => {
+  const rows = [
+    [
+      'started_at',
+      'finished_at',
+      'session_type',
+      'mode',
+      'deck_name',
+      'assignment_id',
+      'cards_studied',
+      'cards_correct',
+      'cards_incorrect',
+      'duration_seconds',
+      'days_until_deletion',
+      'deletion_at',
+    ].join(','),
+  ];
+
+  (sessions || []).forEach((session) => {
+    rows.push([
+      escapeCsvCell(session.started_at),
+      escapeCsvCell(session.finished_at),
+      escapeCsvCell(session.session_type),
+      escapeCsvCell(session.mode),
+      escapeCsvCell(session.deck_name),
+      escapeCsvCell(session.assignment_id),
+      escapeCsvCell(session.cards_studied),
+      escapeCsvCell(session.cards_correct ?? session.correct_count ?? 0),
+      escapeCsvCell(session.cards_incorrect ?? session.incorrect_count ?? 0),
+      escapeCsvCell(session.duration_seconds),
+      escapeCsvCell(session.days_until_deletion),
+      escapeCsvCell(session.deletion_at),
+    ].join(','));
+  });
+
+  const blob = new Blob([rows.join('\n')], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  const safeStudent = String(studentLabel || 'student').replace(/[^a-z0-9-_]+/gi, '-').toLowerCase();
+  link.download = `${safeStudent || 'student'}-study-sessions.csv`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+};
+
+const sessionRetentionLabel = (session) => {
+  const days = Number(session?.days_until_deletion);
+  if (!Number.isFinite(days)) return 'No expiry info';
+  if (days <= 0) return 'Deletes today';
+  if (days === 1) return '1 day left';
+  return `${days} days left`;
+};
+
 const StudentDetailPage = () => {
   const { studentId } = useParams();
   const { user } = useAuth();
@@ -336,6 +396,8 @@ const StudentDetailPage = () => {
 
   if (loading || statsLoading) return <LoadingScreen />;
   if (!student) return <h2>Student not found</h2>;
+
+  const recentSessions = stats?.recentSessions || [];
 
   return (
     <div>
@@ -916,18 +978,41 @@ const StudentDetailPage = () => {
       </Modal>
 
       {/* Recent Study Sessions */}
-      {stats?.recentSessions?.length > 0 && (
+      {recentSessions.length > 0 && (
         <>
-          <h2>Recent Study Sessions</h2>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.6rem', marginTop: '1rem', flexWrap: 'wrap' }}>
+            <h2 style={{ margin: 0 }}>Recent Study Sessions</h2>
+            <Button
+              callback={() => exportStudySessionsCsv(recentSessions, student.display_name || student.email || student.id)}
+              bgcolor="transparent"
+              color="var(--fg)"
+            >
+              Export CSV
+            </Button>
+          </div>
+          <p style={{ color: 'var(--fg-muted)', fontSize: '0.8rem', margin: '0.35rem 0 0.55rem' }}>
+            Session history is retained for 30 days.
+          </p>
           <div className={styles.sessionsList}>
-            {stats.recentSessions.map((s) => (
-              <div key={s.id} className={styles.sessionRow}>
-                <span>{new Date(s.started_at).toLocaleDateString()}</span>
-                <span>{s.mode}</span>
+            {recentSessions.map((s) => (
+              <div
+                key={s.id}
+                className={styles.sessionRow}
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'minmax(130px, 1fr) minmax(90px, 0.7fr) minmax(180px, 2fr) auto',
+                  alignItems: 'center',
+                  gap: '0.55rem',
+                }}
+              >
                 <span>
-                  {s.cards_studied} cards ·{" "}
-                  {s.correct_count}/{s.cards_studied} correct
+                  {new Date(s.started_at).toLocaleDateString()} {new Date(s.started_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                 </span>
+                <span>{s.session_type || s.mode || 'study'}</span>
+                <span>
+                  {s.deck_name || 'Deck'} · {s.cards_studied} cards · {s.cards_correct ?? s.correct_count ?? 0}/{s.cards_studied} correct
+                </span>
+                <Badge style={{ fontSize: '0.65rem' }}>{sessionRetentionLabel(s)}</Badge>
               </div>
             ))}
           </div>

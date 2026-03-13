@@ -7,6 +7,33 @@ import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../contexts/AuthContext';
 import { extractRosterStudents } from '../lib/tutproRoster';
 
+const STUDY_RETENTION_DAYS = 30;
+const STUDY_RETENTION_MS = STUDY_RETENTION_DAYS * 24 * 60 * 60 * 1000;
+
+const getStudyCutoffIso = () => new Date(Date.now() - STUDY_RETENTION_MS).toISOString();
+
+const enrichStudySession = (session) => {
+  const startedAtRaw = session?.started_at || session?.finished_at || session?.created_at || null;
+  const startedTs = startedAtRaw ? Date.parse(startedAtRaw) : NaN;
+  if (!Number.isFinite(startedTs)) {
+    return {
+      ...session,
+      days_until_deletion: null,
+      deletion_at: null,
+    };
+  }
+
+  const deletionTs = startedTs + STUDY_RETENTION_MS;
+  const remainingMs = Math.max(0, deletionTs - Date.now());
+  const daysUntilDeletion = Math.ceil(remainingMs / (24 * 60 * 60 * 1000));
+
+  return {
+    ...session,
+    days_until_deletion: daysUntilDeletion,
+    deletion_at: new Date(deletionTs).toISOString(),
+  };
+};
+
 // ─────────────────────────────────────────────────────
 // Decks
 // ─────────────────────────────────────────────────────
@@ -733,6 +760,7 @@ export const useStudentStats = (studentId) => {
 
     setLoading(true);
     try {
+      const sessionsCutoffIso = getStudyCutoffIso();
       const [
         { count: totalCards },
         { count: masteredCards },
@@ -754,7 +782,10 @@ export const useStudentStats = (studentId) => {
           .eq('student_id', studentId).eq('is_new', true).eq('is_deleted_by_teacher', false)
           .eq('flashy_deck_assignments.is_archived', false),
         supabase.from('flashy_study_sessions').select('*')
-          .eq('student_id', studentId).order('started_at', { ascending: false }).limit(20),
+          .eq('student_id', studentId)
+          .gte('started_at', sessionsCutoffIso)
+          .order('started_at', { ascending: false })
+          .limit(50),
       ]);
 
       setData({
@@ -762,7 +793,7 @@ export const useStudentStats = (studentId) => {
         masteredCards: masteredCards ?? 0,
         dueCards: dueCards ?? 0,
         newCards: newCards ?? 0,
-        recentSessions: sessions || [],
+        recentSessions: (sessions || []).map(enrichStudySession),
       });
     } catch (err) {
       console.error('[useStudentStats] refetch failed:', err?.message || err);
@@ -782,6 +813,61 @@ export const useStudentStats = (studentId) => {
   return { data, loading, refetch };
 };
 
+/** Fetch study sessions (kept to last 30 days) for student or teacher context */
+export const useStudySessions = ({ studentId = null, assignmentId = null, limit = 100 } = {}) => {
+  const { user } = useAuth();
+  const [data, setData] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  const refetch = useCallback(async () => {
+    const targetStudentId = String(studentId || user?.id || '');
+    if (!targetStudentId) {
+      setData([]);
+      setError(null);
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    try {
+      let query = supabase
+        .from('flashy_study_sessions')
+        .select('*')
+        .eq('student_id', targetStudentId)
+        .gte('started_at', getStudyCutoffIso())
+        .order('started_at', { ascending: false })
+        .limit(Math.max(1, Number(limit) || 100));
+
+      if (assignmentId) {
+        query = query.eq('assignment_id', assignmentId);
+      }
+
+      const { data: sessions, error: sessionsError } = await query;
+      if (sessionsError) throw sessionsError;
+
+      setData((sessions || []).map(enrichStudySession));
+      setError(null);
+    } catch (err) {
+      console.error('[useStudySessions] refetch failed:', err?.message || err);
+      setData([]);
+      setError(err);
+    } finally {
+      setLoading(false);
+    }
+  }, [assignmentId, limit, studentId, user?.id]);
+
+  useEffect(() => { refetch(); }, [refetch]);
+
+  return {
+    data,
+    loading,
+    error,
+    refetch,
+    retentionDays: STUDY_RETENTION_DAYS,
+  };
+};
+
 // ─────────────────────────────────────────────────────
 // Study sessions
 // ─────────────────────────────────────────────────────
@@ -791,14 +877,63 @@ export const useRecordSession = () => {
   const { user } = useAuth();
 
   const recordSession = async (fields) => {
-    if (!user) return;
-    const { error } = await supabase
+    if (!user) return null;
+
+    const nowIso = new Date().toISOString();
+    const startedAt = String(fields?.started_at || nowIso);
+    const finishedAt = String(fields?.finished_at || nowIso);
+    const startTs = Date.parse(startedAt);
+    const finishTs = Date.parse(finishedAt);
+    const derivedDuration = Number.isFinite(startTs) && Number.isFinite(finishTs)
+      ? Math.max(0, Math.round((finishTs - startTs) / 1000))
+      : 0;
+
+    const durationSecondsRaw = Number(fields?.duration_seconds);
+    const durationSeconds = Number.isFinite(durationSecondsRaw)
+      ? Math.max(0, Math.round(durationSecondsRaw))
+      : derivedDuration;
+
+    const payload = {
+      ...fields,
+      student_id: user.id,
+      started_at: startedAt,
+      finished_at: finishedAt,
+      duration_seconds: durationSeconds,
+    };
+
+    let insertResult = await supabase
       .from('flashy_study_sessions')
-      .insert({ ...fields, student_id: user.id });
-    if (error) console.error('[Flashy] Session record error:', error.message);
+      .insert(payload)
+      .select()
+      .single();
+
+    if (insertResult.error && payload.deck_id !== undefined) {
+      const msg = String(insertResult.error.message || '').toLowerCase();
+      if (msg.includes('deck_id')) {
+        const { deck_id, ...fallbackPayload } = payload;
+        insertResult = await supabase
+          .from('flashy_study_sessions')
+          .insert(fallbackPayload)
+          .select()
+          .single();
+      }
+    }
+
+    if (insertResult.error) {
+      console.error('[Flashy] Session record error:', insertResult.error.message || insertResult.error);
+      return null;
+    }
+
+    await supabase
+      .from('flashy_study_sessions')
+      .delete()
+      .eq('student_id', user.id)
+      .lt('started_at', getStudyCutoffIso());
+
+    return enrichStudySession(insertResult.data);
   };
 
-  return { recordSession };
+  return { recordSession, retentionDays: STUDY_RETENTION_DAYS };
 };
 
 // ─────────────────────────────────────────────────────

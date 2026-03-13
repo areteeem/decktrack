@@ -1,6 +1,6 @@
 import ProgressBar from "../../common/components/ProgressBar";
 import styles from "./Practice.module.css";
-import { useEffect, useState, useMemo, useCallback } from "react";
+import { useEffect, useState, useMemo, useCallback, useRef } from "react";
 import LoadingScreen from "../../common/components/LoadingScreen";
 import FlipCard from "../../common/components/FlipCard";
 import { useUpdateStudentCard } from "../../hooks/useSupabaseData";
@@ -53,9 +53,11 @@ const computeHardness = (cardResult) => {
   return score;
 };
 
-const Practice = ({ flashcards, showTermFirst = true, onProgress, onComplete, onQuit }) => {
+const Practice = ({ flashcards, showTermFirst = true, onProgress, onComplete, onQuit, onSessionComplete }) => {
   const { updateStudentCard } = useUpdateStudentCard();
   const { srsMode, t } = useSettings();
+  const sessionStartedAtRef = useRef(Date.now());
+  const sessionReportedRef = useRef(false);
 
   // Study timer
   useEffect(() => {
@@ -80,6 +82,8 @@ const Practice = ({ flashcards, showTermFirst = true, onProgress, onComplete, on
     setIsFlipped(false);
     setSessionStats({ reviewed: 0, again: 0, hard: 0, good: 0, easy: 0 });
     setCardResults({});
+    sessionStartedAtRef.current = Date.now();
+    sessionReportedRef.current = false;
   }, [initialQueue]);
 
   const totalUnique = flashcards?.length || 0;
@@ -88,8 +92,37 @@ const Practice = ({ flashcards, showTermFirst = true, onProgress, onComplete, on
 
   // Notify parent when session completes
   useEffect(() => {
-    if (isComplete && totalUnique > 0) onComplete?.();
-  }, [isComplete, totalUnique, onComplete]);
+    if (!isComplete || totalUnique <= 0 || sessionReportedRef.current) return;
+
+    sessionReportedRef.current = true;
+
+    const finishedAtIso = new Date().toISOString();
+    const startedAtIso = new Date(sessionStartedAtRef.current || Date.now()).toISOString();
+    const durationSeconds = Math.max(0, Math.round((Date.now() - (sessionStartedAtRef.current || Date.now())) / 1000));
+    const cardsStudied = Number(sessionStats.reviewed || 0);
+    const cardsCorrect = Number(sessionStats.good || 0) + Number(sessionStats.easy || 0);
+    const cardsIncorrect = Number(sessionStats.again || 0) + Number(sessionStats.hard || 0);
+
+    onSessionComplete?.({
+      session_type: 'practice',
+      cards_studied: cardsStudied,
+      cards_correct: cardsCorrect,
+      cards_incorrect: cardsIncorrect,
+      started_at: startedAtIso,
+      finished_at: finishedAtIso,
+      duration_seconds: durationSeconds,
+      mode: srsMode,
+      reviewed: cardsStudied,
+      breakdown: {
+        again: Number(sessionStats.again || 0),
+        hard: Number(sessionStats.hard || 0),
+        good: Number(sessionStats.good || 0),
+        easy: Number(sessionStats.easy || 0),
+      },
+    });
+
+    onComplete?.();
+  }, [isComplete, onComplete, onSessionComplete, sessionStats, srsMode, totalUnique]);
 
   const gradeCard = useCallback((grade) => {
     if (isComplete || !currentCard) return;

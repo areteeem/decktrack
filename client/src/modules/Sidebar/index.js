@@ -66,6 +66,23 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
           </svg>
           <p>{t("dashboard")}</p>
         </Link>
+        <Link className="icon-link" to="/progress" onClick={() => setIsOpen(false)}>
+          <svg
+            className="w-6 h-6"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M3 17l6-6 4 4 7-8M14 7h6v6"
+            />
+          </svg>
+          <p>{t("progress")}</p>
+        </Link>
         {isTeacher && (
           <>
             <Link className="icon-link" to="/due" onClick={() => setIsOpen(false)}>

@@ -3,7 +3,7 @@ import { useNavigate } from "react-router";
 import LoadingScreen from "../../common/components/LoadingScreen";
 import Learn from "../../modules/Learn";
 import Practice from "../../modules/Practice";
-import { useAssignments, useStudentDeckCards, useAllOwnDeckCards } from "../../hooks/useSupabaseData";
+import { useAssignments, useStudentDeckCards, useAllOwnDeckCards, useRecordSession } from "../../hooks/useSupabaseData";
 
 /**
  * Aggregates cards across all assignments and passes them to Learn / Practice.
@@ -50,9 +50,18 @@ const CrossDeckStudy = ({ mode }) => {
   const navigate = useNavigate();
   const { assignments, loading } = useAllStudentCards();
   const { data: personalCards, loading: personalLoading } = useAllOwnDeckCards();
+  const { recordSession } = useRecordSession();
   const [cardMap, setCardMap] = useState({});
   const readyRef = useRef(new Set());
   const [allReady, setAllReady] = useState(false);
+
+  const handleSessionComplete = useCallback(async (summary) => {
+    await recordSession({
+      ...summary,
+      assignment_id: null,
+      deck_name: 'All Decks',
+    });
+  }, [recordSession]);
 
   const handleCards = useCallback((assignmentId, cards) => {
     setCardMap((prev) => ({ ...prev, [assignmentId]: cards }));
@@ -101,7 +110,7 @@ const CrossDeckStudy = ({ mode }) => {
         {assignments.map((a) => (
           <AssignmentCards key={a.id} assignmentId={a.id} onCards={handleCards} />
         ))}
-        <Learn flashcards={newCards} onQuit={() => navigate(-1)} />
+        <Learn flashcards={newCards} onQuit={() => navigate(-1)} onSessionComplete={handleSessionComplete} />
       </>
     );
   }
@@ -115,7 +124,7 @@ const CrossDeckStudy = ({ mode }) => {
       {assignments.map((a) => (
         <AssignmentCards key={a.id} assignmentId={a.id} onCards={handleCards} />
       ))}
-      <Practice flashcards={dueCards} onQuit={() => navigate(-1)} />
+      <Practice flashcards={dueCards} onQuit={() => navigate(-1)} onSessionComplete={handleSessionComplete} />
     </>
   );
 };
