@@ -9,8 +9,38 @@ import { extractRosterStudents } from '../lib/tutproRoster';
 
 const STUDY_RETENTION_DAYS = 30;
 const STUDY_RETENTION_MS = STUDY_RETENTION_DAYS * 24 * 60 * 60 * 1000;
+const FLASHY_CACHE_PREFIX = 'flashy_cache_v1';
+const FLASHY_CACHE_TTL_MS = 10 * 60 * 1000;
 
 const getStudyCutoffIso = () => new Date(Date.now() - STUDY_RETENTION_MS).toISOString();
+
+const buildFlashyCacheKey = (...parts) => `${FLASHY_CACHE_PREFIX}:${parts.map((value) => String(value || '').trim()).join(':')}`;
+
+const readFlashyCache = (cacheKey, maxAgeMs = FLASHY_CACHE_TTL_MS) => {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = localStorage.getItem(cacheKey);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    const savedAt = Number(parsed?.savedAt || 0);
+    if (!savedAt || (Date.now() - savedAt) > maxAgeMs) return null;
+    return parsed?.payload ?? null;
+  } catch {
+    return null;
+  }
+};
+
+const writeFlashyCache = (cacheKey, payload) => {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem(cacheKey, JSON.stringify({
+      savedAt: Date.now(),
+      payload,
+    }));
+  } catch {
+    // ignore storage quota/permission errors
+  }
+};
 
 const enrichStudySession = (session) => {
   const startedAtRaw = session?.started_at || session?.finished_at || session?.created_at || null;
@@ -83,6 +113,7 @@ export const useDecks = () => {
       setData(enriched);
       setError(null);
       lastFetchedAt.current = Date.now();
+      writeFlashyCache(buildFlashyCacheKey('decks', user.id), enriched);
     } catch (err) {
       console.error('[useDecks] refetch failed:', err?.message || err);
       setError(err);
@@ -93,8 +124,23 @@ export const useDecks = () => {
     }
   }, [user]);
 
-  // Initial fetch
-  useEffect(() => { refetch(); }, [refetch]);
+  // Initial load: cache-first, then background network refresh
+  useEffect(() => {
+    if (!user) {
+      refetch();
+      return;
+    }
+    const cacheKey = buildFlashyCacheKey('decks', user.id);
+    const cachedDecks = readFlashyCache(cacheKey);
+    const hasCachedDecks = Array.isArray(cachedDecks);
+    if (hasCachedDecks) {
+      setData(cachedDecks);
+      setError(null);
+      setLoading(false);
+      lastFetchedAt.current = Date.now();
+    }
+    refetch({ background: hasCachedDecks });
+  }, [refetch, user]);
 
   // Background refresh: re-fetch every 60 s and on tab focus (stale > 30 s)
   useEffect(() => {
@@ -619,6 +665,7 @@ export const useAssignments = () => {
         .order('assigned_at', { ascending: false });
       setData(assignments || []);
       lastFetchedAt.current = Date.now();
+      writeFlashyCache(buildFlashyCacheKey('assignments', user.id, isTeacher ? 'teacher' : 'student'), assignments || []);
     } catch (err) {
       console.error('[useAssignments] refetch failed:', err?.message || err);
       if (!background) setData([]);
@@ -628,7 +675,21 @@ export const useAssignments = () => {
     }
   }, [user, isTeacher]);
 
-  useEffect(() => { refetch(); }, [refetch]);
+  useEffect(() => {
+    if (!user) {
+      refetch();
+      return;
+    }
+    const cacheKey = buildFlashyCacheKey('assignments', user.id, isTeacher ? 'teacher' : 'student');
+    const cachedAssignments = readFlashyCache(cacheKey);
+    const hasCachedAssignments = Array.isArray(cachedAssignments);
+    if (hasCachedAssignments) {
+      setData(cachedAssignments);
+      setLoading(false);
+      lastFetchedAt.current = Date.now();
+    }
+    refetch({ background: hasCachedAssignments });
+  }, [isTeacher, refetch, user]);
 
   // Background refresh: 60 s interval + visibility/focus
   useEffect(() => {
@@ -877,7 +938,7 @@ export const useStudySessions = ({ studentId = null, assignmentId = null, limit 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const refetch = useCallback(async () => {
+  const refetch = useCallback(async ({ background = false } = {}) => {
     const targetStudentId = String(studentId || user?.id || '');
     if (!targetStudentId) {
       setData([]);
@@ -886,7 +947,7 @@ export const useStudySessions = ({ studentId = null, assignmentId = null, limit 
       return;
     }
 
-    setLoading(true);
+    if (!background) setLoading(true);
     try {
       let query = supabase
         .from('flashy_study_sessions')
@@ -903,18 +964,39 @@ export const useStudySessions = ({ studentId = null, assignmentId = null, limit 
       const { data: sessions, error: sessionsError } = await query;
       if (sessionsError) throw sessionsError;
 
-      setData((sessions || []).map(enrichStudySession));
+      const enrichedSessions = (sessions || []).map(enrichStudySession);
+      setData(enrichedSessions);
       setError(null);
+      writeFlashyCache(
+        buildFlashyCacheKey('study_sessions', targetStudentId, assignmentId || 'all', Math.max(1, Number(limit) || 100)),
+        enrichedSessions
+      );
     } catch (err) {
       console.error('[useStudySessions] refetch failed:', err?.message || err);
-      setData([]);
+      if (!background) setData([]);
       setError(err);
     } finally {
       setLoading(false);
     }
   }, [assignmentId, limit, studentId, user?.id]);
 
-  useEffect(() => { refetch(); }, [refetch]);
+  useEffect(() => {
+    const targetStudentId = String(studentId || user?.id || '');
+    if (!targetStudentId) {
+      refetch();
+      return;
+    }
+    const normalizedLimit = Math.max(1, Number(limit) || 100);
+    const cacheKey = buildFlashyCacheKey('study_sessions', targetStudentId, assignmentId || 'all', normalizedLimit);
+    const cachedSessions = readFlashyCache(cacheKey, 2 * 60 * 1000);
+    const hasCachedSessions = Array.isArray(cachedSessions);
+    if (hasCachedSessions) {
+      setData(cachedSessions);
+      setError(null);
+      setLoading(false);
+    }
+    refetch({ background: hasCachedSessions });
+  }, [assignmentId, limit, refetch, studentId, user?.id]);
 
   return {
     data,

@@ -14,11 +14,14 @@ const parseLaunchParams = (search) => {
   const teacherId = String(params.get("teacherId") || "").trim();
   const studentId = normalizeStudentId(params.get("studentId"));
   const studentName = String(params.get("studentName") || "").trim();
+  const rawRedirect = String(params.get("redirect") || "").trim();
+  const redirectPath = rawRedirect && rawRedirect.startsWith("/") ? rawRedirect : "/";
 
   return {
     teacherId,
     studentId,
     studentName,
+    redirectPath,
     valid: Boolean(teacherId && studentId && studentName),
   };
 };
@@ -87,7 +90,7 @@ const StudentLaunchPage = () => {
         await applyStudentAppBridge(launchData);
 
         toast.success(`Ready to study, ${launchData.studentName}!`);
-        window.location.replace("/");
+        window.location.replace(launchData.redirectPath || "/");
       } catch (err) {
         setError(getFriendlyError(err));
       }

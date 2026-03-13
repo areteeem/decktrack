@@ -26,8 +26,27 @@ export default function SharedDeckPage() {
     let cancelled = false;
     const load = async () => {
       try {
-        // Fetch deck by share_token
-        const { data: d, error: dErr } = await getSupabase()
+        const sb = getSupabase();
+
+        // Preferred path: SECURITY DEFINER RPC so shared links work across accounts
+        // regardless of owner/student RLS conditions.
+        const { data: sharedPayload, error: sharedErr } = await sb.rpc("flashy_get_shared_deck", {
+          p_share_token: String(token || ""),
+        });
+
+        const rpcDeck = sharedPayload?.deck || null;
+        const rpcCards = Array.isArray(sharedPayload?.cards) ? sharedPayload.cards : null;
+
+        if (!sharedErr && rpcDeck) {
+          if (!cancelled) {
+            setDeck(rpcDeck);
+            setCards(rpcCards || []);
+          }
+          return;
+        }
+
+        // Fallback path for environments that haven't applied the RPC migration yet.
+        const { data: d, error: dErr } = await sb
           .from("flashy_decks")
           .select("id, name, description, category, difficulty_level, tags, language_pair, owner_id")
           .eq("share_token", token)
@@ -38,8 +57,7 @@ export default function SharedDeckPage() {
           return;
         }
 
-        // Fetch cards
-        const { data: c } = await getSupabase()
+        const { data: c } = await sb
           .from("flashy_cards")
           .select("front, back, example_sentence, sort_order")
           .eq("deck_id", d.id)
