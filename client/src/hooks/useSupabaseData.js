@@ -1442,7 +1442,7 @@ export const useBulkAssignDeck = () => {
     if (!user) throw new Error('Not authenticated');
     setLoading(true);
     try {
-      const { data, error } = await supabase.rpc('flashy_bulk_assign_deck', {
+      const rpcPayload = {
         p_teacher_deck_id: teacherDeckId,
         p_teacher_id: user.id,
         p_student_ids: studentIds,
@@ -1453,7 +1453,23 @@ export const useBulkAssignDeck = () => {
         p_allow_student_edit: options.allowStudentEdit ?? true,
         p_group_assignment_id: options.groupAssignmentId ?? null,
         p_required_pool: options.requiredPool ?? 'any',
-      });
+      };
+
+      let { data, error } = await supabase.rpc('flashy_bulk_assign_deck', rpcPayload);
+
+      const errorText = String(error?.message || error || '');
+      const missingRequiredPoolSignature = error
+        && /Could not find the function public\.flashy_bulk_assign_deck/i.test(errorText)
+        && errorText.includes('p_required_pool');
+
+      if (missingRequiredPoolSignature) {
+        const legacyPayload = { ...rpcPayload };
+        delete legacyPayload.p_required_pool;
+        const legacyResult = await supabase.rpc('flashy_bulk_assign_deck', legacyPayload);
+        data = legacyResult?.data;
+        error = legacyResult?.error;
+      }
+
       if (error) throw error;
       return data || [];
     } finally {

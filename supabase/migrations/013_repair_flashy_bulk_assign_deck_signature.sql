@@ -1,18 +1,17 @@
--- 012: Add study requirement to deck assignments + pool tracking on sessions
--- required_pool: which card pool the teacher wants the student to complete
---   'any'   – any study counts (default, backward-compatible)
---   'new'   – student must do a "learn new cards" session
---   'due'   – student must do a "review due cards" session
---   'mixed' – student must do a mixed new+due session
+-- 013: Repair canonical flashy_bulk_assign_deck RPC signature
+-- This migration is safe to run after any previous state of 007/008/012.
 
 ALTER TABLE public.flashy_deck_assignments
   ADD COLUMN IF NOT EXISTS required_pool TEXT NOT NULL DEFAULT 'any';
 
--- pool: which card pool the student actually studied in this session
 ALTER TABLE public.flashy_study_sessions
   ADD COLUMN IF NOT EXISTS pool TEXT;
 
--- Keep required_pool values constrained to known modes
+UPDATE public.flashy_deck_assignments
+SET required_pool = 'any'
+WHERE required_pool IS NULL
+   OR LOWER(TRIM(required_pool)) NOT IN ('any', 'new', 'due', 'mixed');
+
 DO $$
 BEGIN
   IF NOT EXISTS (
@@ -27,7 +26,6 @@ BEGIN
   END IF;
 END $$;
 
--- Drop old overloads so PostgREST RPC resolution is unambiguous.
 DROP FUNCTION IF EXISTS public.flashy_bulk_assign_deck(
   UUID, UUID, UUID[], BOOLEAN, TEXT, INT, BOOLEAN, BOOLEAN, UUID, TEXT
 );
@@ -36,7 +34,6 @@ DROP FUNCTION IF EXISTS public.flashy_bulk_assign_deck(
   UUID, UUID, UUID[], BOOLEAN, TEXT, INT, BOOLEAN, BOOLEAN, UUID
 );
 
--- ─── Update bulk-assign RPC to accept and store required_pool ────────────────
 CREATE OR REPLACE FUNCTION public.flashy_bulk_assign_deck(
   p_teacher_deck_id UUID,
   p_teacher_id UUID,
@@ -71,14 +68,12 @@ BEGIN
   END IF;
 
   FOREACH sid IN ARRAY p_student_ids LOOP
-    -- Check if already assigned
     SELECT id INTO existing_assignment_id
       FROM flashy_deck_assignments fda
      WHERE fda.teacher_deck_id = p_teacher_deck_id AND fda.student_id = sid
      LIMIT 1;
 
     IF existing_assignment_id IS NOT NULL THEN
-      -- Update required_pool on existing assignment so teacher changes propagate
       UPDATE flashy_deck_assignments
          SET required_pool = normalized_required_pool
        WHERE id = existing_assignment_id;
@@ -90,7 +85,6 @@ BEGIN
       CONTINUE;
     END IF;
 
-    -- Create new assignment
     INSERT INTO flashy_deck_assignments (
       teacher_deck_id, student_id, teacher_id,
       sync_enabled, custom_name, study_goal_daily,
@@ -104,7 +98,6 @@ BEGIN
     )
     RETURNING id INTO new_assignment_id;
 
-    -- Copy all master cards to student
     INSERT INTO flashy_student_cards (
       assignment_id, source_card_id, student_id,
       front, back, example_sentence, pronunciation,
@@ -142,7 +135,6 @@ GRANT EXECUTE ON FUNCTION public.flashy_bulk_assign_deck(
   UUID, UUID, UUID[], BOOLEAN, TEXT, INT, BOOLEAN, BOOLEAN, UUID, TEXT
 ) TO authenticated;
 
--- Hint PostgREST to refresh RPC schema cache after migration.
 DO $$
 BEGIN
   PERFORM pg_notify('pgrst', 'reload schema');
