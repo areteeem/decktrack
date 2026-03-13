@@ -208,13 +208,13 @@ const DeckStudy = () => {
   // Render appropriate study mode
   switch (config.mode) {
     case "mcq":
-      return <MultipleChoice flashcards={cards} showTermFirst={showTermFirst} {...sharedProps} />;
+      return <MultipleChoice flashcards={cards} showTermFirst={showTermFirst} onSessionComplete={handleSessionComplete} {...sharedProps} />;
     case "fillblank":
-      return <FillBlank flashcards={cards} {...sharedProps} />;
+      return <FillBlank flashcards={cards} onSessionComplete={handleSessionComplete} {...sharedProps} />;
     case "match":
-      return <MatchGame flashcards={cards} {...sharedProps} />;
+      return <MatchGame flashcards={cards} onSessionComplete={handleSessionComplete} {...sharedProps} />;
     case "quiz":
-      return <FillBlank flashcards={cards} {...sharedProps} />;
+      return <FillBlank flashcards={cards} onSessionComplete={handleSessionComplete} {...sharedProps} />;
     case "flashcards":
     default:
       // For new cards use Learn, for due/mixed/hard/all use Practice

@@ -1,6 +1,6 @@
 import ProgressBar from "../../common/components/ProgressBar";
 import styles from "./MultipleChoice.module.css";
-import { useState, useMemo, useEffect, useCallback } from "react";
+import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import LoadingScreen from "../../common/components/LoadingScreen";
 
 /**
@@ -8,7 +8,7 @@ import LoadingScreen from "../../common/components/LoadingScreen";
  * Shows the term and 4 definition options (1 correct + 3 distractors).
  * Requires at least 4 cards in the deck.
  */
-const MultipleChoice = ({ flashcards, showTermFirst = true, onQuit }) => {
+const MultipleChoice = ({ flashcards, showTermFirst = true, onQuit, onSessionComplete }) => {
   const shuffled = useMemo(() => {
     if (!flashcards) return [];
     return [...flashcards].sort(() => Math.random() - 0.5);
@@ -18,6 +18,8 @@ const MultipleChoice = ({ flashcards, showTermFirst = true, onQuit }) => {
   const [selected, setSelected] = useState(null);
   const [correctCount, setCorrectCount] = useState(0);
   const [cardResults, setCardResults] = useState({});
+  const sessionStartRef = useRef(new Date().toISOString());
+  const sessionCompleteRef = useRef(false);
 
   // Generate 4 options for the current card
   const options = useMemo(() => {
@@ -87,6 +89,22 @@ const MultipleChoice = ({ flashcards, showTermFirst = true, onQuit }) => {
     window.addEventListener("keydown", handleKeyDown, true);
     return () => window.removeEventListener("keydown", handleKeyDown, true);
   }, [selected, options, current, shuffled.length, handleSelect, handleNext, onQuit]);
+
+  // Fire session complete callback when quiz finishes
+  useEffect(() => {
+    if (current >= shuffled.length && shuffled.length > 0 && !sessionCompleteRef.current && onSessionComplete) {
+      sessionCompleteRef.current = true;
+      const now = new Date().toISOString();
+      onSessionComplete({
+        session_type: 'test',
+        cards_studied: shuffled.length,
+        cards_correct: correctCount,
+        cards_incorrect: shuffled.length - correctCount,
+        started_at: sessionStartRef.current,
+        finished_at: now,
+      });
+    }
+  }, [current, shuffled.length, correctCount, onSessionComplete]);
 
   if (!flashcards) return <LoadingScreen />;
 

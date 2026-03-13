@@ -29,6 +29,7 @@ const BulkAssignModal = ({ open, setOpen, students, onAssigned }) => {
   const [allowStudentCards, setAllowStudentCards] = useState(true);
   const [allowStudentEdit, setAllowStudentEdit] = useState(true);
   const [requiredPool, setRequiredPool] = useState("any");
+  const [requiredMode, setRequiredMode] = useState("any");
   const [deckSearch, setDeckSearch] = useState("");
 
   const selectedDeck = useMemo(
@@ -56,6 +57,7 @@ const BulkAssignModal = ({ open, setOpen, students, onAssigned }) => {
     setAllowStudentCards(true);
     setAllowStudentEdit(true);
     setRequiredPool("any");
+    setRequiredMode("any");
     setDeckSearch("");
   };
 
@@ -97,6 +99,7 @@ const BulkAssignModal = ({ open, setOpen, students, onAssigned }) => {
         allowStudentCards,
         allowStudentEdit,
         requiredPool,
+        requiredMode,
       });
       const count = results?.length ?? 0;
       if (count > 0) {
@@ -311,6 +314,31 @@ const BulkAssignModal = ({ open, setOpen, students, onAssigned }) => {
                 <option value="new">Learn new words only</option>
                 <option value="due">Review due cards only</option>
                 <option value="mixed">Mixed session (new + due)</option>
+              </select>
+            </div>
+
+            <div>
+              <label style={{ display: "block", fontSize: "0.78rem", fontWeight: 600, marginBottom: "0.2rem" }}>
+                Study mode
+              </label>
+              <select
+                value={requiredMode}
+                onChange={(e) => setRequiredMode(e.target.value)}
+                style={{
+                  width: "100%",
+                  padding: "0.45rem",
+                  border: "1px solid var(--border-color)",
+                  borderRadius: "var(--radius)",
+                  background: "var(--bg-secondary)",
+                  color: "var(--fg)",
+                  fontSize: "0.85rem",
+                }}
+              >
+                <option value="any">Any mode (student chooses)</option>
+                <option value="flashcards">Flashcards (flip & rate)</option>
+                <option value="quiz">Fill-in-the-blank</option>
+                <option value="mcq">Multiple choice</option>
+                <option value="match">Match game</option>
               </select>
             </div>
           </div>

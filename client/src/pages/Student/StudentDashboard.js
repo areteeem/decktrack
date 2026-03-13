@@ -25,6 +25,15 @@ const requiredPoolHint = (pool) => {
   return 'Any completed study session for this deck will count.';
 };
 
+const requiredModeLabel = (mode) => {
+  const m = String(mode || 'any').trim().toLowerCase();
+  if (m === 'flashcards') return 'Mode: Flashcards';
+  if (m === 'quiz') return 'Mode: Fill-in-the-blank';
+  if (m === 'mcq') return 'Mode: Multiple choice';
+  if (m === 'match') return 'Mode: Match game';
+  return null; // don't show badge for 'any'
+};
+
 const StudentDashboard = () => {
   const { profile, user } = useAuth();
   const { data: assignments, loading } = useAssignments();
@@ -179,8 +188,14 @@ const AssignedDeckCard = ({ assignment, deckStats }) => {
   const newCount = ds.new_count ?? ds.newCards ?? 0;
   const masteryPct = total > 0 ? Math.round((mastered / total) * 100) : 0;
   const requiredPool = String(assignment?.required_pool || 'any').trim().toLowerCase();
+  const requiredMode = String(assignment?.required_mode || 'any').trim().toLowerCase();
 
   const primaryRoute = (() => {
+    // If a specific quiz/game mode is required, route directly to that mode
+    if (['quiz', 'mcq', 'match'].includes(requiredMode)) {
+      return `/study/${assignment.id}/mode/${requiredMode}`;
+    }
+    // Otherwise use pool-based SRS routing
     if (requiredPool === 'new') return `/study/${assignment.id}/new`;
     if (requiredPool === 'due') return `/study/${assignment.id}/due`;
     if (requiredPool === 'mixed') return `/study/${assignment.id}/mixed`;
@@ -189,9 +204,11 @@ const AssignedDeckCard = ({ assignment, deckStats }) => {
     return `/deck/${assignment.id}/browse`;
   })();
 
-  const primaryLabel = requiredPool === 'any'
-    ? 'Start study'
-    : 'Start required study';
+  const primaryLabel = (requiredPool !== 'any' || requiredMode !== 'any')
+    ? 'Start required study'
+    : 'Start study';
+
+  const modeLabel = requiredModeLabel(requiredMode);
 
   return (
     <div className={styles.deckCard}>
@@ -200,6 +217,7 @@ const AssignedDeckCard = ({ assignment, deckStats }) => {
       <p className={styles.deckDesc} style={{ marginTop: "0.1rem" }}>Assigned by teacher</p>
       <div className={styles.deckMeta}>
         <Badge>{requiredPoolLabel(requiredPool)}</Badge>
+        {modeLabel && <Badge>{modeLabel}</Badge>}
         {assignment.flashy_decks?.category && (
           <Badge>{assignment.flashy_decks.category}</Badge>
         )}
@@ -240,13 +258,19 @@ const AssignedDeckCard = ({ assignment, deckStats }) => {
         <Link to={primaryRoute}>
           <Button>{primaryLabel}</Button>
         </Link>
-        {requiredPool === 'any' && (
+        {requiredPool === 'any' && requiredMode === 'any' && (
           <>
             <Link to={`/study/${assignment.id}/new`}>
               <Button bgcolor="transparent" color="var(--fg)">Learn New</Button>
             </Link>
             <Link to={`/study/${assignment.id}/due`}>
               <Button bgcolor="transparent" color="var(--fg)">Study Due</Button>
+            </Link>
+            <Link to={`/study/${assignment.id}/mode/mcq`}>
+              <Button bgcolor="transparent" color="var(--fg)">Quiz</Button>
+            </Link>
+            <Link to={`/study/${assignment.id}/mode/match`}>
+              <Button bgcolor="transparent" color="var(--fg)">Match</Button>
             </Link>
           </>
         )}

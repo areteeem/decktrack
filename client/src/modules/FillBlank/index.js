@@ -21,7 +21,7 @@ const buildBlankPrompt = (definition, term) => {
   return { parts: result, hasBlank: true };
 };
 
-const FillBlank = ({ flashcards, onQuit }) => {
+const FillBlank = ({ flashcards, onQuit, onSessionComplete }) => {
   const shuffled = useMemo(() => {
     if (!flashcards) return [];
     return [...flashcards].sort(() => Math.random() - 0.5);
@@ -33,11 +33,29 @@ const FillBlank = ({ flashcards, onQuit }) => {
   const [correctCount, setCorrectCount] = useState(0);
   // Per-card tracking: { [index]: { front, back, correct: bool, userAnswer } }
   const [cardResults, setCardResults] = useState({});
+  const sessionStartRef = useRef(new Date().toISOString());
+  const sessionCompleteRef = useRef(false);
   const inputRef = useRef(null);
 
   useEffect(() => {
     inputRef.current?.focus();
   }, [current]);
+
+  // Fire session complete callback when quiz finishes
+  useEffect(() => {
+    if (current >= shuffled.length && shuffled.length > 0 && !sessionCompleteRef.current && onSessionComplete) {
+      sessionCompleteRef.current = true;
+      const now = new Date().toISOString();
+      onSessionComplete({
+        session_type: 'test',
+        cards_studied: shuffled.length,
+        cards_correct: correctCount,
+        cards_incorrect: shuffled.length - correctCount,
+        started_at: sessionStartRef.current,
+        finished_at: now,
+      });
+    }
+  }, [current, shuffled.length, correctCount, onSessionComplete]);
 
   if (!flashcards) return <LoadingScreen />;
 

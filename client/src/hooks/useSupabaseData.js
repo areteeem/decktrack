@@ -832,6 +832,9 @@ export const useAssignDeck = () => {
     const requiredPoolRaw = String(options?.requiredPool || 'any').trim().toLowerCase();
     const allowedPools = new Set(['any', 'new', 'due', 'mixed']);
     const requiredPool = allowedPools.has(requiredPoolRaw) ? requiredPoolRaw : 'any';
+    const requiredModeRaw = String(options?.requiredMode || 'any').trim().toLowerCase();
+    const allowedModes = new Set(['any', 'flashcards', 'quiz', 'mcq', 'match']);
+    const requiredMode = allowedModes.has(requiredModeRaw) ? requiredModeRaw : 'any';
     // Create assignment
     const { data: assignment, error: aErr } = await supabase
       .from('flashy_deck_assignments')
@@ -840,6 +843,7 @@ export const useAssignDeck = () => {
         student_id: studentId,
         teacher_id: user.id,
         required_pool: requiredPool,
+        required_mode: requiredMode,
       })
       .select()
       .single();
@@ -1201,6 +1205,51 @@ export const useRecordSession = () => {
   return { recordSession, retentionDays: STUDY_RETENTION_DAYS };
 };
 
+/**
+ * Signal study completion to the teacher app via student_updates table.
+ * This allows auto-marking homework as done WITHOUT requiring the Student App
+ * to be open — Flashy writes the signal directly after a study session.
+ */
+export const useNotifyStudyCompletion = () => {
+  const { user } = useAuth();
+
+  const notifyCompletion = async (assignment, sessionPool) => {
+    if (!user || !assignment) return;
+
+    const teacherId = String(assignment.teacher_id || '').trim();
+    const teacherDeckId = String(assignment.teacher_deck_id || '').trim();
+    const assignmentId = String(assignment.id || '').trim();
+    if (!teacherId || !teacherDeckId) return;
+
+    // Check if the session matches the required pool (or pool is 'any')
+    const requiredPool = String(assignment.required_pool || 'any').trim().toLowerCase();
+    const pool = String(sessionPool || '').trim().toLowerCase();
+    if (requiredPool !== 'any' && pool && pool !== requiredPool) return;
+
+    const autoMarkedAt = new Date().toISOString();
+    try {
+      await supabase.from('student_updates').insert({
+        student_id: user.id,
+        field_name: 'decktrackAutoDone',
+        new_value: {
+          flashyDeckId: teacherDeckId,
+          assignmentId,
+          autoMarkedAt,
+          feedback: '\u2713 Marked as done automatically',
+        },
+        timestamp: autoMarkedAt,
+        processed: false,
+        teacher_id: teacherId,
+      });
+    } catch (err) {
+      // Best-effort — don't block the user if this fails
+      console.warn('[Flashy] Auto-complete signal failed:', err);
+    }
+  };
+
+  return { notifyCompletion };
+};
+
 // ─────────────────────────────────────────────────────
 // Activity log
 // ─────────────────────────────────────────────────────
@@ -1453,18 +1502,19 @@ export const useBulkAssignDeck = () => {
         p_allow_student_edit: options.allowStudentEdit ?? true,
         p_group_assignment_id: options.groupAssignmentId ?? null,
         p_required_pool: options.requiredPool ?? 'any',
+        p_required_mode: options.requiredMode ?? 'any',
       };
 
       let { data, error } = await supabase.rpc('flashy_bulk_assign_deck', rpcPayload);
 
       const errorText = String(error?.message || error || '');
-      const missingRequiredPoolSignature = error
-        && /Could not find the function public\.flashy_bulk_assign_deck/i.test(errorText)
-        && errorText.includes('p_required_pool');
+      const missingSignature = error
+        && /Could not find the function public\.flashy_bulk_assign_deck/i.test(errorText);
 
-      if (missingRequiredPoolSignature) {
+      if (missingSignature) {
         const legacyPayload = { ...rpcPayload };
         delete legacyPayload.p_required_pool;
+        delete legacyPayload.p_required_mode;
         const legacyResult = await supabase.rpc('flashy_bulk_assign_deck', legacyPayload);
         data = legacyResult?.data;
         error = legacyResult?.error;

@@ -22,7 +22,7 @@ import TeacherCardBrowser from "./pages/Teacher/TeacherCardBrowser";
 import GroupsPage from "./pages/Teacher/GroupsPage";
 import StudentDashboard from "./pages/Student/StudentDashboard";
 import StudentDeckBrowse from "./pages/Student/StudentDeckBrowse";
-import { StudentLearnNew, StudentPracticeDue, StudentStudyMixed } from "./pages/Student/StudentStudy";
+import { StudentLearnNew, StudentPracticeDue, StudentStudyMixed, StudentStudyMode } from "./pages/Student/StudentStudy";
 import { CrossDeckLearnNew, CrossDeckPracticeDue } from "./pages/Student/CrossDeckStudy";
 import StudentLaunchPage from "./pages/Student/StudentLaunchPage";
 import Settings from "./pages/Settings";
@@ -89,6 +89,7 @@ export default function Home() {
                   <Route path="/study/:assignmentId/new" element={<StudentLearnNew />} />
                   <Route path="/study/:assignmentId/due" element={<StudentPracticeDue />} />
                   <Route path="/study/:assignmentId/mixed" element={<StudentStudyMixed />} />
+                  <Route path="/study/:assignmentId/mode/:mode" element={<StudentStudyMode />} />
                   <Route path="/deck/:assignmentId/browse" element={<StudentDeckBrowse />} />
                   <Route path="/study/all/new" element={<CrossDeckLearnNew />} />
                   <Route path="/study/all/due" element={<CrossDeckPracticeDue />} />

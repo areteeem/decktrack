@@ -10,7 +10,7 @@ import LoadingScreen from "../../common/components/LoadingScreen";
  */
 const BATCH_SIZE = 6;
 
-const MatchGame = ({ flashcards, onQuit }) => {
+const MatchGame = ({ flashcards, onQuit, onSessionComplete }) => {
   const shuffled = useMemo(() => {
     if (!flashcards) return [];
     return [...flashcards].sort(() => Math.random() - 0.5);
@@ -25,6 +25,8 @@ const MatchGame = ({ flashcards, onQuit }) => {
   const [elapsed, setElapsed] = useState(0);
   const [missCount, setMissCount] = useState({});
   const timerRef = useRef(null);
+  const sessionStartRef = useRef(new Date().toISOString());
+  const sessionCompleteRef = useRef(false);
 
   const isComplete = totalMatched >= shuffled.length;
 
@@ -118,6 +120,22 @@ const MatchGame = ({ flashcards, onQuit }) => {
   }
 
   if (isComplete) {
+    // Fire session complete callback
+    if (!sessionCompleteRef.current && onSessionComplete) {
+      sessionCompleteRef.current = true;
+      const totalMisses = Object.values(missCount).reduce((s, v) => s + v, 0);
+      const correctOnFirst = shuffled.length - Object.keys(missCount).filter(k => missCount[k] > 0).length;
+      const now = new Date().toISOString();
+      onSessionComplete({
+        session_type: 'test',
+        cards_studied: shuffled.length,
+        cards_correct: correctOnFirst,
+        cards_incorrect: totalMisses,
+        started_at: sessionStartRef.current,
+        finished_at: now,
+      });
+    }
+
     // Find cards with most mismatches
     const hardestCards = shuffled
       .filter(c => (missCount[c.id] || 0) > 0)
