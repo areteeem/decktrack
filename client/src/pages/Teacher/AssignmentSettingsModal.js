@@ -17,6 +17,7 @@ const AssignmentSettingsModal = ({ open, setOpen, assignment, onUpdated }) => {
   const [allowStudentCards, setAllowStudentCards] = useState(assignment?.allow_student_cards ?? true);
   const [allowStudentEdit, setAllowStudentEdit] = useState(assignment?.allow_student_edit ?? true);
   const [deadline, setDeadline] = useState(assignment?.deadline || "");
+  const [requiredPool, setRequiredPool] = useState(assignment?.required_pool || "any");
 
   const handleSave = async () => {
     try {
@@ -27,6 +28,7 @@ const AssignmentSettingsModal = ({ open, setOpen, assignment, onUpdated }) => {
         allow_student_cards: allowStudentCards,
         allow_student_edit: allowStudentEdit,
         deadline: deadline || null,
+        required_pool: requiredPool,
       });
       toast.success("Assignment settings updated.");
       onUpdated?.();
@@ -97,6 +99,36 @@ const AssignmentSettingsModal = ({ open, setOpen, assignment, onUpdated }) => {
           state={studyGoalDaily}
           setState={setStudyGoalDaily}
         />
+
+        <div>
+          <label style={{ display: "block", fontSize: "0.78rem", fontWeight: 600, marginBottom: "0.2rem" }}>
+            Required study type
+          </label>
+          <select
+            value={requiredPool}
+            onChange={(e) => setRequiredPool(e.target.value)}
+            style={{
+              width: "100%",
+              padding: "0.45rem",
+              border: "1px solid var(--border-color)",
+              borderRadius: "var(--radius)",
+              background: "var(--bg-secondary)",
+              color: "var(--fg)",
+              fontSize: "0.85rem",
+            }}
+          >
+            <option value="any">Any completion (student chooses)</option>
+            <option value="new">Learn new words only</option>
+            <option value="due">Review due cards only</option>
+            <option value="mixed">Mixed session (new + due)</option>
+          </select>
+          <p style={{ fontSize: "0.75rem", color: "var(--fg-muted)", margin: "0.2rem 0 0" }}>
+            {requiredPool === "any" && "Auto-done fires on any study session for this deck."}
+            {requiredPool === "new" && "Auto-done fires only when a 'Learn new' session is completed."}
+            {requiredPool === "due" && "Auto-done fires only when a 'Review due' session is completed."}
+            {requiredPool === "mixed" && "Auto-done fires only when a mixed (new+due) session is completed."}
+          </p>
+        </div>
 
         <div>
           <label style={{ display: "block", fontSize: "0.78rem", fontWeight: 600, marginBottom: "0.2rem" }}>

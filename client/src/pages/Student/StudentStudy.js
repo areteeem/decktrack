@@ -20,6 +20,7 @@ export const StudentLearnNew = () => {
       ...summary,
       assignment_id: assignmentId,
       deck_name: deckName,
+      pool: 'new',
     });
   };
 
@@ -46,6 +47,7 @@ export const StudentPracticeDue = () => {
       ...summary,
       assignment_id: assignmentId,
       deck_name: deckName,
+      pool: 'due',
     });
   };
 
@@ -59,4 +61,35 @@ export const StudentPracticeDue = () => {
     )
     .map((c) => ({ ...c, new: c.is_new, nextReview: c.next_review_days }));
   return <Practice flashcards={dueCards} onQuit={() => navigate(-1)} onSessionComplete={handleSessionComplete} />;
+};
+
+/** Show new + due cards combined for a given assignment (mixed session) */
+export const StudentStudyMixed = () => {
+  const { assignmentId } = useParams();
+  const navigate = useNavigate();
+  const { data: cards, loading } = useStudentDeckCards(assignmentId);
+  const { data: assignments } = useAssignments();
+  const { recordSession } = useRecordSession();
+
+  const assignment = (assignments || []).find((item) => String(item?.id) === String(assignmentId));
+  const deckName = assignment?.flashy_decks?.name || 'Assigned Deck';
+
+  const handleSessionComplete = async (summary) => {
+    await recordSession({
+      ...summary,
+      assignment_id: assignmentId,
+      deck_name: deckName,
+      pool: 'mixed',
+    });
+  };
+
+  if (loading) return <LoadingScreen />;
+  const now = new Date();
+  const mixedCards = (cards || [])
+    .filter((c) =>
+      c.is_new === true ||
+      (c.is_new === false && c.mastered === false && new Date(c.due) < now)
+    )
+    .map((c) => ({ ...c, new: c.is_new, nextReview: c.next_review_days }));
+  return <Learn flashcards={mixedCards} onQuit={() => navigate(-1)} onSessionComplete={handleSessionComplete} />;
 };

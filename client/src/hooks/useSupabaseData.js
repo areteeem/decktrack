@@ -1156,6 +1156,10 @@ export const useRecordSession = () => {
     const assignmentIdRaw = String(fields?.assignment_id || '').trim();
     const assignmentId = assignmentIdRaw || null;
 
+    const poolRaw = String(fields?.pool || '').trim().toLowerCase();
+    const allowedPools = new Set(['new', 'due', 'mixed', 'hard', 'all']);
+    const pool = allowedPools.has(poolRaw) ? poolRaw : null;
+
     const payload = {
       student_id: user.id,
       assignment_id: assignmentId,
@@ -1164,6 +1168,7 @@ export const useRecordSession = () => {
       cards_correct: cardsCorrect,
       cards_incorrect: cardsIncorrect,
       session_type: sessionType,
+      pool,
       started_at: startedAt,
       finished_at: finishedAt,
       duration_seconds: durationSeconds,
@@ -1466,6 +1471,7 @@ export const useUpdateAssignment = () => {
     const allowed = [
       'sync_enabled', 'custom_name', 'study_goal_daily',
       'allow_student_cards', 'allow_student_edit', 'deadline', 'is_archived',
+      'required_pool',
     ];
     const safe = {};
     for (const key of allowed) {
