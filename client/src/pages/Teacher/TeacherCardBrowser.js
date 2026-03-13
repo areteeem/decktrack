@@ -7,6 +7,7 @@ import LoadingScreen from "../../common/components/LoadingScreen";
 import Badge from "../../common/components/Badge";
 import Button from "../../common/components/Button";
 import Modal from "../../common/components/Modal";
+import ConfirmModal from "../../common/components/ConfirmModal";
 import RichTextInput from "../../common/components/RichTextInput";
 import { supabase } from "../../lib/supabaseClient";
 import { useAuth } from "../../contexts/AuthContext";
@@ -333,16 +334,23 @@ const TeacherCardBrowser = () => {
     }
   };
 
-  const handleDelete = async (card) => {
-    if (!window.confirm("Delete this student card? This cannot be undone.")) return;
-    try {
-      await teacherDeleteStudentCard(card.id);
-      setCards((prev) => prev.filter((c) => c.id !== card.id));
-      toast.success("Card deleted");
-      setEditModal({ open: false, card: null });
-    } catch (err) {
-      toast.error(err.message || "Failed to delete");
-    }
+  const [confirmState, setConfirmState] = useState({ open: false, message: '', action: null });
+
+  const handleDelete = (card) => {
+    setConfirmState({
+      open: true,
+      message: 'Delete this student card? This cannot be undone.',
+      action: async () => {
+        try {
+          await teacherDeleteStudentCard(card.id);
+          setCards((prev) => prev.filter((c) => c.id !== card.id));
+          toast.success("Card deleted");
+          setEditModal({ open: false, card: null });
+        } catch (err) {
+          toast.error(err.message || "Failed to delete");
+        }
+      },
+    });
   };
 
   const handleReset = async (card) => {
@@ -393,19 +401,24 @@ const TeacherCardBrowser = () => {
 
   const handleBulkDelete = async () => {
     if (selectedCards.size === 0) return;
-    if (!window.confirm(`Delete ${selectedCards.size} card(s)? This cannot be undone.`)) return;
-    setBulkDeleting(true);
-    try {
-      await bulkDelete([...selectedCards]);
-      setCards((prev) => prev.filter((c) => !selectedCards.has(c.id)));
-      toast.success(`Deleted ${selectedCards.size} card(s)`);
-      setSelectedCards(new Set());
-      setSelectionMode(false);
-    } catch (err) {
-      toast.error(err.message || "Failed to delete some cards");
-    } finally {
-      setBulkDeleting(false);
-    }
+    setConfirmState({
+      open: true,
+      message: `Delete ${selectedCards.size} card(s)? This cannot be undone.`,
+      action: async () => {
+        setBulkDeleting(true);
+        try {
+          await bulkDelete([...selectedCards]);
+          setCards((prev) => prev.filter((c) => !selectedCards.has(c.id)));
+          toast.success(`Deleted ${selectedCards.size} card(s)`);
+          setSelectedCards(new Set());
+          setSelectionMode(false);
+        } catch (err) {
+          toast.error(err.message || "Failed to delete some cards");
+        } finally {
+          setBulkDeleting(false);
+        }
+      },
+    });
   };
 
   /* ── Keyboard shortcuts ── */
@@ -662,6 +675,18 @@ const TeacherCardBrowser = () => {
         setOpen={setAddModal}
         onAdd={handleAddCard}
         adding={adding}
+      />
+      <ConfirmModal
+        open={confirmState.open}
+        title="Confirm"
+        message={confirmState.message}
+        confirmLabel="Delete"
+        danger
+        onConfirm={async () => {
+          setConfirmState(s => ({ ...s, open: false }));
+          await confirmState.action?.();
+        }}
+        onCancel={() => setConfirmState(s => ({ ...s, open: false }))}
       />
     </div>
   );

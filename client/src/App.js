@@ -20,6 +20,7 @@ import StudentsPage from "./pages/Teacher/StudentsPage";
 import StudentDetailPage from "./pages/Teacher/StudentDetailPage";
 import TeacherCardBrowser from "./pages/Teacher/TeacherCardBrowser";
 import GroupsPage from "./pages/Teacher/GroupsPage";
+import GroupDetailPage from "./pages/Teacher/GroupDetailPage";
 import StudentDashboard from "./pages/Student/StudentDashboard";
 import StudentDeckBrowse from "./pages/Student/StudentDeckBrowse";
 import { StudentLearnNew, StudentPracticeDue, StudentStudyMixed, StudentStudyMode } from "./pages/Student/StudentStudy";
@@ -80,6 +81,7 @@ export default function Home() {
                   <Route path="/students/:studentId" element={<StudentDetailPage />} />
                   <Route path="/students/:studentId/cards/:assignmentId" element={<TeacherCardBrowser />} />
                   <Route path="/groups" element={<GroupsPage />} />
+                  <Route path="/groups/:id" element={<GroupDetailPage />} />
                 </>
               )}
 

@@ -18,6 +18,7 @@ import LoadingScreen from "../../common/components/LoadingScreen";
 import Badge from "../../common/components/Badge";
 import Button from "../../common/components/Button";
 import Modal from "../../common/components/Modal";
+import ConfirmModal from "../../common/components/ConfirmModal";
 import RichTextInput from "../../common/components/RichTextInput";
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "../../lib/supabaseClient";
@@ -139,6 +140,7 @@ const StudentDetailPage = () => {
   const [editPersonalFront, setEditPersonalFront] = useState('');
   const [editPersonalBack, setEditPersonalBack] = useState('');
   const [editPersonalSaving, setEditPersonalSaving] = useState(false);
+  const [confirmState, setConfirmState] = useState({ open: false, message: '', action: null, danger: false });
   const { updateCard } = useTeacherUpdateStudentCard();
   const { updateAssignment } = useUpdateAssignment();
   const { deleteAssignment } = useDeleteAssignment();
@@ -203,14 +205,19 @@ const StudentDetailPage = () => {
   };
 
   const handleDeletePersonalDeck = async (deckId, name) => {
-    if (!window.confirm(`Permanently delete "${name}" and all its cards? This cannot be undone.`)) return;
-    try {
-      await deletePersonalDeck(deckId);
-      toast.success('Deck deleted permanently');
-      fetchData();
-    } catch (err) {
-      toast.error(err.message || 'Failed to delete');
-    }
+    setConfirmState({
+      open: true, danger: true,
+      message: `Permanently delete "${name}" and all its cards? This cannot be undone.`,
+      action: async () => {
+        try {
+          await deletePersonalDeck(deckId);
+          toast.success('Deck deleted permanently');
+          fetchData();
+        } catch (err) {
+          toast.error(err.message || 'Failed to delete');
+        }
+      },
+    });
   };
 
   const openEditPersonalCard = (card, deckId) => {
@@ -242,33 +249,43 @@ const StudentDetailPage = () => {
   };
 
   const handleDeletePersonalCard = async (cardId, deckId) => {
-    if (!window.confirm('Delete this card? This cannot be undone.')) return;
-    try {
-      await deletePersonalCard(cardId);
-      setExpandedPersonal((prev) => {
-        const cards = prev[deckId];
-        if (!Array.isArray(cards)) return prev;
-        return { ...prev, [deckId]: cards.filter(c => c.id !== cardId) };
-      });
-      toast.success('Card deleted');
-    } catch (err) {
-      toast.error(err.message || 'Failed to delete card');
-    }
+    setConfirmState({
+      open: true, danger: true,
+      message: 'Delete this card? This cannot be undone.',
+      action: async () => {
+        try {
+          await deletePersonalCard(cardId);
+          setExpandedPersonal((prev) => {
+            const cards = prev[deckId];
+            if (!Array.isArray(cards)) return prev;
+            return { ...prev, [deckId]: cards.filter(c => c.id !== cardId) };
+          });
+          toast.success('Card deleted');
+        } catch (err) {
+          toast.error(err.message || 'Failed to delete card');
+        }
+      },
+    });
   };
 
   const handleDeleteStudentCard = async (cardId, assignmentId) => {
-    if (!window.confirm('Delete this student card? This cannot be undone.')) return;
-    try {
-      await teacherDeleteStudentCard(cardId);
-      setExpandedCards((prev) => {
-        const cards = prev[assignmentId];
-        if (!Array.isArray(cards)) return prev;
-        return { ...prev, [assignmentId]: cards.filter(c => c.id !== cardId) };
-      });
-      toast.success('Card deleted');
-    } catch (err) {
-      toast.error(err.message || 'Failed to delete card');
-    }
+    setConfirmState({
+      open: true, danger: true,
+      message: 'Delete this student card? This cannot be undone.',
+      action: async () => {
+        try {
+          await teacherDeleteStudentCard(cardId);
+          setExpandedCards((prev) => {
+            const cards = prev[assignmentId];
+            if (!Array.isArray(cards)) return prev;
+            return { ...prev, [assignmentId]: cards.filter(c => c.id !== cardId) };
+          });
+          toast.success('Card deleted');
+        } catch (err) {
+          toast.error(err.message || 'Failed to delete card');
+        }
+      },
+    });
   };
 
   const handleResetStudentCard = async (cardId, assignmentId) => {
@@ -306,14 +323,19 @@ const StudentDetailPage = () => {
   };
 
   const handleDeleteAssignment = async (assignmentId, deckName) => {
-    if (!window.confirm(`Permanently delete assignment "${deckName}" and all student cards? This cannot be undone.`)) return;
-    try {
-      await deleteAssignment(assignmentId);
-      toast.success('Assignment deleted permanently');
-      fetchData();
-    } catch (err) {
-      toast.error(err.message || 'Failed to delete');
-    }
+    setConfirmState({
+      open: true, danger: true,
+      message: `Permanently delete assignment "${deckName}" and all student cards? This cannot be undone.`,
+      action: async () => {
+        try {
+          await deleteAssignment(assignmentId);
+          toast.success('Assignment deleted permanently');
+          fetchData();
+        } catch (err) {
+          toast.error(err.message || 'Failed to delete');
+        }
+      },
+    });
   };
 
   const fetchCards = useCallback(async (assignmentId) => {
@@ -400,6 +422,7 @@ const StudentDetailPage = () => {
   const recentSessions = stats?.recentSessions || [];
 
   return (
+    <>
     <div>
       <div className={styles.header}>
         <div>
@@ -1019,6 +1042,19 @@ const StudentDetailPage = () => {
         </>
       )}
     </div>
+    <ConfirmModal
+      open={confirmState.open}
+      title="Confirm"
+      message={confirmState.message}
+      confirmLabel="Delete"
+      danger={confirmState.danger}
+      onConfirm={async () => {
+        setConfirmState(s => ({ ...s, open: false }));
+        await confirmState.action?.();
+      }}
+      onCancel={() => setConfirmState(s => ({ ...s, open: false }))}
+    />
+    </>
   );
 };
 

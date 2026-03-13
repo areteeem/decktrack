@@ -31,6 +31,7 @@ const requiredModeLabel = (mode) => {
   if (m === 'quiz') return 'Mode: Fill-in-the-blank';
   if (m === 'mcq') return 'Mode: Multiple choice';
   if (m === 'match') return 'Mode: Match game';
+  if (m === 'wheel') return 'Mode: Spin wheel';
   return null; // don't show badge for 'any'
 };
 
@@ -42,6 +43,7 @@ const StudentDashboard = () => {
   const { data: ownDecks, loading: ownDecksLoading, refetch: refetchOwn } = useDecks();
   const { data: personalCards } = useAllOwnDeckCards();
   const [showNewDeckModal, setShowNewDeckModal] = useState(false);
+  const [deckSearch, setDeckSearch] = useState("");
 
   // Refresh assignment stats when returning from a study session (page visibility change)
   const refreshAllStats = useCallback(() => {
@@ -73,9 +75,23 @@ const StudentDashboard = () => {
     };
   }, [personalCards]);
 
-  if (loading) return <LoadingScreen />;
-
   const activeAssignments = (assignments || []).filter((a) => !a.is_archived);
+
+  const searchLower = deckSearch.trim().toLowerCase();
+  const filteredOwnDecks = useMemo(() => {
+    if (!ownDecks || !searchLower) return ownDecks || [];
+    return ownDecks.filter(d => (d.name || '').toLowerCase().includes(searchLower));
+  }, [ownDecks, searchLower]);
+
+  const filteredAssignments = useMemo(() => {
+    if (!searchLower) return activeAssignments;
+    return activeAssignments.filter(a => {
+      const name = (a.custom_name || a.flashy_decks?.name || '').toLowerCase();
+      return name.includes(searchLower);
+    });
+  }, [activeAssignments, searchLower]);
+
+  if (loading) return <LoadingScreen />;
 
   // Combined stats (assigned + personal)
   const combinedTotal = (stats?.totalCards || 0) + personalStats.total;
@@ -144,6 +160,27 @@ const StudentDashboard = () => {
         </div>
       )}
 
+      {/* ── Search ── */}
+      {((ownDecks && ownDecks.length > 0) || activeAssignments.length > 0) && (
+        <input
+          type="text"
+          placeholder="Search decks..."
+          value={deckSearch}
+          onChange={(e) => setDeckSearch(e.target.value)}
+          style={{
+            width: "100%",
+            maxWidth: "24rem",
+            padding: "0.5rem 0.75rem",
+            marginBottom: "1rem",
+            border: "1px solid var(--border-color)",
+            borderRadius: "var(--radius)",
+            background: "var(--bg-secondary)",
+            color: "var(--fg)",
+            fontSize: "0.88rem",
+          }}
+        />
+      )}
+
       {/* ── My Decks (student-created) ─────────── */}
       <NewDeckModal
         open={showNewDeckModal}
@@ -156,7 +193,7 @@ const StudentDashboard = () => {
       </div>
       {ownDecksLoading ? (
         <p style={{ color: "var(--fg-muted)", fontSize: "0.85rem" }}>Loading...</p>
-      ) : (!ownDecks || ownDecks.length === 0) ? (
+      ) : (!filteredOwnDecks || filteredOwnDecks.length === 0) ? (
         <div className={styles.empty} style={{ marginBottom: "1.5rem" }}>
           <h2>No decks yet</h2>
           <p>Create your own flashcard deck to start studying.</p>
@@ -164,14 +201,14 @@ const StudentDashboard = () => {
         </div>
       ) : (
         <div className={styles.deckGrid} style={{ marginBottom: "1.5rem" }}>
-          {ownDecks.map((deck) => (
+          {filteredOwnDecks.map((deck) => (
             <DeckCard key={deck.id} deck={deck} />
           ))}
         </div>
       )}
 
       {/* ── Assigned Studies ───────────────────── */}
-      {(!activeAssignments || activeAssignments.length === 0) ? (
+      {(!filteredAssignments || filteredAssignments.length === 0) ? (
         <div className={styles.empty}>
           <p style={{ color: "var(--fg-muted)", fontSize: "0.85rem" }}>No assigned studies yet.</p>
         </div>
@@ -179,7 +216,7 @@ const StudentDashboard = () => {
         <>
           <h2 style={{ marginBottom: "0.5rem" }}>Assigned Studies</h2>
           <div className={styles.deckGrid}>
-            {activeAssignments.map((a) => (
+            {filteredAssignments.map((a) => (
               <AssignedDeckCard key={a.id} assignment={a} deckStats={deckStats} />
             ))}
           </div>
@@ -215,7 +252,7 @@ const AssignedDeckCard = ({ assignment, deckStats }) => {
 
   const primaryRoute = (() => {
     // If a specific quiz/game mode is required, route directly to that mode
-    if (['quiz', 'mcq', 'match'].includes(requiredMode)) {
+    if (['quiz', 'mcq', 'match', 'wheel'].includes(requiredMode)) {
       return `/study/${assignment.id}/mode/${requiredMode}`;
     }
     // Otherwise use pool-based SRS routing
@@ -299,6 +336,9 @@ const AssignedDeckCard = ({ assignment, deckStats }) => {
             </Link>
             <Link to={`/study/${assignment.id}/mode/match`}>
               <Button bgcolor="transparent" color="var(--fg)">Match</Button>
+            </Link>
+            <Link to={`/study/${assignment.id}/mode/wheel`}>
+              <Button bgcolor="transparent" color="var(--fg)">🎡 Wheel</Button>
             </Link>
           </>
         )}

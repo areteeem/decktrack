@@ -852,7 +852,7 @@ export const useAssignDeck = () => {
     const allowedPools = new Set(['any', 'new', 'due', 'mixed']);
     const requiredPool = allowedPools.has(requiredPoolRaw) ? requiredPoolRaw : 'any';
     const requiredModeRaw = String(options?.requiredMode || 'any').trim().toLowerCase();
-    const allowedModes = new Set(['any', 'flashcards', 'quiz', 'mcq', 'match']);
+    const allowedModes = new Set(['any', 'flashcards', 'quiz', 'mcq', 'match', 'wheel']);
     const requiredMode = allowedModes.has(requiredModeRaw) ? requiredModeRaw : 'any';
     // Create assignment
     const { data: assignment, error: aErr } = await supabase
@@ -1539,6 +1539,89 @@ export const useGroupMembers = () => {
   return { addMembers, removeMembers };
 };
 
+/** Fetch leaderboard data for all members of a group */
+export const useGroupLeaderboard = (groupId) => {
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  const refetch = useCallback(async () => {
+    if (!groupId) { setData(null); setLoading(false); return; }
+    setLoading(true);
+    try {
+      // 1. Fetch group members with profile info
+      const { data: members } = await supabase
+        .from('flashy_group_members')
+        .select('student_id, flashy_profiles(id, display_name, email)')
+        .eq('group_id', groupId);
+
+      if (!members || members.length === 0) { setData([]); setLoading(false); return; }
+
+      const studentIds = members.map(m => m.student_id);
+
+      // 2. Fetch card stats + session stats in parallel
+      const sessionsCutoff = getStudyCutoffIso();
+      const [cardsRes, sessionsRes] = await Promise.all([
+        supabase.from('flashy_student_cards')
+          .select('student_id, mastered, is_new, reviews')
+          .in('student_id', studentIds)
+          .eq('is_deleted_by_teacher', false),
+        supabase.from('flashy_study_sessions')
+          .select('student_id, cards_studied, cards_correct, duration_seconds')
+          .in('student_id', studentIds)
+          .gte('started_at', sessionsCutoff),
+      ]);
+
+      // 3. Aggregate per student
+      const cardMap = {};
+      const sessionMap = {};
+      for (const c of (cardsRes.data || [])) {
+        if (!cardMap[c.student_id]) cardMap[c.student_id] = { total: 0, mastered: 0, reviews: 0 };
+        cardMap[c.student_id].total++;
+        if (c.mastered) cardMap[c.student_id].mastered++;
+        cardMap[c.student_id].reviews += (c.reviews || 0);
+      }
+      for (const s of (sessionsRes.data || [])) {
+        if (!sessionMap[s.student_id]) sessionMap[s.student_id] = { sessions: 0, studied: 0, correct: 0, time: 0 };
+        sessionMap[s.student_id].sessions++;
+        sessionMap[s.student_id].studied += (s.cards_studied || 0);
+        sessionMap[s.student_id].correct += (s.cards_correct || 0);
+        sessionMap[s.student_id].time += (s.duration_seconds || 0);
+      }
+
+      const board = members.map(m => {
+        const profile = m.flashy_profiles || {};
+        const cards = cardMap[m.student_id] || { total: 0, mastered: 0, reviews: 0 };
+        const sess = sessionMap[m.student_id] || { sessions: 0, studied: 0, correct: 0, time: 0 };
+        const masteryPct = cards.total > 0 ? Math.round((cards.mastered / cards.total) * 100) : 0;
+        const accuracy = sess.studied > 0 ? Math.round((sess.correct / sess.studied) * 100) : 0;
+        return {
+          studentId: m.student_id,
+          displayName: profile.display_name || profile.email || 'Unknown',
+          totalCards: cards.total,
+          mastered: cards.mastered,
+          masteryPct,
+          reviews: cards.reviews,
+          sessions: sess.sessions,
+          cardsStudied: sess.studied,
+          accuracy,
+          studyTimeSec: sess.time,
+          score: cards.mastered * 3 + sess.studied + sess.sessions * 2,
+        };
+      }).sort((a, b) => b.score - a.score);
+
+      setData(board);
+    } catch (err) {
+      console.error('[useGroupLeaderboard] error:', err?.message || err);
+      setData([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [groupId]);
+
+  useEffect(() => { refetch(); }, [refetch]);
+  return { data, loading, refetch };
+};
+
 // ─────────────────────────────────────────────────────
 // Bulk Assignment
 // ─────────────────────────────────────────────────────
@@ -1952,4 +2035,88 @@ export const useUpdateDeck = () => {
   };
 
   return { updateDeck };
+};
+
+/* ═══════════════════════════════════════ Courses ═══════════════════════════════════════ */
+
+/** Fetch all courses for the current teacher */
+export const useCourses = () => {
+  const { user } = useAuth();
+  const [courses, setCourses] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  const refetch = useCallback(async () => {
+    if (!user) { setCourses([]); setLoading(false); return; }
+    setLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('flashy_courses')
+        .select('*, flashy_course_decks(deck_id, sort_order)')
+        .eq('owner_id', user.id)
+        .eq('is_archived', false)
+        .order('sort_order')
+        .order('name');
+      if (error) throw error;
+      setCourses(data || []);
+    } catch (err) {
+      console.error('[useCourses]', err);
+      setCourses([]);
+    } finally { setLoading(false); }
+  }, [user]);
+
+  useEffect(() => { refetch(); }, [refetch]);
+  return { courses, loading, refetch };
+};
+
+/** CRUD operations for courses */
+export const useCourseActions = () => {
+  const { user } = useAuth();
+
+  const createCourse = async ({ name, description = '', color = 'blue', icon = 'folder' }) => {
+    if (!user) throw new Error('Not signed in');
+    const { data, error } = await supabase
+      .from('flashy_courses')
+      .insert({ owner_id: user.id, name, description, color, icon })
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  };
+
+  const updateCourse = async (courseId, fields) => {
+    const { data, error } = await supabase
+      .from('flashy_courses')
+      .update({ ...fields, updated_at: new Date().toISOString() })
+      .eq('id', courseId)
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  };
+
+  const deleteCourse = async (courseId) => {
+    const { error } = await supabase
+      .from('flashy_courses')
+      .delete()
+      .eq('id', courseId);
+    if (error) throw error;
+  };
+
+  const addDeckToCourse = async (courseId, deckId) => {
+    const { error } = await supabase
+      .from('flashy_course_decks')
+      .upsert({ course_id: courseId, deck_id: deckId }, { onConflict: 'course_id,deck_id' });
+    if (error) throw error;
+  };
+
+  const removeDeckFromCourse = async (courseId, deckId) => {
+    const { error } = await supabase
+      .from('flashy_course_decks')
+      .delete()
+      .eq('course_id', courseId)
+      .eq('deck_id', deckId);
+    if (error) throw error;
+  };
+
+  return { createCourse, updateCourse, deleteCourse, addDeckToCourse, removeDeckFromCourse };
 };

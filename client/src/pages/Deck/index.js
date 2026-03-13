@@ -9,9 +9,13 @@ import EditCardModal from "./EditCardModal";
 import AddCardTabs from "./AddCardTabs";
 import { useState, useEffect, useCallback } from "react";
 import RetentionBadge from "./RetentionBadge";
-import { useDeck, useDeleteDeck, useDeleteCard, useUpdateDeck } from "../../hooks/useSupabaseData";
+import { useDeck, useDeleteDeck, useDeleteCard, useUpdateDeck, useStudents } from "../../hooks/useSupabaseData";
 import { useSettings } from "../../contexts/SettingsContext";
+import { useAuth } from "../../contexts/AuthContext";
 import { getSessionProgress } from "../../lib/studySession";
+import ConfirmModal from "../../common/components/ConfirmModal";
+import PromptModal from "../../common/components/PromptModal";
+import BulkAssignModal from "../Teacher/BulkAssignModal";
 import dayjs from "dayjs";
 
 const stripHtmlTags = (html) => (html || "").replace(/<[^>]*>/g, "").trim();
@@ -50,6 +54,10 @@ const Deck = () => {
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedCards, setSelectedCards] = useState(new Set());
   const [bulkDeleting, setBulkDeleting] = useState(false);
+  const [confirmBulkDelete, setConfirmBulkDelete] = useState(false);
+  const [confirmDeleteDeck, setConfirmDeleteDeck] = useState(false);
+  const [showRenamePrompt, setShowRenamePrompt] = useState(false);
+  const [showAssignModal, setShowAssignModal] = useState(false);
   const navigate = useNavigate();
   const params = useParams();
   const { data: deck, loading, refetch } = useDeck(params.id);
@@ -57,6 +65,8 @@ const Deck = () => {
   const { deleteCard } = useDeleteCard();
   const { updateDeck } = useUpdateDeck();
   const { t } = useSettings();
+  const { isTeacher } = useAuth();
+  const { data: students } = useStudents();
 
   const toggleCard = (cardId) => {
     setSelectedCards((prev) => {
@@ -82,7 +92,11 @@ const Deck = () => {
 
   const handleBulkDelete = async () => {
     if (selectedCards.size === 0) return;
-    if (!window.confirm(`Delete ${selectedCards.size} card(s)? This cannot be undone.`)) return;
+    setConfirmBulkDelete(true);
+  };
+
+  const doBulkDelete = async () => {
+    setConfirmBulkDelete(false);
     setBulkDeleting(true);
     try {
       for (const id of selectedCards) {
@@ -101,7 +115,11 @@ const Deck = () => {
 
   const handleDeleteDeck = async () => {
     if (!deck) return;
-    if (!window.confirm(`Delete "${deck.name}" and all its cards? This cannot be undone.`)) return;
+    setConfirmDeleteDeck(true);
+  };
+
+  const doDeleteDeck = async () => {
+    setConfirmDeleteDeck(false);
     try {
       await deleteDeck(params.id);
       toast.success("Deck deleted");
@@ -151,15 +169,18 @@ const Deck = () => {
     }
   };
 
-  const handleRenameDeck = async () => {
+  const handleRenameDeck = () => {
     if (!deck) return;
-    const current = String(deck.name || "").trim();
-    const proposed = window.prompt("New deck name", current);
-    if (proposed == null) return;
-    const nextName = String(proposed).trim();
-    if (!nextName || nextName === current) return;
+    setShowRenamePrompt(true);
+  };
+
+  const doRenameDeck = async (nextName) => {
+    setShowRenamePrompt(false);
+    const current = String(deck?.name || "").trim();
+    const trimmed = String(nextName).trim();
+    if (!trimmed || trimmed === current) return;
     try {
-      await updateDeck(params.id, { name: nextName });
+      await updateDeck(params.id, { name: trimmed });
       toast.success("Deck renamed");
       refetch();
     } catch (err) {
@@ -324,6 +345,15 @@ const Deck = () => {
                 {t("hard")} <Badge style={{ fontSize: "0.7em" }}>{hardCards}</Badge>
               </Button>
             )}
+            {isTeacher && (
+              <button
+                className={styles.viewToggle}
+                onClick={() => setShowAssignModal(true)}
+                title="Assign to students"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
+              </button>
+            )}
             <button
               className={`${styles.viewToggle} ${selectionMode ? styles.viewToggleActive : ""}`}
               onClick={toggleSelectionMode}
@@ -465,6 +495,40 @@ const Deck = () => {
               );
             })}
           </div>
+        )}
+        <ConfirmModal
+          open={confirmBulkDelete}
+          title="Delete cards"
+          message={`Delete ${selectedCards.size} card(s)? This cannot be undone.`}
+          confirmLabel="Delete"
+          danger
+          onConfirm={doBulkDelete}
+          onCancel={() => setConfirmBulkDelete(false)}
+        />
+        <ConfirmModal
+          open={confirmDeleteDeck}
+          title="Delete deck"
+          message={`Delete "${deck?.name}" and all its cards? This cannot be undone.`}
+          confirmLabel="Delete"
+          danger
+          onConfirm={doDeleteDeck}
+          onCancel={() => setConfirmDeleteDeck(false)}
+        />
+        <PromptModal
+          open={showRenamePrompt}
+          title="Rename deck"
+          message="New deck name"
+          defaultValue={deck?.name || ""}
+          onSubmit={doRenameDeck}
+          onCancel={() => setShowRenamePrompt(false)}
+        />
+        {isTeacher && (
+          <BulkAssignModal
+            open={showAssignModal}
+            setOpen={setShowAssignModal}
+            students={students}
+            initialDeckId={params.id}
+          />
         )}
       </>
     );

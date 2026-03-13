@@ -97,6 +97,7 @@ const AddStudentModal = ({ open, setOpen, onAdded }) => {
 
   return (
     <Modal open={open} setOpen={setOpen}>
+      <form onSubmit={handleAdd}>
       <h3>Link existing student account</h3>
       <p className={styles.helperText}>
         TutPro students sync automatically from your latest backup. Use this only if a student already created a DeckTrack account manually and you want to link it by email.
@@ -113,6 +114,7 @@ const AddStudentModal = ({ open, setOpen, onAdded }) => {
           {loading ? "Linking..." : "Link student"}
         </Button>
       </div>
+      </form>
     </Modal>
   );
 };
@@ -189,6 +191,7 @@ const AssignDeckModal = ({ open, setOpen, studentId, studentName, onAssigned }) 
           <option value="quiz">Fill-in-the-blank</option>
           <option value="mcq">Multiple choice</option>
           <option value="match">Match game</option>
+          <option value="wheel">Spin wheel</option>
         </select>
       </div>
       {loading ? (

@@ -188,6 +188,12 @@ const Learn = ({ flashcards, showTermFirst = true, onProgress, onComplete, onQui
     const handleKeyDown = (e) => {
       if (isComplete) return;
       if (e.key === "Escape" && onQuit) { onQuit(); return; }
+      // Space / Enter to flip card
+      if ((e.key === " " || e.key === "Enter") && !isFlipped) {
+        e.preventDefault();
+        setIsFlipped(true);
+        return;
+      }
       if (srsMode === "simple") {
         if (e.key === "1") gradeCard("again");
         else if (e.key === "2") gradeCard("good"); // "Know" = good
@@ -200,7 +206,7 @@ const Learn = ({ flashcards, showTermFirst = true, onProgress, onComplete, onQui
     };
     window.addEventListener("keydown", handleKeyDown, true);
     return () => window.removeEventListener("keydown", handleKeyDown, true);
-  }, [gradeCard, isComplete, srsMode, onQuit]);
+  }, [gradeCard, isComplete, isFlipped, srsMode, onQuit]);
 
   if (!flashcards) return <LoadingScreen />;
 

@@ -1,0 +1,59 @@
+.title {
+  margin: 0;
+  font-size: 1.1rem;
+  color: var(--fg);
+}
+
+.message {
+  margin: 0;
+  color: var(--fg-muted);
+  font-size: 0.92rem;
+  line-height: 1.5;
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 0.25rem;
+}
+
+.cancelBtn,
+.confirmBtn,
+.dangerBtn {
+  padding: 0.5rem 1.2rem;
+  border-radius: var(--radius);
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: var(--border);
+}
+
+.cancelBtn {
+  background: var(--card-bg);
+  color: var(--fg-muted);
+}
+
+.cancelBtn:hover {
+  background: var(--card-hover);
+}
+
+.confirmBtn {
+  background: var(--primary);
+  color: #fff;
+  border-color: var(--primary);
+}
+
+.confirmBtn:hover {
+  opacity: 0.9;
+}
+
+.dangerBtn {
+  background: var(--danger, #ef4444);
+  color: #fff;
+  border-color: var(--danger, #ef4444);
+}
+
+.dangerBtn:hover {
+  opacity: 0.9;
+}

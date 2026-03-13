@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import styles from "./StudySetup.module.css";
 import { useSettings } from "../../contexts/SettingsContext";
 
@@ -20,6 +20,7 @@ const MODES = [
   { id: "fillblank", tKey: "fillBlank" },
   { id: "match", tKey: "matching" },
   { id: "quiz", tKey: "quiz" },
+  { id: "wheel", tKey: "spinWheel" },
 ];
 
 const SIDES = [
@@ -49,6 +50,15 @@ const StudySetup = ({ newCount = 0, dueCount = 0, totalCount = 0, hardCount = 0,
     if (!canStart) return;
     onStart({ pool, mode, sideOrder, shuffle });
   };
+
+  // Enter to start
+  useEffect(() => {
+    const handleKey = (e) => {
+      if (e.key === "Enter" && canStart) handleStart();
+    };
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  }, [canStart, pool, mode, sideOrder, shuffle]);
 
   return (
     <div className={styles.setup}>

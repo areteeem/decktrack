@@ -3,6 +3,7 @@ import { toast } from "react-toastify";
 import Badge from "../../common/components/Badge";
 import Button from "../../common/components/Button";
 import Modal from "../../common/components/Modal";
+import ConfirmModal from "../../common/components/ConfirmModal";
 import TextInput from "../../common/components/TextInput";
 import { useUpdateAssignment, useUnassignDeck } from "../../hooks/useSupabaseData";
 import styles from "./Teacher.module.css";
@@ -18,6 +19,7 @@ const AssignmentSettingsModal = ({ open, setOpen, assignment, onUpdated }) => {
   const [allowStudentEdit, setAllowStudentEdit] = useState(assignment?.allow_student_edit ?? true);
   const [deadline, setDeadline] = useState(assignment?.deadline || "");
   const [requiredPool, setRequiredPool] = useState(assignment?.required_pool || "any");
+  const [showArchiveConfirm, setShowArchiveConfirm] = useState(false);
 
   const handleSave = async () => {
     try {
@@ -38,8 +40,12 @@ const AssignmentSettingsModal = ({ open, setOpen, assignment, onUpdated }) => {
     }
   };
 
-  const handleUnassign = async () => {
-    if (!window.confirm("Archive this assignment? The student will no longer see it.")) return;
+  const handleUnassign = () => {
+    setShowArchiveConfirm(true);
+  };
+
+  const doArchive = async () => {
+    setShowArchiveConfirm(false);
     try {
       await unassign(assignment.id);
       toast.success("Assignment archived.");
@@ -56,6 +62,7 @@ const AssignmentSettingsModal = ({ open, setOpen, assignment, onUpdated }) => {
     assignment.flashy_decks?.name || assignment.custom_name || "Unnamed Deck";
 
   return (
+    <>
     <Modal open={open} setOpen={setOpen}>
       <h3>Assignment Settings</h3>
       <p className={styles.helperText}>
@@ -170,6 +177,16 @@ const AssignmentSettingsModal = ({ open, setOpen, assignment, onUpdated }) => {
         </Button>
       </div>
     </Modal>
+    <ConfirmModal
+      open={showArchiveConfirm}
+      title="Archive assignment"
+      message="Archive this assignment? The student will no longer see it."
+      confirmLabel="Archive"
+      danger
+      onConfirm={doArchive}
+      onCancel={() => setShowArchiveConfirm(false)}
+    />
+    </>
   );
 };
 

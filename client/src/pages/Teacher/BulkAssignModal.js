@@ -15,21 +15,31 @@ import styles from "./Teacher.module.css";
 // Bulk Assign Modal
 // Assign a deck to multiple students / entire groups
 // ─────────────────────────────────────────────────
-const BulkAssignModal = ({ open, setOpen, students, onAssigned }) => {
+const SETTINGS_KEY = "flashy_assign_settings";
+const loadSavedSettings = () => {
+  try { return JSON.parse(localStorage.getItem(SETTINGS_KEY)) || {}; } catch { return {}; }
+};
+const saveSettings = (s) => {
+  try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(s)); } catch { /* ignore */ }
+};
+
+const BulkAssignModal = ({ open, setOpen, students, onAssigned, initialDeckId, initialStudentIds }) => {
   const { data: decks, loading: decksLoading } = useDecks();
   const { data: groups } = useGroups();
   const { bulkAssign, loading: assigning } = useBulkAssignDeck();
 
-  const [step, setStep] = useState(1); // 1 = pick deck, 2 = pick students, 3 = settings
-  const [selectedDeckId, setSelectedDeckId] = useState(null);
-  const [selectedStudents, setSelectedStudents] = useState(new Set());
-  const [syncEnabled, setSyncEnabled] = useState(true);
+  const saved = loadSavedSettings();
+  const startStep = initialDeckId && initialStudentIds ? 3 : initialDeckId ? 2 : 1;
+  const [step, setStep] = useState(startStep);
+  const [selectedDeckId, setSelectedDeckId] = useState(initialDeckId || null);
+  const [selectedStudents, setSelectedStudents] = useState(new Set(initialStudentIds || []));
+  const [syncEnabled, setSyncEnabled] = useState(saved.syncEnabled ?? true);
   const [customName, setCustomName] = useState("");
-  const [studyGoalDaily, setStudyGoalDaily] = useState(0);
-  const [allowStudentCards, setAllowStudentCards] = useState(true);
-  const [allowStudentEdit, setAllowStudentEdit] = useState(true);
-  const [requiredPool, setRequiredPool] = useState("any");
-  const [requiredMode, setRequiredMode] = useState("any");
+  const [studyGoalDaily, setStudyGoalDaily] = useState(saved.studyGoalDaily ?? 0);
+  const [allowStudentCards, setAllowStudentCards] = useState(saved.allowStudentCards ?? true);
+  const [allowStudentEdit, setAllowStudentEdit] = useState(saved.allowStudentEdit ?? true);
+  const [requiredPool, setRequiredPool] = useState(saved.requiredPool ?? "any");
+  const [requiredMode, setRequiredMode] = useState(saved.requiredMode ?? "any");
   const [deckSearch, setDeckSearch] = useState("");
 
   const selectedDeck = useMemo(
@@ -48,16 +58,17 @@ const BulkAssignModal = ({ open, setOpen, students, onAssigned }) => {
   }, [decks, deckSearch]);
 
   const reset = () => {
-    setStep(1);
-    setSelectedDeckId(null);
-    setSelectedStudents(new Set());
-    setSyncEnabled(true);
+    setStep(initialDeckId && initialStudentIds ? 3 : initialDeckId ? 2 : 1);
+    setSelectedDeckId(initialDeckId || null);
+    setSelectedStudents(new Set(initialStudentIds || []));
+    const s = loadSavedSettings();
+    setSyncEnabled(s.syncEnabled ?? true);
     setCustomName("");
-    setStudyGoalDaily(0);
-    setAllowStudentCards(true);
-    setAllowStudentEdit(true);
-    setRequiredPool("any");
-    setRequiredMode("any");
+    setStudyGoalDaily(s.studyGoalDaily ?? 0);
+    setAllowStudentCards(s.allowStudentCards ?? true);
+    setAllowStudentEdit(s.allowStudentEdit ?? true);
+    setRequiredPool(s.requiredPool ?? "any");
+    setRequiredMode(s.requiredMode ?? "any");
     setDeckSearch("");
   };
 
@@ -91,6 +102,7 @@ const BulkAssignModal = ({ open, setOpen, students, onAssigned }) => {
 
   const handleAssign = async () => {
     if (!selectedDeckId || selectedStudents.size === 0) return;
+    saveSettings({ syncEnabled, studyGoalDaily: parseInt(studyGoalDaily) || 0, allowStudentCards, allowStudentEdit, requiredPool, requiredMode });
     try {
       const results = await bulkAssign(selectedDeckId, [...selectedStudents], {
         syncEnabled,
@@ -223,9 +235,11 @@ const BulkAssignModal = ({ open, setOpen, students, onAssigned }) => {
           </div>
 
           <div className={styles.modalActions} style={{ gap: "0.5rem" }}>
-            <Button callback={() => setStep(1)} bgcolor="transparent" color="var(--fg-muted)">
-              ← Back
-            </Button>
+            {!initialDeckId && (
+              <Button callback={() => setStep(1)} bgcolor="transparent" color="var(--fg-muted)">
+                ← Back
+              </Button>
+            )}
             <Button
               callback={() => setStep(3)}
               disabled={selectedStudents.size === 0}
@@ -339,14 +353,17 @@ const BulkAssignModal = ({ open, setOpen, students, onAssigned }) => {
                 <option value="quiz">Fill-in-the-blank</option>
                 <option value="mcq">Multiple choice</option>
                 <option value="match">Match game</option>
+                <option value="wheel">Spin wheel</option>
               </select>
             </div>
           </div>
 
           <div className={styles.modalActions} style={{ gap: "0.5rem" }}>
-            <Button callback={() => setStep(2)} bgcolor="transparent" color="var(--fg-muted)">
-              ← Back
-            </Button>
+            {!(initialDeckId && initialStudentIds) && (
+              <Button callback={() => setStep(2)} bgcolor="transparent" color="var(--fg-muted)">
+                ← Back
+              </Button>
+            )}
             <Button
               callback={handleAssign}
               disabled={assigning}

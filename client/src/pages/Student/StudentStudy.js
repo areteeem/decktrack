@@ -5,6 +5,7 @@ import Practice from "../../modules/Practice";
 import FillBlank from "../../modules/FillBlank";
 import MultipleChoice from "../../modules/MultipleChoice";
 import MatchGame from "../../modules/MatchGame";
+import SpinWheel from "../../modules/SpinWheel";
 import { useStudentDeckCards, useRecordSession, useAssignments, useNotifyStudyCompletion } from "../../hooks/useSupabaseData";
 
 /** Show new cards for a given assignment */
@@ -136,6 +137,8 @@ export const StudentStudyMode = () => {
       return <MultipleChoice flashcards={allCards} onQuit={onQuit} onSessionComplete={handleSessionComplete} />;
     case 'match':
       return <MatchGame flashcards={allCards} onQuit={onQuit} onSessionComplete={handleSessionComplete} />;
+    case 'wheel':
+      return <SpinWheel flashcards={allCards} onQuit={onQuit} onSessionComplete={handleSessionComplete} />;
     case 'quiz':
     case 'fillblank':
       return <FillBlank flashcards={allCards} onQuit={onQuit} onSessionComplete={handleSessionComplete} />;

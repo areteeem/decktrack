@@ -6,6 +6,7 @@ import LoadingScreen from "../../common/components/LoadingScreen";
 import Button from "../../common/components/Button";
 import Badge from "../../common/components/Badge";
 import Modal from "../../common/components/Modal";
+import ConfirmModal from "../../common/components/ConfirmModal";
 import TextInput from "../../common/components/TextInput";
 import RichTextInput from "../../common/components/RichTextInput";
 import {
@@ -247,8 +248,16 @@ const StudentDeckBrowse = () => {
     }
   };
 
-  const handleDeleteCard = async (card) => {
-    if (!window.confirm("Delete this custom card?")) return;
+  const [confirmDeleteCard, setConfirmDeleteCard] = useState(null);
+
+  const handleDeleteCard = (card) => {
+    setConfirmDeleteCard(card);
+  };
+
+  const doDeleteCard = async () => {
+    const card = confirmDeleteCard;
+    setConfirmDeleteCard(null);
+    if (!card) return;
     try {
       await deleteCard(card.id);
       toast.success("Card deleted.");
@@ -311,7 +320,6 @@ const StudentDeckBrowse = () => {
         />
       </div>
 
-      {/* Cards grid TODO */}
       {filteredCards.length === 0 ? (
         <div className={styles.empty}>
           <h2>No cards match</h2>
@@ -392,6 +400,15 @@ const StudentDeckBrowse = () => {
         card={editingCard}
         onSave={handleEditCard}
         saving={updating}
+      />
+      <ConfirmModal
+        open={!!confirmDeleteCard}
+        title="Delete card"
+        message="Delete this custom card?"
+        confirmLabel="Delete"
+        danger
+        onConfirm={doDeleteCard}
+        onCancel={() => setConfirmDeleteCard(null)}
       />
     </div>
   );

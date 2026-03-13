@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import DeckCard from "../../common/components/DeckCard";
 import LoadingScreen from "../../common/components/LoadingScreen";
@@ -6,19 +6,69 @@ import Button from "../../common/components/Button";
 import Badge from "../../common/components/Badge";
 import { useAuth } from "../../contexts/AuthContext";
 import styles from "./Dashboard.module.css";
-import { useDecks, useArchivedDecks, useDeleteDeck, useUpdateDeck } from "../../hooks/useSupabaseData";
+import { useDecks, useArchivedDecks, useDeleteDeck, useUpdateDeck, useCourses, useCourseActions } from "../../hooks/useSupabaseData";
 import NewDeckModal from "../../modules/Sidebar/NewDeckModal";
 import { toast } from "react-toastify";
 
 const Dashboard = () => {
   const [showNewDeckModal, setShowNewDeckModal] = useState(false);
   const [showArchived, setShowArchived] = useState(false);
+  const [expandedCourses, setExpandedCourses] = useState(() => new Set());
+  const [newCourseName, setNewCourseName] = useState("");
+  const [showNewCourse, setShowNewCourse] = useState(false);
+  const [deckSearch, setDeckSearch] = useState("");
   const navigate = useNavigate();
   const { isTeacher } = useAuth();
   const { data: decks, loading, error, refetch } = useDecks();
   const { data: archivedDecks, refetch: refetchArchived } = useArchivedDecks();
   const { deleteDeck } = useDeleteDeck();
   const { updateDeck } = useUpdateDeck();
+  const { courses, refetch: refetchCourses } = useCourses();
+  const { createCourse, deleteCourse, addDeckToCourse, removeDeckFromCourse } = useCourseActions();
+
+  // Build set of deck IDs that belong to any course
+  const deckIdsInCourses = useMemo(() => {
+    const ids = new Set();
+    (courses || []).forEach((c) => (c.flashy_course_decks || []).forEach((cd) => ids.add(cd.deck_id)));
+    return ids;
+  }, [courses]);
+
+  // Decks not in any course ("Uncategorized")
+  const uncategorizedDecks = useMemo(() =>
+    (decks || []).filter((d) => !deckIdsInCourses.has(d.id)),
+    [decks, deckIdsInCourses]
+  );
+
+  // Search filter
+  const searchFilter = (deck) => {
+    if (!deckSearch.trim()) return true;
+    const q = deckSearch.toLowerCase();
+    return (deck.name || '').toLowerCase().includes(q)
+      || (deck.category || '').toLowerCase().includes(q)
+      || (deck.tags || []).some((t) => t.toLowerCase().includes(q));
+  };
+
+  const toggleCourse = (courseId) => {
+    setExpandedCourses((prev) => {
+      const next = new Set(prev);
+      next.has(courseId) ? next.delete(courseId) : next.add(courseId);
+      return next;
+    });
+  };
+
+  const handleCreateCourse = async () => {
+    const name = newCourseName.trim();
+    if (!name) return;
+    try {
+      await createCourse({ name });
+      setNewCourseName("");
+      setShowNewCourse(false);
+      toast.success("Course created");
+      refetchCourses();
+    } catch (e) {
+      toast.error(e.message || "Failed to create course");
+    }
+  };
 
   if (error) return <p>Error :(</p>;
   if (loading) return <LoadingScreen />;
@@ -44,10 +94,57 @@ const Dashboard = () => {
         {isTeacher && (
           <div className={styles.actions}>
             <Button callback={() => setShowNewDeckModal(true)}>+ New deck</Button>
+            <Button callback={() => setShowNewCourse(true)}>+ New course</Button>
             <Button callback={() => navigate("/students")}>My students</Button>
           </div>
         )}
       </div>
+
+      {/* Deck search */}
+      {(decks?.length > 0) && (
+        <div style={{ marginBottom: "1rem" }}>
+          <input
+            type="text"
+            placeholder="Search decks…"
+            value={deckSearch}
+            onChange={(e) => setDeckSearch(e.target.value)}
+            style={{
+              width: "100%",
+              maxWidth: "24rem",
+              padding: "0.5rem 0.75rem",
+              borderRadius: "var(--radius, 8px)",
+              border: "1px solid var(--border-color, #ddd)",
+              fontSize: "0.9rem",
+              background: "var(--bg-secondary, #f9f9f9)",
+              color: "var(--fg, #333)",
+            }}
+          />
+        </div>
+      )}
+
+      {/* New course inline form */}
+      {showNewCourse && (
+        <div style={{ display: "flex", gap: "0.5rem", alignItems: "center", marginBottom: "1rem" }}>
+          <input
+            type="text"
+            placeholder="Course name…"
+            value={newCourseName}
+            onChange={(e) => setNewCourseName(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') handleCreateCourse(); if (e.key === 'Escape') setShowNewCourse(false); }}
+            autoFocus
+            style={{
+              padding: "0.45rem 0.7rem",
+              borderRadius: "var(--radius, 8px)",
+              border: "1px solid var(--border-color, #ddd)",
+              fontSize: "0.9rem",
+              flex: 1,
+              maxWidth: "20rem",
+            }}
+          />
+          <Button callback={handleCreateCourse}>Create</Button>
+          <Button callback={() => setShowNewCourse(false)} bgcolor="transparent" color="var(--fg-muted)">Cancel</Button>
+        </div>
+      )}
 
       {isTeacher && (!decks || decks.length === 0) ? (
         <div className={styles.emptyState}>
@@ -61,7 +158,52 @@ const Dashboard = () => {
       ) : null}
 
       <div className={styles.deckContainer}>
-        {(decks || []).map((deck) => (
+        {/* Course sections */}
+        {(courses || []).map((course) => {
+          const courseDecks = (course.flashy_course_decks || [])
+            .map((cd) => (decks || []).find((d) => d.id === cd.deck_id))
+            .filter(Boolean)
+            .filter(searchFilter);
+          const isExpanded = expandedCourses.has(course.id);
+          return (
+            <div key={course.id} style={{ gridColumn: "1 / -1", marginBottom: "0.5rem" }}>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "0.5rem",
+                  cursor: "pointer",
+                  userSelect: "none",
+                  padding: "0.4rem 0",
+                }}
+                onClick={() => toggleCourse(course.id)}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ transform: isExpanded ? "rotate(90deg)" : "none", transition: "transform 0.15s" }}>
+                  <polyline points="9 18 15 12 9 6" />
+                </svg>
+                <span style={{ fontWeight: 600, fontSize: "1rem" }}>{course.name}</span>
+                <span style={{ fontSize: "0.8rem", color: "var(--fg-muted)" }}>({courseDecks.length} deck{courseDecks.length !== 1 ? "s" : ""})</span>
+                <button
+                  onClick={(e) => { e.stopPropagation(); if (window.confirm(`Delete course "${course.name}"? Decks inside will NOT be deleted.`)) { deleteCourse(course.id).then(() => { toast.success("Course deleted"); refetchCourses(); }).catch((err) => toast.error(err.message)); } }}
+                  style={{ marginLeft: "auto", background: "none", border: "none", color: "var(--danger, #c00)", cursor: "pointer", fontSize: "0.8rem" }}
+                >
+                  Delete
+                </button>
+              </div>
+              {isExpanded && (
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(14rem, 1fr))", gap: "0.75rem", marginTop: "0.25rem", paddingLeft: "1.2rem" }}>
+                  {courseDecks.map((deck) => (
+                    <DeckCard key={deck.id} deck={deck} />
+                  ))}
+                  {courseDecks.length === 0 && <p style={{ color: "var(--fg-muted)", fontSize: "0.85rem" }}>No matching decks</p>}
+                </div>
+              )}
+            </div>
+          );
+        })}
+
+        {/* Uncategorized decks */}
+        {uncategorizedDecks.filter(searchFilter).map((deck) => (
           <DeckCard key={deck.id} deck={deck} />
         ))}
       </div>

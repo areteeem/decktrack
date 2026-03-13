@@ -1,9 +1,12 @@
 import { useState, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import Badge from "../../common/components/Badge";
 import Button from "../../common/components/Button";
 import LoadingScreen from "../../common/components/LoadingScreen";
 import Modal from "../../common/components/Modal";
+import ConfirmModal from "../../common/components/ConfirmModal";
+import BulkAssignModal from "./BulkAssignModal";
 import TextInput from "../../common/components/TextInput";
 import {
   useGroups,
@@ -157,8 +160,11 @@ const GroupsPage = () => {
   const { data: students } = useStudents();
   const { deleteGroup } = useDeleteGroup();
 
+  const navigate = useNavigate();
   const [formModal, setFormModal] = useState({ open: false, group: null });
   const [membersModal, setMembersModal] = useState({ open: false, group: null });
+  const [confirmDelete, setConfirmDelete] = useState({ open: false, group: null });
+  const [assignGroup, setAssignGroup] = useState(null);
 
   const studentMap = useMemo(() => {
     const map = new Map();
@@ -166,8 +172,14 @@ const GroupsPage = () => {
     return map;
   }, [students]);
 
-  const handleDelete = async (group) => {
-    if (!window.confirm(`Delete group "${group.name}"? Students will NOT be deleted.`)) return;
+  const handleDelete = (group) => {
+    setConfirmDelete({ open: true, group });
+  };
+
+  const doDeleteGroup = async () => {
+    const group = confirmDelete.group;
+    setConfirmDelete({ open: false, group: null });
+    if (!group) return;
     try {
       await deleteGroup(group.id);
       toast.success("Group deleted");
@@ -256,6 +268,20 @@ const GroupsPage = () => {
 
               <div className={styles.studentActions}>
                 <Button
+                  callback={() => navigate(`/groups/${g.id}`)}
+                  bgcolor="transparent"
+                  color="var(--fg)"
+                >
+                  Leaderboard
+                </Button>
+                <Button
+                  callback={() => setAssignGroup(g)}
+                  bgcolor="transparent"
+                  color="var(--fg)"
+                >
+                  Assign deck
+                </Button>
+                <Button
                   callback={() => setMembersModal({ open: true, group: g })}
                   bgcolor="transparent"
                   color="var(--fg)"
@@ -278,6 +304,24 @@ const GroupsPage = () => {
             </div>
           ))}
         </div>
+      )}
+      <ConfirmModal
+        open={confirmDelete.open}
+        title="Delete group"
+        message={`Delete group "${confirmDelete.group?.name}"? Students will NOT be deleted.`}
+        confirmLabel="Delete"
+        danger
+        onConfirm={doDeleteGroup}
+        onCancel={() => setConfirmDelete({ open: false, group: null })}
+      />
+      {assignGroup && (
+        <BulkAssignModal
+          open={!!assignGroup}
+          setOpen={(v) => { if (!v) setAssignGroup(null); }}
+          students={students}
+          initialStudentIds={assignGroup.memberIds || []}
+          onAssigned={refetch}
+        />
       )}
     </>
   );
