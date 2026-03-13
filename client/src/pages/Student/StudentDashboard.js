@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import styles from "./Student.module.css";
 import { useAssignments, useStudentStats, usePerDeckStats, useDecks, useAllOwnDeckCards } from "../../hooks/useSupabaseData";
 import { useAuth } from "../../contexts/AuthContext";
@@ -36,12 +36,30 @@ const requiredModeLabel = (mode) => {
 
 const StudentDashboard = () => {
   const { profile, user } = useAuth();
-  const { data: assignments, loading } = useAssignments();
+  const { data: assignments, loading, refetch: refetchAssignments } = useAssignments();
   const { data: stats } = useStudentStats(user?.id);
-  const { data: deckStats } = usePerDeckStats(user?.id);
+  const { data: deckStats, refetch: refetchDeckStats } = usePerDeckStats(user?.id);
   const { data: ownDecks, loading: ownDecksLoading, refetch: refetchOwn } = useDecks();
   const { data: personalCards } = useAllOwnDeckCards();
   const [showNewDeckModal, setShowNewDeckModal] = useState(false);
+
+  // Refresh assignment stats when returning from a study session (page visibility change)
+  const refreshAllStats = useCallback(() => {
+    refetchDeckStats?.();
+    refetchAssignments?.({ background: true });
+  }, [refetchDeckStats, refetchAssignments]);
+
+  useEffect(() => {
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') refreshAllStats();
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+    window.addEventListener('focus', refreshAllStats);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibility);
+      window.removeEventListener('focus', refreshAllStats);
+    };
+  }, [refreshAllStats]);
 
   // Personal deck card stats
   const personalStats = useMemo(() => {
@@ -186,7 +204,12 @@ const AssignedDeckCard = ({ assignment, deckStats }) => {
   const mastered = ds.mastered || 0;
   const due = ds.due || 0;
   const newCount = ds.new_count ?? ds.newCards ?? 0;
+  const studied = total - newCount;
   const masteryPct = total > 0 ? Math.round((mastered / total) * 100) : 0;
+  const studiedPct = total > 0 ? Math.round((studied / total) * 100) : 0;
+  // Use assignment.completed from DB if available, else derive from card stats
+  const isCompleted = assignment.completed === true || (total > 0 && studied >= total);
+  const progressPercent = assignment.progress_percent ?? studiedPct;
   const requiredPool = String(assignment?.required_pool || 'any').trim().toLowerCase();
   const requiredMode = String(assignment?.required_mode || 'any').trim().toLowerCase();
 
@@ -204,15 +227,20 @@ const AssignedDeckCard = ({ assignment, deckStats }) => {
     return `/deck/${assignment.id}/browse`;
   })();
 
-  const primaryLabel = (requiredPool !== 'any' || requiredMode !== 'any')
-    ? 'Start required study'
-    : 'Start study';
+  const primaryLabel = isCompleted
+    ? 'Review again'
+    : (requiredPool !== 'any' || requiredMode !== 'any')
+      ? 'Start required study'
+      : 'Start study';
 
   const modeLabel = requiredModeLabel(requiredMode);
 
   return (
-    <div className={styles.deckCard}>
-      <h2>{deckName}</h2>
+    <div className={styles.deckCard} style={isCompleted ? { borderColor: 'var(--accent)', borderWidth: '2px' } : undefined}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
+        <h2 style={{ margin: 0 }}>{deckName}</h2>
+        {isCompleted && <Badge style={{ background: 'var(--accent)', color: '#fff' }}>✓ Completed</Badge>}
+      </div>
       {deckDesc && <p className={styles.deckDesc}>{deckDesc}</p>}
       <p className={styles.deckDesc} style={{ marginTop: "0.1rem" }}>Assigned by teacher</p>
       <div className={styles.deckMeta}>
@@ -238,18 +266,18 @@ const AssignedDeckCard = ({ assignment, deckStats }) => {
               <div
                 className={styles.deckProgressFill}
                 style={{
-                  width: `${masteryPct}%`,
-                  background: "var(--accent)",
+                  width: `${progressPercent}%`,
+                  background: isCompleted ? 'var(--accent)' : 'var(--fg)',
                 }}
               />
             </div>
-            <span className={styles.deckProgressLabel}>{masteryPct}%</span>
+            <span className={styles.deckProgressLabel}>{progressPercent}% studied</span>
           </div>
           <div className={styles.deckStatsRow}>
             <span>{total} cards</span>
             {newCount > 0 && <span>{newCount} new</span>}
             {due > 0 && <span style={{ fontWeight: 600 }}>{due} due</span>}
-            <span>{mastered} mastered</span>
+            <span>{mastered} mastered ({masteryPct}%)</span>
           </div>
         </>
       )}

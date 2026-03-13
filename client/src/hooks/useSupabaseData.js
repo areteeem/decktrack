@@ -718,16 +718,35 @@ export const useUpdateStudentCard = () => {
 
   const updateStudentCard = async (id, fields) => {
     const table = isTeacher ? 'flashy_cards' : 'flashy_student_cards';
+    // Always include last_reviewed_at when updating SRS state
+    const payload = { ...fields };
+    if (!payload.last_reviewed_at && (payload.is_new === false || payload.reviews != null)) {
+      payload.last_reviewed_at = new Date().toISOString();
+    }
     try {
       const { data, error } = await supabase
         .from(table)
-        .update(fields)
+        .update(payload)
         .eq('id', id)
         .select()
         .single();
       if (error) {
+        // If the error mentions an unknown column (ease_factor / again_count not yet migrated),
+        // retry without those optional columns so the core SRS update still applies.
+        const errMsg = String(error.message || '');
+        if (/column|ease_factor|again_count/i.test(errMsg)) {
+          const fallback = { ...payload };
+          delete fallback.ease_factor;
+          delete fallback.again_count;
+          const { data: d2, error: e2 } = await supabase
+            .from(table)
+            .update(fallback)
+            .eq('id', id)
+            .select()
+            .single();
+          if (!e2) return d2;
+        }
         console.warn('[SRS update] Failed:', error.message || JSON.stringify(error));
-        // Don't throw — SRS update failures shouldn't crash the UI
         return null;
       }
       return data;
@@ -1209,9 +1228,12 @@ export const useRecordSession = () => {
  * Signal study completion to the teacher app via student_updates table.
  * This allows auto-marking homework as done WITHOUT requiring the Student App
  * to be open — Flashy writes the signal directly after a study session.
+ *
+ * Also computes and persists assignment progress (progress_percent, completed)
+ * so all three apps can read progress from a single source of truth.
  */
 export const useNotifyStudyCompletion = () => {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
 
   const notifyCompletion = async (assignment, sessionPool) => {
     if (!user || !assignment) return;
@@ -1226,7 +1248,44 @@ export const useNotifyStudyCompletion = () => {
     const pool = String(sessionPool || '').trim().toLowerCase();
     if (requiredPool !== 'any' && pool && pool !== requiredPool) return;
 
+    // Resolve the TutPro student ID from the profile settings (set by studentAppBridge)
+    const settings = (profile && typeof profile.settings === 'object') ? profile.settings : {};
+    const tutproStudentId = String(settings.tutproStudentId || '').trim();
+
     const autoMarkedAt = new Date().toISOString();
+
+    // ── 1. Update assignment progress in flashy_deck_assignments ──
+    try {
+      const { data: cards } = await supabase
+        .from('flashy_student_cards')
+        .select('is_new, mastered')
+        .eq('assignment_id', assignmentId)
+        .eq('student_id', user.id)
+        .eq('is_deleted_by_teacher', false);
+
+      const total = (cards || []).length;
+      const studied = (cards || []).filter(c => !c.is_new).length;
+      const progressPercent = total > 0 ? Math.round((studied / total) * 100) : 0;
+      const isCompleted = total > 0 && studied >= total;
+
+      const progressUpdate = {
+        progress_percent: progressPercent,
+      };
+      if (isCompleted) {
+        progressUpdate.completed = true;
+        progressUpdate.completed_at = autoMarkedAt;
+      }
+
+      await supabase
+        .from('flashy_deck_assignments')
+        .update(progressUpdate)
+        .eq('id', assignmentId);
+    } catch (progressErr) {
+      // Best-effort — columns may not exist yet if migration 015 hasn't run
+      console.warn('[Flashy] Assignment progress update failed:', progressErr);
+    }
+
+    // ── 2. Send auto-done signal to teacher app via student_updates ──
     try {
       await supabase.from('student_updates').insert({
         student_id: user.id,
@@ -1236,6 +1295,8 @@ export const useNotifyStudyCompletion = () => {
           assignmentId,
           autoMarkedAt,
           feedback: '\u2713 Marked as done automatically',
+          // Include the TutPro student ID so the teacher app can match homework
+          tutproStudentId: tutproStudentId || undefined,
         },
         timestamp: autoMarkedAt,
         processed: false,
