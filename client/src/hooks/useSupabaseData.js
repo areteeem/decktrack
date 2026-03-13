@@ -893,31 +893,39 @@ export const useRecordSession = () => {
       ? Math.max(0, Math.round(durationSecondsRaw))
       : derivedDuration;
 
+    const cardsStudiedRaw = Number(fields?.cards_studied ?? fields?.reviewed ?? 0);
+    const cardsCorrectRaw = Number(fields?.cards_correct ?? fields?.correct_count ?? 0);
+    const cardsIncorrectRaw = Number(fields?.cards_incorrect ?? fields?.incorrect_count ?? 0);
+
+    const cardsStudied = Number.isFinite(cardsStudiedRaw) ? Math.max(0, Math.round(cardsStudiedRaw)) : 0;
+    const cardsCorrect = Number.isFinite(cardsCorrectRaw) ? Math.max(0, Math.round(cardsCorrectRaw)) : 0;
+    const cardsIncorrect = Number.isFinite(cardsIncorrectRaw) ? Math.max(0, Math.round(cardsIncorrectRaw)) : 0;
+
+    const sessionTypeRaw = String(fields?.session_type || fields?.type || '').trim().toLowerCase();
+    const allowedSessionTypes = new Set(['learn', 'practice', 'test', 'quick_review']);
+    const sessionType = allowedSessionTypes.has(sessionTypeRaw) ? sessionTypeRaw : 'practice';
+
+    const assignmentIdRaw = String(fields?.assignment_id || '').trim();
+    const assignmentId = assignmentIdRaw || null;
+
     const payload = {
-      ...fields,
       student_id: user.id,
+      assignment_id: assignmentId,
+      deck_name: String(fields?.deck_name || ''),
+      cards_studied: cardsStudied,
+      cards_correct: cardsCorrect,
+      cards_incorrect: cardsIncorrect,
+      session_type: sessionType,
       started_at: startedAt,
       finished_at: finishedAt,
       duration_seconds: durationSeconds,
     };
 
-    let insertResult = await supabase
+    const insertResult = await supabase
       .from('flashy_study_sessions')
       .insert(payload)
       .select()
       .single();
-
-    if (insertResult.error && payload.deck_id !== undefined) {
-      const msg = String(insertResult.error.message || '').toLowerCase();
-      if (msg.includes('deck_id')) {
-        const { deck_id, ...fallbackPayload } = payload;
-        insertResult = await supabase
-          .from('flashy_study_sessions')
-          .insert(fallbackPayload)
-          .select()
-          .single();
-      }
-    }
 
     if (insertResult.error) {
       console.error('[Flashy] Session record error:', insertResult.error.message || insertResult.error);
