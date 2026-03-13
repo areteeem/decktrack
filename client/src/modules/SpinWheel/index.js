@@ -20,7 +20,7 @@ const SpinWheel = ({ flashcards, onQuit, onSessionComplete }) => {
     return [...flashcards].sort(() => Math.random() - 0.5);
   }, [flashcards]);
 
-  const [round, setRound] = useState(0);
+  const [, setRound] = useState(0);
   const [spinning, setSpinning] = useState(false);
   const [selectedIdx, setSelectedIdx] = useState(null);
   const [flipped, setFlipped] = useState(false);

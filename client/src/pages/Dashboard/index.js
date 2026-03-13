@@ -1,14 +1,116 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import DeckCard from "../../common/components/DeckCard";
 import LoadingScreen from "../../common/components/LoadingScreen";
 import Button from "../../common/components/Button";
 import Badge from "../../common/components/Badge";
+import Modal from "../../common/components/Modal";
+import ConfirmModal from "../../common/components/ConfirmModal";
+import ManageDeckCoursesModal from "../../common/components/ManageDeckCoursesModal";
 import { useAuth } from "../../contexts/AuthContext";
 import styles from "./Dashboard.module.css";
 import { useDecks, useArchivedDecks, useDeleteDeck, useUpdateDeck, useCourses, useCourseActions } from "../../hooks/useSupabaseData";
 import NewDeckModal from "../../modules/Sidebar/NewDeckModal";
 import { toast } from "react-toastify";
+
+const BulkAddDecksToCourseModal = ({ open, setOpen, course, decks, onSubmit }) => {
+  const [search, setSearch] = useState("");
+  const [selectedDeckIds, setSelectedDeckIds] = useState(() => new Set());
+
+  useEffect(() => {
+    if (!open) {
+      setSearch("");
+      setSelectedDeckIds(new Set());
+    }
+  }, [open, course?.id]);
+
+  const filteredDecks = useMemo(() => {
+    const query = String(search || "").trim().toLowerCase();
+    return (decks || []).filter((deck) => {
+      if (!query) return true;
+      return String(deck.name || "").toLowerCase().includes(query)
+        || String(deck.category || "").toLowerCase().includes(query)
+        || (deck.tags || []).some((tag) => String(tag || "").toLowerCase().includes(query));
+    });
+  }, [decks, search]);
+
+  const toggleDeck = (deckId) => {
+    setSelectedDeckIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(deckId)) next.delete(deckId);
+      else next.add(deckId);
+      return next;
+    });
+  };
+
+  const selectFiltered = () => {
+    setSelectedDeckIds(new Set(filteredDecks.map((deck) => deck.id)));
+  };
+
+  const clearSelection = () => setSelectedDeckIds(new Set());
+
+  const handleSubmit = async () => {
+    if (!selectedDeckIds.size) return;
+    await onSubmit?.([...selectedDeckIds]);
+  };
+
+  return (
+    <Modal open={open} setOpen={setOpen}>
+      <h3 style={{ marginTop: 0 }}>Add decks to course</h3>
+      <p style={{ color: "var(--fg-muted)", fontSize: "0.9rem" }}>
+        {course ? `Select decks to add into "${course.name}".` : "Select decks to add."}
+      </p>
+
+      <div className={styles.bulkCourseToolbar}>
+        <input
+          type="text"
+          placeholder="Search decks..."
+          value={search}
+          onChange={(event) => setSearch(event.target.value)}
+          className={styles.bulkCourseSearch}
+        />
+        <Button callback={selectFiltered} bgcolor="transparent" color="var(--fg)">Select filtered</Button>
+        <Button callback={clearSelection} bgcolor="transparent" color="var(--fg-muted)">Clear</Button>
+      </div>
+
+      <div className={styles.bulkCourseList}>
+        {filteredDecks.map((deck) => (
+          <label key={deck.id} className={styles.bulkCourseRow}>
+            <input
+              type="checkbox"
+              checked={selectedDeckIds.has(deck.id)}
+              onChange={() => toggleDeck(deck.id)}
+            />
+            <div className={styles.bulkCourseRowBody}>
+              <span style={{ fontWeight: 600 }}>{deck.name}</span>
+              <div style={{ display: "flex", gap: "0.35rem", flexWrap: "wrap" }}>
+                <Badge>{deck.cardCount} cards</Badge>
+                {deck.category && <Badge>{deck.category}</Badge>}
+              </div>
+            </div>
+          </label>
+        ))}
+        {filteredDecks.length === 0 && (
+          <p style={{ color: "var(--fg-muted)", fontSize: "0.85rem", margin: 0 }}>
+            No eligible decks found.
+          </p>
+        )}
+      </div>
+
+      <div className={styles.bulkCourseActions}>
+        <div style={{ color: "var(--fg-muted)", fontSize: "0.85rem" }}>
+          {selectedDeckIds.size} selected
+        </div>
+        <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+          <Button callback={() => setOpen(false)} bgcolor="transparent" color="var(--fg-muted)">Cancel</Button>
+          <Button callback={handleSubmit} disabled={selectedDeckIds.size === 0}>
+            Add {selectedDeckIds.size > 0 ? selectedDeckIds.size : ""} deck{selectedDeckIds.size === 1 ? "" : "s"}
+          </Button>
+        </div>
+      </div>
+    </Modal>
+  );
+};
 
 const Dashboard = () => {
   const [showNewDeckModal, setShowNewDeckModal] = useState(false);
@@ -17,6 +119,10 @@ const Dashboard = () => {
   const [newCourseName, setNewCourseName] = useState("");
   const [showNewCourse, setShowNewCourse] = useState(false);
   const [deckSearch, setDeckSearch] = useState("");
+  const [manageCourseDeck, setManageCourseDeck] = useState(null);
+  const [bulkAddCourse, setBulkAddCourse] = useState(null);
+  const [confirmDeleteCourse, setConfirmDeleteCourse] = useState(null);
+  const [confirmDeleteArchivedDeck, setConfirmDeleteArchivedDeck] = useState(null);
   const navigate = useNavigate();
   const { isTeacher } = useAuth();
   const { data: decks, loading, error, refetch } = useDecks();
@@ -38,6 +144,12 @@ const Dashboard = () => {
     (decks || []).filter((d) => !deckIdsInCourses.has(d.id)),
     [decks, deckIdsInCourses]
   );
+
+  const eligibleDecksForBulkAdd = useMemo(() => {
+    if (!bulkAddCourse?.id) return [];
+    const existingDeckIds = new Set((bulkAddCourse.flashy_course_decks || []).map((entry) => entry.deck_id));
+    return (decks || []).filter((deck) => !existingDeckIds.has(deck.id));
+  }, [bulkAddCourse, decks]);
 
   // Search filter
   const searchFilter = (deck) => {
@@ -70,6 +182,70 @@ const Dashboard = () => {
     }
   };
 
+  const handleAddDeckToCourse = async (course, deck) => {
+    if (!course?.id || !deck?.id) return;
+    try {
+      await addDeckToCourse(course.id, deck.id);
+      toast.success(`"${deck.name}" added to "${course.name}"`);
+      refetchCourses();
+    } catch (e) {
+      toast.error(e.message || "Failed to add deck to course");
+    }
+  };
+
+  const handleRemoveDeckFromCourse = async (course, deck) => {
+    try {
+      await removeDeckFromCourse(course.id, deck.id);
+      toast.success(`"${deck.name}" removed from "${course.name}"`);
+      refetchCourses();
+    } catch (e) {
+      toast.error(e.message || "Failed to remove deck from course");
+    }
+  };
+
+  const handleDeleteCourse = async () => {
+    if (!confirmDeleteCourse?.id) return;
+    try {
+      await deleteCourse(confirmDeleteCourse.id);
+      toast.success("Course deleted");
+      refetchCourses();
+    } catch (err) {
+      toast.error(err.message || "Failed to delete course");
+    } finally {
+      setConfirmDeleteCourse(null);
+    }
+  };
+
+  const handleDeleteArchivedDeck = async () => {
+    if (!confirmDeleteArchivedDeck?.id) return;
+    try {
+      await deleteDeck(confirmDeleteArchivedDeck.id);
+      toast.success("Deck deleted permanently");
+      refetchArchived();
+    } catch (e) {
+      toast.error(e.message || "Failed to delete");
+    } finally {
+      setConfirmDeleteArchivedDeck(null);
+    }
+  };
+
+  const handleBulkAddDecks = async (deckIds) => {
+    if (!bulkAddCourse?.id || deckIds.length === 0) return;
+    const results = await Promise.allSettled(
+      deckIds.map((deckId) => addDeckToCourse(bulkAddCourse.id, deckId))
+    );
+    const successCount = results.filter((result) => result.status === "fulfilled").length;
+    const failedCount = results.length - successCount;
+    if (successCount > 0) {
+      toast.success(`${successCount} deck${successCount === 1 ? "" : "s"} added to "${bulkAddCourse.name}"`);
+      refetchCourses();
+      setBulkAddCourse(null);
+    }
+    if (failedCount > 0) {
+      toast.error(`${failedCount} deck${failedCount === 1 ? "" : "s"} failed to add`);
+    }
+  };
+
   if (error) return <p>Error :(</p>;
   if (loading) return <LoadingScreen />;
 
@@ -79,6 +255,39 @@ const Dashboard = () => {
         open={showNewDeckModal}
         setOpen={setShowNewDeckModal}
         onCreated={refetch}
+      />
+      <ManageDeckCoursesModal
+        open={Boolean(manageCourseDeck)}
+        setOpen={() => setManageCourseDeck(null)}
+        deck={manageCourseDeck}
+        courses={courses}
+        onAdd={(course) => handleAddDeckToCourse(course, manageCourseDeck)}
+        onRemove={(course) => handleRemoveDeckFromCourse(course, manageCourseDeck)}
+      />
+      <BulkAddDecksToCourseModal
+        open={Boolean(bulkAddCourse)}
+        setOpen={() => setBulkAddCourse(null)}
+        course={bulkAddCourse}
+        decks={eligibleDecksForBulkAdd}
+        onSubmit={handleBulkAddDecks}
+      />
+      <ConfirmModal
+        open={Boolean(confirmDeleteCourse)}
+        title="Delete course"
+        message={`Delete course "${confirmDeleteCourse?.name || ""}"? Decks inside will stay in your main deck list.`}
+        confirmLabel="Delete"
+        danger
+        onConfirm={handleDeleteCourse}
+        onCancel={() => setConfirmDeleteCourse(null)}
+      />
+      <ConfirmModal
+        open={Boolean(confirmDeleteArchivedDeck)}
+        title="Delete archived deck"
+        message={`Permanently delete "${confirmDeleteArchivedDeck?.name || ""}" and all its cards? This cannot be undone.`}
+        confirmLabel="Delete permanently"
+        danger
+        onConfirm={handleDeleteArchivedDeck}
+        onCancel={() => setConfirmDeleteArchivedDeck(null)}
       />
 
       <div className={styles.header}>
@@ -184,8 +393,14 @@ const Dashboard = () => {
                 <span style={{ fontWeight: 600, fontSize: "1rem" }}>{course.name}</span>
                 <span style={{ fontSize: "0.8rem", color: "var(--fg-muted)" }}>({courseDecks.length} deck{courseDecks.length !== 1 ? "s" : ""})</span>
                 <button
-                  onClick={(e) => { e.stopPropagation(); if (window.confirm(`Delete course "${course.name}"? Decks inside will NOT be deleted.`)) { deleteCourse(course.id).then(() => { toast.success("Course deleted"); refetchCourses(); }).catch((err) => toast.error(err.message)); } }}
-                  style={{ marginLeft: "auto", background: "none", border: "none", color: "var(--danger, #c00)", cursor: "pointer", fontSize: "0.8rem" }}
+                  onClick={(e) => { e.stopPropagation(); setBulkAddCourse(course); }}
+                  style={{ marginLeft: "auto", background: "none", border: "none", color: "var(--fg)", cursor: "pointer", fontSize: "0.8rem", fontWeight: 600 }}
+                >
+                  Add decks
+                </button>
+                <button
+                  onClick={(e) => { e.stopPropagation(); setConfirmDeleteCourse(course); }}
+                  style={{ background: "none", border: "none", color: "var(--danger, #c00)", cursor: "pointer", fontSize: "0.8rem" }}
                 >
                   Delete
                 </button>
@@ -193,7 +408,18 @@ const Dashboard = () => {
               {isExpanded && (
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(14rem, 1fr))", gap: "0.75rem", marginTop: "0.25rem", paddingLeft: "1.2rem" }}>
                   {courseDecks.map((deck) => (
-                    <DeckCard key={deck.id} deck={deck} />
+                    <div key={deck.id} className={styles.deckTile}>
+                      <DeckCard deck={deck} />
+                      <div className={styles.deckTileActions}>
+                        <Button
+                          callback={() => handleRemoveDeckFromCourse(course, deck)}
+                          bgcolor="transparent"
+                          color="var(--fg)"
+                        >
+                          Remove to main
+                        </Button>
+                      </div>
+                    </div>
                   ))}
                   {courseDecks.length === 0 && <p style={{ color: "var(--fg-muted)", fontSize: "0.85rem" }}>No matching decks</p>}
                 </div>
@@ -204,7 +430,20 @@ const Dashboard = () => {
 
         {/* Uncategorized decks */}
         {uncategorizedDecks.filter(searchFilter).map((deck) => (
-          <DeckCard key={deck.id} deck={deck} />
+          <div key={deck.id} className={styles.deckTile}>
+            <DeckCard deck={deck} />
+            {isTeacher && (
+              <div className={styles.deckTileActions}>
+                <Button
+                  callback={() => setManageCourseDeck(deck)}
+                  bgcolor="transparent"
+                  color="var(--fg)"
+                >
+                  Add to course
+                </Button>
+              </div>
+            )}
+          </div>
         ))}
       </div>
 
@@ -283,14 +522,7 @@ const Dashboard = () => {
                     </Button>
                     <Button
                       callback={async () => {
-                        if (!window.confirm(`Permanently delete "${deck.name}" and all its cards? This cannot be undone.`)) return;
-                        try {
-                          await deleteDeck(deck.id);
-                          toast.success("Deck deleted permanently");
-                          refetchArchived();
-                        } catch (e) {
-                          toast.error(e.message || "Failed to delete");
-                        }
+                        setConfirmDeleteArchivedDeck(deck);
                       }}
                       bgcolor="transparent"
                       color="var(--danger, #c00)"

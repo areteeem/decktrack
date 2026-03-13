@@ -1,6 +1,5 @@
 import { useEffect, useRef } from "react";
 import Modal from "../Modal";
-import Button from "../Button";
 import styles from "./ConfirmModal.module.css";
 
 /**

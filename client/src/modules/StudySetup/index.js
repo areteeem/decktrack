@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import styles from "./StudySetup.module.css";
 import { useSettings } from "../../contexts/SettingsContext";
 
@@ -46,10 +46,10 @@ const StudySetup = ({ newCount = 0, dueCount = 0, totalCount = 0, hardCount = 0,
 
   const canStart = poolCount > 0;
 
-  const handleStart = () => {
+  const handleStart = useCallback(() => {
     if (!canStart) return;
     onStart({ pool, mode, sideOrder, shuffle });
-  };
+  }, [canStart, mode, onStart, pool, shuffle, sideOrder]);
 
   // Enter to start
   useEffect(() => {
@@ -58,7 +58,7 @@ const StudySetup = ({ newCount = 0, dueCount = 0, totalCount = 0, hardCount = 0,
     };
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
-  }, [canStart, pool, mode, sideOrder, shuffle]);
+  }, [canStart, handleStart]);
 
   return (
     <div className={styles.setup}>

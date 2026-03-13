@@ -46,6 +46,105 @@
   grid-gap: 0.5rem;
 }
 
+.deckTile {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.deckTileActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  align-items: center;
+}
+
+.coursePickerList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.coursePickerRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 0.7rem 0.8rem;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  background: var(--bg-secondary);
+  color: var(--fg);
+  cursor: pointer;
+  text-align: left;
+}
+
+.coursePickerRow:hover {
+  border-color: var(--fg-muted);
+}
+
+.coursePickerActions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 0.9rem;
+}
+
+.bulkCourseToolbar {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  flex-wrap: wrap;
+  margin: 0.75rem 0;
+}
+
+.bulkCourseSearch {
+  min-width: 14rem;
+  flex: 1;
+  padding: 0.5rem 0.7rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--border-color);
+  background: var(--bg-secondary);
+  color: var(--fg);
+  font-size: 0.85rem;
+}
+
+.bulkCourseList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-height: 22rem;
+  overflow-y: auto;
+}
+
+.bulkCourseRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  background: var(--bg-secondary);
+  padding: 0.75rem 0.8rem;
+  cursor: pointer;
+}
+
+.bulkCourseRowBody {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.bulkCourseActions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-top: 1rem;
+}
+
 @media (max-width: 1200px) {
   .header {
     align-items: stretch;

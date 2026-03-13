@@ -3,7 +3,6 @@ import { useMemo, useState } from "react";
 import { useGroups, useGroupLeaderboard } from "../../hooks/useSupabaseData";
 import LoadingScreen from "../../common/components/LoadingScreen";
 import Badge from "../../common/components/Badge";
-import styles from "./Teacher.module.css";
 
 const MEDAL = ["🥇", "🥈", "🥉"];
 
