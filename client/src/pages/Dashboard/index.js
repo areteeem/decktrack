@@ -6,7 +6,6 @@ import Button from "../../common/components/Button";
 import Badge from "../../common/components/Badge";
 import Modal from "../../common/components/Modal";
 import ConfirmModal from "../../common/components/ConfirmModal";
-import ManageDeckCoursesModal from "../../common/components/ManageDeckCoursesModal";
 import { useAuth } from "../../contexts/AuthContext";
 import styles from "./Dashboard.module.css";
 import { useDecks, useArchivedDecks, useDeleteDeck, useUpdateDeck, useCourses, useCourseActions } from "../../hooks/useSupabaseData";
@@ -119,7 +118,6 @@ const Dashboard = () => {
   const [newCourseName, setNewCourseName] = useState("");
   const [showNewCourse, setShowNewCourse] = useState(false);
   const [deckSearch, setDeckSearch] = useState("");
-  const [manageCourseDeck, setManageCourseDeck] = useState(null);
   const [bulkAddCourse, setBulkAddCourse] = useState(null);
   const [confirmDeleteCourse, setConfirmDeleteCourse] = useState(null);
   const [confirmDeleteArchivedDeck, setConfirmDeleteArchivedDeck] = useState(null);
@@ -179,17 +177,6 @@ const Dashboard = () => {
       refetchCourses();
     } catch (e) {
       toast.error(e.message || "Failed to create course");
-    }
-  };
-
-  const handleAddDeckToCourse = async (course, deck) => {
-    if (!course?.id || !deck?.id) return;
-    try {
-      await addDeckToCourse(course.id, deck.id);
-      toast.success(`"${deck.name}" added to "${course.name}"`);
-      refetchCourses();
-    } catch (e) {
-      toast.error(e.message || "Failed to add deck to course");
     }
   };
 
@@ -255,14 +242,6 @@ const Dashboard = () => {
         open={showNewDeckModal}
         setOpen={setShowNewDeckModal}
         onCreated={refetch}
-      />
-      <ManageDeckCoursesModal
-        open={Boolean(manageCourseDeck)}
-        setOpen={() => setManageCourseDeck(null)}
-        deck={manageCourseDeck}
-        courses={courses}
-        onAdd={(course) => handleAddDeckToCourse(course, manageCourseDeck)}
-        onRemove={(course) => handleRemoveDeckFromCourse(course, manageCourseDeck)}
       />
       <BulkAddDecksToCourseModal
         open={Boolean(bulkAddCourse)}
@@ -430,20 +409,7 @@ const Dashboard = () => {
 
         {/* Uncategorized decks */}
         {uncategorizedDecks.filter(searchFilter).map((deck) => (
-          <div key={deck.id} className={styles.deckTile}>
-            <DeckCard deck={deck} />
-            {isTeacher && (
-              <div className={styles.deckTileActions}>
-                <Button
-                  callback={() => setManageCourseDeck(deck)}
-                  bgcolor="transparent"
-                  color="var(--fg)"
-                >
-                  Add to course
-                </Button>
-              </div>
-            )}
-          </div>
+          <DeckCard key={deck.id} deck={deck} />
         ))}
       </div>
 

@@ -7,7 +7,7 @@ import Badge from "../../common/components/Badge";
 import LoadingScreen from "../../common/components/LoadingScreen";
 import EditCardModal from "./EditCardModal";
 import AddCardTabs from "./AddCardTabs";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import RetentionBadge from "./RetentionBadge";
 import { useDeck, useDeleteDeck, useDeleteCard, useUpdateDeck, useStudents, useCourses, useCourseActions } from "../../hooks/useSupabaseData";
 import { useSettings } from "../../contexts/SettingsContext";
@@ -60,7 +60,12 @@ const Deck = () => {
   const [showRenamePrompt, setShowRenamePrompt] = useState(false);
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [showCourseModal, setShowCourseModal] = useState(false);
+  const [useOverflowMenu, setUseOverflowMenu] = useState(false);
+  const [showOverflowMenu, setShowOverflowMenu] = useState(false);
   const navigate = useNavigate();
+  const actionsRef = useRef(null);
+  const actionsMeasureRef = useRef(null);
+  const overflowMenuRef = useRef(null);
   const params = useParams();
   const { data: deck, loading, refetch } = useDeck(params.id);
   const { deleteDeck, loading: deleting } = useDeleteDeck();
@@ -75,6 +80,22 @@ const Deck = () => {
   const deckCourseCount = (courses || []).filter((course) =>
     (course.flashy_course_decks || []).some((entry) => String(entry.deck_id) === String(params.id))
   ).length;
+
+  const flashcards = deck?.flashcards || [];
+  const deckCardsRetention = flashcards.reduce((acc, curr) => acc + (curr.retention || 0), 0);
+  const deckReviews = flashcards.reduce((acc, curr) => acc + (curr.reviews || 0), 0);
+  const deckRetention = deckReviews > 0 ? Math.round((deckCardsRetention / deckReviews) * 100) : 0;
+  const newCards = flashcards.filter((card) => card.is_new === true).length;
+  const dueCards = flashcards.filter((card) => new Date(card.due) < new Date() && card.is_new === false).length;
+  const hardCards = flashcards.filter(
+    (card) => (card.again_count || 0) >= 3 || (card.ease_factor && card.ease_factor < 2.0)
+  ).length;
+  const nextSortOrder = flashcards.reduce(
+    (highest, card, index) => Math.max(highest, card.sort_order ?? index),
+    -1
+  ) + 1;
+  const sessionProgress = getSessionProgress(params.id);
+  const isContinuingSession = sessionProgress !== null && sessionProgress < 100;
 
   const toggleCard = (cardId) => {
     setSelectedCards((prev) => {
@@ -275,33 +296,257 @@ const Deck = () => {
     }
   }, [deck?.name]);
 
+  useEffect(() => {
+    if (!actionsRef.current || !actionsMeasureRef.current) return undefined;
+
+    const evaluateToolbar = () => {
+      const availableWidth = actionsRef.current?.clientWidth || 0;
+      const requiredWidth = actionsMeasureRef.current?.scrollWidth || 0;
+      if (!availableWidth || !requiredWidth) return;
+      setUseOverflowMenu(requiredWidth > availableWidth + 8);
+    };
+
+    evaluateToolbar();
+    const resizeObserver = typeof ResizeObserver !== "undefined"
+      ? new ResizeObserver(() => evaluateToolbar())
+      : null;
+
+    if (resizeObserver) {
+      resizeObserver.observe(actionsRef.current);
+      resizeObserver.observe(actionsMeasureRef.current);
+    }
+
+    window.addEventListener("resize", evaluateToolbar);
+    return () => {
+      window.removeEventListener("resize", evaluateToolbar);
+      resizeObserver?.disconnect();
+    };
+  }, [deck?.id, deck?.name, flashcards.length, hardCards, isTeacher, isContinuingSession, deckCourseCount, selectionMode, viewMode]);
+
+  useEffect(() => {
+    if (!useOverflowMenu) setShowOverflowMenu(false);
+  }, [useOverflowMenu]);
+
+  useEffect(() => {
+    if (!showOverflowMenu) return undefined;
+
+    const handleClickOutside = (event) => {
+      if (!overflowMenuRef.current?.contains(event.target)) {
+        setShowOverflowMenu(false);
+      }
+    };
+
+    const handleEscape = (event) => {
+      if (event.key === "Escape") {
+        setShowOverflowMenu(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    window.addEventListener("keydown", handleEscape);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      window.removeEventListener("keydown", handleEscape);
+    };
+  }, [showOverflowMenu]);
+
 
   if (loading) return <LoadingScreen />;
   if (deck) {
-    const deckCardsRetention = deck.flashcards.reduce((acc, curr) => {
-      return acc + (curr.retention || 0);
-    }, 0);
-    const deckReviews = deck.flashcards.reduce((acc, curr) => {
-      return acc + (curr.reviews || 0);
-    }, 0);
-    const deckRetention = deckReviews > 0
-      ? Math.round((deckCardsRetention / deckReviews) * 100)
-      : 0;
-    const newCards = deck.flashcards.filter(
-      (card) => card.is_new === true
-    ).length;
-    const dueCards = deck.flashcards.filter((card) => {
-      return new Date(card.due) < new Date() && card.is_new === false;
-    }).length;
-    const hardCards = deck.flashcards.filter(
-      (card) => (card.again_count || 0) >= 3 || (card.ease_factor && card.ease_factor < 2.0)
-    ).length;
-    const nextSortOrder = deck.flashcards.reduce(
-      (highest, card, index) => Math.max(highest, card.sort_order ?? index),
-      -1
-    ) + 1;
+    const closeOverflowMenu = () => setShowOverflowMenu(false);
 
-    const sessionProgress = getSessionProgress(params.id);
+    const renderSelectionToggle = () => (
+      <button
+        className={`${styles.viewToggle} ${selectionMode ? styles.viewToggleActive : ""}`}
+        onClick={toggleSelectionMode}
+        title={selectionMode ? "Exit selection" : "Select cards"}
+      >
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+      </button>
+    );
+
+    const renderFullActionButtons = () => (
+      <>
+        <button
+          className={styles.addToggle}
+          onClick={() => setShowAddPanel((p) => !p)}
+          title={t("addCard")}
+        >
+          {showAddPanel ? "−" : "+"}
+        </button>
+        {isContinuingSession && (
+          <Button
+            callback={() => navigate("study")}
+            bgcolor="var(--fg)"
+            color="var(--bg)"
+          >
+            ▶ {t("continueStudy")} {sessionProgress}%
+          </Button>
+        )}
+        <Button callback={() => navigate("study")} title="S">
+          {t("study")}
+        </Button>
+        <Button callback={() => navigate("new")} title="N">
+          {t("learnNewBtn")} <Badge style={{ fontSize: "0.7em" }}>{newCards}</Badge>
+        </Button>
+        <Button callback={() => navigate("due")} title="D">
+          {t("studyDue")} <Badge style={{ fontSize: "0.7em" }}>{dueCards}</Badge>
+        </Button>
+        {hardCards > 0 && (
+          <Button callback={() => navigate("study?pool=hard")}>
+            {t("hard")} <Badge style={{ fontSize: "0.7em" }}>{hardCards}</Badge>
+          </Button>
+        )}
+        {isTeacher && (
+          <button
+            className={styles.viewToggle}
+            onClick={() => setShowAssignModal(true)}
+            title="Assign to students"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
+          </button>
+        )}
+        {isTeacher && (
+          <button
+            className={`${styles.viewToggle} ${deckCourseCount > 0 ? styles.viewToggleActive : ""}`}
+            onClick={() => setShowCourseModal(true)}
+            title={deckCourseCount > 0 ? `Manage courses (${deckCourseCount})` : "Add to course"}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 7a2 2 0 0 1 2-2h5l2 2h7a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/><line x1="12" y1="11" x2="12" y2="17"/><line x1="9" y1="14" x2="15" y2="14"/></svg>
+          </button>
+        )}
+        {renderSelectionToggle()}
+        <button
+          className={styles.viewToggle}
+          onClick={() => setViewMode(viewMode === "grid" ? "table" : "grid")}
+          title={viewMode === "grid" ? t("switchToTable") + " (V)" : t("switchToGrid") + " (V)"}
+        >
+          {viewMode === "grid"
+            ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+            : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+          }
+        </button>
+        <button
+          className={styles.viewToggle}
+          onClick={() => exportDeckCsv(deck.name, deck.flashcards)}
+          title={t("exportDeck")}
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        </button>
+        <button
+          className={styles.viewToggle}
+          onClick={handleRenameDeck}
+          title="Rename deck"
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg>
+        </button>
+        <button
+          className={`${styles.viewToggle} ${deck.share_token ? styles.viewToggleActive : ""}`}
+          onClick={deck.share_token ? handleUnshare : handleShareDeck}
+          title={deck.share_token ? "Remove share link" : "Copy share link"}
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+        </button>
+        <button
+          className={styles.viewToggle}
+          onClick={handleArchiveDeck}
+          title="Archive deck"
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><line x1="10" y1="12" x2="14" y2="12"/></svg>
+        </button>
+        <button
+          className={styles.viewToggle}
+          onClick={handleDeleteDeck}
+          disabled={deleting}
+          title="Delete deck"
+          style={{ color: "var(--danger, #dc2626)" }}
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+        </button>
+      </>
+    );
+
+    const renderCompactActionButtons = () => (
+      <>
+        <button
+          className={styles.addToggle}
+          onClick={() => setShowAddPanel((p) => !p)}
+          title={t("addCard")}
+        >
+          {showAddPanel ? "−" : "+"}
+        </button>
+        {isContinuingSession ? (
+          <Button
+            callback={() => navigate("study")}
+            bgcolor="var(--fg)"
+            color="var(--bg)"
+          >
+            ▶ {sessionProgress}%
+          </Button>
+        ) : (
+          <Button callback={() => navigate("study")} title="S">
+            {t("study")}
+          </Button>
+        )}
+        {selectionMode && renderSelectionToggle()}
+        <div className={styles.overflowWrap} ref={overflowMenuRef}>
+          <button
+            className={`${styles.viewToggle} ${showOverflowMenu ? styles.viewToggleActive : ""}`}
+            onClick={() => setShowOverflowMenu((prev) => !prev)}
+            title="More actions"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="5" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="19" r="1.5"/></svg>
+          </button>
+          {showOverflowMenu && (
+            <div className={styles.overflowMenu}>
+              {isContinuingSession && (
+                <button className={styles.overflowItem} onClick={() => { closeOverflowMenu(); navigate("study"); }}>
+                  <span>{t("study")}</span>
+                </button>
+              )}
+              {hardCards > 0 && (
+                <button className={styles.overflowItem} onClick={() => { closeOverflowMenu(); navigate("study?pool=hard"); }}>
+                  <span>{t("hard")}</span>
+                  <Badge>{hardCards}</Badge>
+                </button>
+              )}
+              {isTeacher && (
+                <button className={styles.overflowItem} onClick={() => { closeOverflowMenu(); setShowAssignModal(true); }}>
+                  <span>Assign to students</span>
+                </button>
+              )}
+              {isTeacher && (
+                <button className={styles.overflowItem} onClick={() => { closeOverflowMenu(); setShowCourseModal(true); }}>
+                  <span>{deckCourseCount > 0 ? "Manage courses" : "Add to course"}</span>
+                  {deckCourseCount > 0 ? <Badge>{deckCourseCount}</Badge> : null}
+                </button>
+              )}
+              <button className={styles.overflowItem} onClick={() => { closeOverflowMenu(); toggleSelectionMode(); }}>
+                <span>{selectionMode ? "Exit selection" : "Select cards"}</span>
+              </button>
+              <button className={styles.overflowItem} onClick={() => { closeOverflowMenu(); setViewMode(viewMode === "grid" ? "table" : "grid"); }}>
+                <span>{viewMode === "grid" ? t("switchToTable") : t("switchToGrid")}</span>
+              </button>
+              <button className={styles.overflowItem} onClick={() => { closeOverflowMenu(); exportDeckCsv(deck.name, deck.flashcards); }}>
+                <span>{t("exportDeck")}</span>
+              </button>
+              <button className={styles.overflowItem} onClick={() => { closeOverflowMenu(); handleRenameDeck(); }}>
+                <span>Rename deck</span>
+              </button>
+              <button className={styles.overflowItem} onClick={() => { closeOverflowMenu(); if (deck.share_token) handleUnshare(); else handleShareDeck(); }}>
+                <span>{deck.share_token ? "Remove share link" : "Copy share link"}</span>
+              </button>
+              <button className={styles.overflowItem} onClick={() => { closeOverflowMenu(); handleArchiveDeck(); }}>
+                <span>Archive deck</span>
+              </button>
+              <button className={`${styles.overflowItem} ${styles.overflowDanger}`} onClick={() => { closeOverflowMenu(); handleDeleteDeck(); }}>
+                <span>Delete deck</span>
+              </button>
+            </div>
+          )}
+        </div>
+      </>
+    );
 
     return (
       <>
@@ -323,128 +568,11 @@ const Deck = () => {
             ) : null}
             <Badge>{deck.flashcards.length} {t("cards")}</Badge>
           </h1>
-          <div className={styles.actions}>
-            <button
-              className={styles.addToggle}
-              onClick={() => setShowAddPanel((p) => !p)}
-              title={t("addCard")}
-            >
-              {showAddPanel ? "−" : "+"}
-            </button>
-            {sessionProgress !== null && sessionProgress < 100 && (
-              <Button
-                callback={() => navigate("study")}
-                bgcolor="var(--fg)"
-                color="var(--bg)"
-              >
-                ▶ {t("continueStudy")} {sessionProgress}%
-              </Button>
-            )}
-            <Button
-              callback={() => {
-                navigate("study");
-              }}
-              title="S"
-            >
-              {t("study")}
-            </Button>
-            <Button
-              callback={() => {
-                navigate("new");
-              }}
-              title="N"
-            >
-              {t("learnNewBtn")} <Badge style={{ fontSize: "0.7em" }}>{newCards}</Badge>
-            </Button>
-            <Button
-              callback={() => {
-                navigate("due");
-              }}
-              title="D"
-            >
-              {t("studyDue")} <Badge style={{ fontSize: "0.7em" }}>{dueCards}</Badge>
-            </Button>
-            {hardCards > 0 && (
-              <Button
-                callback={() => {
-                  navigate("study?pool=hard");
-                }}
-              >
-                {t("hard")} <Badge style={{ fontSize: "0.7em" }}>{hardCards}</Badge>
-              </Button>
-            )}
-            {isTeacher && (
-              <button
-                className={styles.viewToggle}
-                onClick={() => setShowAssignModal(true)}
-                title="Assign to students"
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
-              </button>
-            )}
-            {isTeacher && (
-              <button
-                className={`${styles.viewToggle} ${deckCourseCount > 0 ? styles.viewToggleActive : ""}`}
-                onClick={() => setShowCourseModal(true)}
-                title={deckCourseCount > 0 ? `Manage courses (${deckCourseCount})` : "Add to course"}
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 7a2 2 0 0 1 2-2h5l2 2h7a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/><line x1="12" y1="11" x2="12" y2="17"/><line x1="9" y1="14" x2="15" y2="14"/></svg>
-              </button>
-            )}
-            <button
-              className={`${styles.viewToggle} ${selectionMode ? styles.viewToggleActive : ""}`}
-              onClick={toggleSelectionMode}
-              title={selectionMode ? "Exit selection" : "Select cards"}
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
-            </button>
-            <button
-              className={styles.viewToggle}
-              onClick={() => setViewMode(viewMode === "grid" ? "table" : "grid")}
-              title={viewMode === "grid" ? t("switchToTable") + " (V)" : t("switchToGrid") + " (V)"}
-            >
-              {viewMode === "grid"
-                ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
-                : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
-              }
-            </button>
-            <button
-              className={styles.viewToggle}
-              onClick={() => exportDeckCsv(deck.name, deck.flashcards)}
-              title={t("exportDeck")}
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-            </button>
-            <button
-              className={styles.viewToggle}
-              onClick={handleRenameDeck}
-              title="Rename deck"
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg>
-            </button>
-            <button
-              className={`${styles.viewToggle} ${deck.share_token ? styles.viewToggleActive : ""}`}
-              onClick={deck.share_token ? handleUnshare : handleShareDeck}
-              title={deck.share_token ? "Remove share link" : "Copy share link"}
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
-            </button>
-            <button
-              className={styles.viewToggle}
-              onClick={handleArchiveDeck}
-              title="Archive deck"
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><line x1="10" y1="12" x2="14" y2="12"/></svg>
-            </button>
-            <button
-              className={styles.viewToggle}
-              onClick={handleDeleteDeck}
-              disabled={deleting}
-              title="Delete deck"
-              style={{ color: "var(--danger, #dc2626)" }}
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-            </button>
+          <div ref={actionsMeasureRef} className={styles.actionsMeasure} aria-hidden="true">
+            {renderFullActionButtons()}
+          </div>
+          <div ref={actionsRef} className={`${styles.actions} ${useOverflowMenu ? styles.actionsCompact : ""}`}>
+            {useOverflowMenu ? renderCompactActionButtons() : renderFullActionButtons()}
           </div>
         </div>
         <AddCardTabs deckId={params.id} onChanged={refetch} startSortOrder={nextSortOrder} show={showAddPanel} />
