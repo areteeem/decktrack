@@ -57,3 +57,45 @@
 .dangerBtn:hover {
   opacity: 0.9;
 }
+
+.dangerBtn:disabled,
+.confirmBtn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* ── Cascade details list ── */
+.detailsList {
+  margin: 0.35rem 0 0;
+  padding-left: 1.2rem;
+  color: var(--fg-muted);
+  font-size: 0.82rem;
+  line-height: 1.6;
+}
+
+.detailsList li {
+  margin: 0;
+}
+
+/* ── Type-to-confirm ── */
+.typeConfirm {
+  margin-top: 0.6rem;
+}
+
+.typeLabel {
+  display: block;
+  font-size: 0.82rem;
+  color: var(--fg-muted);
+  margin-bottom: 0.3rem;
+}
+
+.typeInput {
+  width: 100%;
+  padding: 0.45rem 0.65rem;
+  border: 1.5px solid var(--border-color);
+  border-radius: var(--radius);
+  background: var(--bg-secondary, #f9f9f9);
+  color: var(--fg);
+  font-size: 0.88rem;
+  font-family: inherit;
+}

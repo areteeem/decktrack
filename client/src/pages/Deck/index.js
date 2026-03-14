@@ -667,6 +667,13 @@ const Deck = () => {
           message={`Delete ${selectedCards.size} card(s)? This cannot be undone.`}
           confirmLabel="Delete"
           danger
+          details={(() => {
+            const sel = flashcards.filter(c => selectedCards.has(c.id));
+            const preview = sel.slice(0, 5).map(c => stripHtmlTags(c.front) || '(no term)');
+            if (sel.length > 5) preview.push(`...and ${sel.length - 5} more`);
+            return [`Cards: ${preview.join(', ')}`, 'All study progress for these cards will be lost'];
+          })()}
+          requireType={selectedCards.size >= 20 ? 'DELETE' : undefined}
           onConfirm={doBulkDelete}
           onCancel={() => setConfirmBulkDelete(false)}
         />
@@ -676,6 +683,11 @@ const Deck = () => {
           message={`Delete "${deck?.name}" and all its cards? This cannot be undone.`}
           confirmLabel="Delete"
           danger
+          details={[
+            `${flashcards.length} card(s) and all study progress will be permanently deleted`,
+            'The deck will be removed from all courses'
+          ]}
+          requireType="DELETE"
           onConfirm={doDeleteDeck}
           onCancel={() => setConfirmDeleteDeck(false)}
         />

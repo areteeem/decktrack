@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import DeckCard from "../../common/components/DeckCard";
 import LoadingScreen from "../../common/components/LoadingScreen";
@@ -121,6 +121,8 @@ const Dashboard = () => {
   const [bulkAddCourse, setBulkAddCourse] = useState(null);
   const [confirmDeleteCourse, setConfirmDeleteCourse] = useState(null);
   const [confirmDeleteArchivedDeck, setConfirmDeleteArchivedDeck] = useState(null);
+  const [showHeaderMenu, setShowHeaderMenu] = useState(false);
+  const headerMenuRef = useRef(null);
   const navigate = useNavigate();
   const { isTeacher } = useAuth();
   const { data: decks, loading, error, refetch } = useDecks();
@@ -233,6 +235,14 @@ const Dashboard = () => {
     }
   };
 
+  // Close header overflow menu on outside click
+  useEffect(() => {
+    if (!showHeaderMenu) return undefined;
+    const close = (e) => { if (!headerMenuRef.current?.contains(e.target)) setShowHeaderMenu(false); };
+    document.addEventListener("mousedown", close);
+    return () => document.removeEventListener("mousedown", close);
+  }, [showHeaderMenu]);
+
   if (error) return <p>Error :(</p>;
   if (loading) return <LoadingScreen />;
 
@@ -281,9 +291,26 @@ const Dashboard = () => {
 
         {isTeacher && (
           <div className={styles.actions}>
-            <Button callback={() => setShowNewDeckModal(true)}>+ New deck</Button>
-            <Button callback={() => setShowNewCourse(true)}>+ New course</Button>
-            <Button callback={() => navigate("/students")}>My students</Button>
+            <div className={styles.actionsWide}>
+              <Button callback={() => setShowNewDeckModal(true)}>+ New deck</Button>
+              <Button callback={() => setShowNewCourse(true)}>+ New course</Button>
+              <Button callback={() => navigate("/students")}>My students</Button>
+            </div>
+            <div className={styles.actionsNarrow} ref={headerMenuRef}>
+              <Button callback={() => setShowNewDeckModal(true)}>+ New deck</Button>
+              <button
+                className={styles.overflowBtn}
+                onClick={() => setShowHeaderMenu((p) => !p)}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="5" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="19" r="1.5"/></svg>
+              </button>
+              {showHeaderMenu && (
+                <div className={styles.overflowMenu}>
+                  <button className={styles.overflowItem} onClick={() => { setShowHeaderMenu(false); setShowNewCourse(true); }}>New course</button>
+                  <button className={styles.overflowItem} onClick={() => { setShowHeaderMenu(false); navigate("/students"); }}>My students</button>
+                </div>
+              )}
+            </div>
           </div>
         )}
       </div>
@@ -354,53 +381,45 @@ const Dashboard = () => {
             .filter(searchFilter);
           const isExpanded = expandedCourses.has(course.id);
           return (
-            <div key={course.id} style={{ gridColumn: "1 / -1", marginBottom: "0.5rem" }}>
+            <div key={course.id} className={styles.courseSection}>
               <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "0.5rem",
-                  cursor: "pointer",
-                  userSelect: "none",
-                  padding: "0.4rem 0",
-                }}
+                className={styles.courseHeader}
                 onClick={() => toggleCourse(course.id)}
               >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ transform: isExpanded ? "rotate(90deg)" : "none", transition: "transform 0.15s" }}>
+                <svg className={`${styles.courseChevron} ${isExpanded ? styles.courseChevronOpen : ""}`} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <polyline points="9 18 15 12 9 6" />
                 </svg>
-                <span style={{ fontWeight: 600, fontSize: "1rem" }}>{course.name}</span>
-                <span style={{ fontSize: "0.8rem", color: "var(--fg-muted)" }}>({courseDecks.length} deck{courseDecks.length !== 1 ? "s" : ""})</span>
+                <span className={styles.courseName}>{course.name}</span>
+                <Badge style={{ fontSize: "0.7em" }}>{courseDecks.length}</Badge>
                 <button
                   onClick={(e) => { e.stopPropagation(); setBulkAddCourse(course); }}
-                  style={{ marginLeft: "auto", background: "none", border: "none", color: "var(--fg)", cursor: "pointer", fontSize: "0.8rem", fontWeight: 600 }}
+                  className={styles.courseActionBtn}
                 >
-                  Add decks
+                  + Add decks
                 </button>
                 <button
                   onClick={(e) => { e.stopPropagation(); setConfirmDeleteCourse(course); }}
-                  style={{ background: "none", border: "none", color: "var(--danger, #c00)", cursor: "pointer", fontSize: "0.8rem" }}
+                  className={`${styles.courseActionBtn} ${styles.courseActionDanger}`}
                 >
                   Delete
                 </button>
               </div>
               {isExpanded && (
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(14rem, 1fr))", gap: "0.75rem", marginTop: "0.25rem", paddingLeft: "1.2rem" }}>
+                <div className={styles.courseDecks}>
                   {courseDecks.map((deck) => (
                     <div key={deck.id} className={styles.deckTile}>
                       <DeckCard deck={deck} />
                       <div className={styles.deckTileActions}>
-                        <Button
-                          callback={() => handleRemoveDeckFromCourse(course, deck)}
-                          bgcolor="transparent"
-                          color="var(--fg)"
+                        <button
+                          className={styles.courseActionBtn}
+                          onClick={() => handleRemoveDeckFromCourse(course, deck)}
                         >
-                          Remove to main
-                        </Button>
+                          Remove
+                        </button>
                       </div>
                     </div>
                   ))}
-                  {courseDecks.length === 0 && <p style={{ color: "var(--fg-muted)", fontSize: "0.85rem" }}>No matching decks</p>}
+                  {courseDecks.length === 0 && <p className={styles.courseEmpty}>No matching decks</p>}
                 </div>
               )}
             </div>
