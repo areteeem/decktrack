@@ -5,6 +5,16 @@ const HEADER_ALIASES = {
   back: ['definition', 'back', 'answer', 'meaning', 'translation', 'response'],
   example_sentence: ['example', 'example sentence', 'sentence', 'usage'],
   notes: ['notes', 'note', 'hint', 'context'],
+  card_type: ['card_type', 'card type', 'type'],
+};
+
+const FILL_BLANK_PATTERN = /_{2,}/;
+const detectFillBlank = (card) => {
+  if (card.card_type) return card;
+  if (FILL_BLANK_PATTERN.test(card.front)) {
+    return { ...card, card_type: 'fill_blank' };
+  }
+  return card;
 };
 
 const normalizeCell = (value) => String(value ?? '').replace(/\r/g, '').trim();
@@ -95,6 +105,7 @@ const normalizeCards = (rows) => {
           back: normalizeCell(row[headerMap.back]),
           example_sentence: normalizeCell(row[headerMap.example_sentence]),
           notes: normalizeCell(row[headerMap.notes]),
+          card_type: headerMap.card_type != null ? normalizeCell(row[headerMap.card_type]) : '',
         };
       }
 
@@ -106,7 +117,8 @@ const normalizeCards = (rows) => {
         notes,
       };
     })
-    .filter((card) => card.front && card.back);
+    .filter((card) => card.front && card.back)
+    .map(detectFillBlank);
 
   if (!cards.length) {
     throw new Error('No valid term/definition pairs were found.');
@@ -163,6 +175,26 @@ export const parseCardsFromFile = async (file) => {
     .split('.')
     .pop()
     ?.toLowerCase();
+
+  if (extension === 'json') {
+    const text = await file.text();
+    let parsed;
+    try { parsed = JSON.parse(text); } catch { throw new Error('Invalid JSON file.'); }
+    const arr = Array.isArray(parsed) ? parsed : parsed.cards || parsed.flashcards || [];
+    if (!arr.length) throw new Error('No cards found in JSON file.');
+    const cards = arr
+      .map((item) => ({
+        front: normalizeCell(item.front || item.term || item.question || ''),
+        back: normalizeCell(item.back || item.definition || item.answer || ''),
+        example_sentence: normalizeCell(item.example_sentence || item.example || ''),
+        notes: normalizeCell(item.notes || ''),
+        ...(item.card_type ? { card_type: item.card_type } : {}),
+      }))
+      .filter((c) => c.front && c.back)
+      .map(detectFillBlank);
+    if (!cards.length) throw new Error('No valid cards found in JSON file.');
+    return cards;
+  }
 
   if (extension === 'xlsx' || extension === 'xls' || extension === 'csv') {
     const readType = extension === 'csv' ? 'string' : 'array';

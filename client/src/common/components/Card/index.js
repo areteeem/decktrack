@@ -51,6 +51,11 @@ const Card = (props) => {
         )}
       </div>
       <div className={styles.meta}>
+        {props.flashcard.card_type === 'fill_blank' && (
+          <Badge fontSize="0.55em" style={{ color: 'var(--accent, #6366f1)', borderColor: 'var(--accent, #6366f1)' }}>
+            Fill-blank
+          </Badge>
+        )}
         {props.flashcard.is_new !== true && !props.flashcard.new ? (
           <>
             <RetentionBadge fontSize="0.55em" retention={retention} />

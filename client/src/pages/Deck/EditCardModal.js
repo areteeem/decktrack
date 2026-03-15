@@ -8,12 +8,18 @@ import { useCreateCard, useDeleteCard, useUpdateCard } from "../../hooks/useSupa
 import { useSettings } from "../../contexts/SettingsContext";
 import styles from "./EditCardModal.module.css";
 
+const CARD_TYPE_OPTIONS = [
+  { id: "normal", label: "Normal" },
+  { id: "fill_blank", label: "Fill-in-the-blank" },
+];
+
 const EMPTY_CARD = {
   id: "",
   front: "",
   back: "",
   example_sentence: "",
   notes: "",
+  card_type: "normal",
 };
 
 const EditCardModal = ({ open, flashcard = EMPTY_CARD, setOpen, deckId, onSaved }) => {
@@ -26,14 +32,18 @@ const EditCardModal = ({ open, flashcard = EMPTY_CARD, setOpen, deckId, onSaved 
   const [back, setBack] = useState("");
   const [exampleSentence, setExampleSentence] = useState("");
   const [notes, setNotes] = useState("");
+  const [cardType, setCardType] = useState("normal");
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
+
+  const isFillBlank = cardType === "fill_blank";
 
   useEffect(() => {
     setFront(flashcard?.front || "");
     setBack(flashcard?.back || "");
     setExampleSentence(flashcard?.example_sentence || "");
     setNotes(flashcard?.notes || "");
+    setCardType(flashcard?.card_type || "normal");
   }, [flashcard, open]);
 
   const handleSave = async (event) => {
@@ -52,6 +62,7 @@ const EditCardModal = ({ open, flashcard = EMPTY_CARD, setOpen, deckId, onSaved 
         back: back.trim(),
         example_sentence: exampleSentence.trim(),
         notes: notes.trim(),
+        card_type: cardType,
       };
 
       if (flashcard?.id) {
@@ -92,30 +103,56 @@ const EditCardModal = ({ open, flashcard = EMPTY_CARD, setOpen, deckId, onSaved 
       </div>
 
       <form className={styles.form} onSubmit={handleSave}>
+        {/* Card type selector */}
+        <div style={{ display: 'flex', gap: '0.35rem', marginBottom: '0.5rem' }}>
+          {CARD_TYPE_OPTIONS.map((opt) => (
+            <button
+              key={opt.id}
+              type="button"
+              onClick={() => setCardType(opt.id)}
+              style={{
+                padding: '0.35rem 0.7rem',
+                border: `1.5px solid ${cardType === opt.id ? 'var(--fg)' : 'var(--border-color)'}`,
+                borderRadius: 'var(--radius)',
+                background: cardType === opt.id ? 'var(--fg)' : 'var(--card-bg)',
+                color: cardType === opt.id ? 'var(--bg)' : 'var(--fg-muted)',
+                fontSize: '0.78rem',
+                fontWeight: 600,
+                cursor: 'pointer',
+                fontFamily: 'inherit',
+              }}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+
         <TextInput
-          label={t("term")}
-          placeholder={t("termPlaceholder")}
-          helperText={t("termHelper")}
+          label={isFillBlank ? "Sentence with blank" : t("term")}
+          placeholder={isFillBlank ? "The capital of France is ___." : t("termPlaceholder")}
+          helperText={isFillBlank ? "Use ___ where the blank should be" : t("termHelper")}
           state={front}
           setState={setFront}
         />
-        <div className={styles.toolbar}>
-          <Button
-            type="button"
-            callback={() => {
-              setFront(back);
-              setBack(front);
-            }}
-          >
-            {t("swapSides")}
-          </Button>
-        </div>
+        {!isFillBlank && (
+          <div className={styles.toolbar}>
+            <Button
+              type="button"
+              callback={() => {
+                setFront(back);
+                setBack(front);
+              }}
+            >
+              {t("swapSides")}
+            </Button>
+          </div>
+        )}
         <RichTextInput
-          label={t("definition")}
-          placeholder={t("definitionPlaceholder")}
-          helperText={t("definitionHelper")}
+          label={isFillBlank ? "Correct answer" : t("definition")}
+          placeholder={isFillBlank ? "Paris" : t("definitionPlaceholder")}
+          helperText={isFillBlank ? "The answer that fills the blank" : t("definitionHelper")}
           multiline
-          rows={5}
+          rows={isFillBlank ? 2 : 5}
           value={back}
           onChange={setBack}
         />

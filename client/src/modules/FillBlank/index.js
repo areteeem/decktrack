@@ -110,9 +110,15 @@ const FillBlank = ({ flashcards, onQuit, onSessionComplete }) => {
   }
 
   const card = shuffled[current];
-  // The correct answer is the term (card.front), stripped of HTML
-  const correctAnswer = (card.front || '').replace(/<[^>]*>/g, '').trim();
-  const { parts, hasBlank } = buildBlankPrompt(card.back, card.front);
+  const isFillBlankType = card.card_type === 'fill_blank';
+  // For fill_blank card type: front is the sentence with ___, back is the answer
+  // For normal cards: front is the term (correct answer), back is the definition
+  const correctAnswer = isFillBlankType
+    ? (card.back || '').replace(/<[^>]*>/g, '').trim()
+    : (card.front || '').replace(/<[^>]*>/g, '').trim();
+  const { parts, hasBlank } = isFillBlankType
+    ? { parts: null, hasBlank: false }
+    : buildBlankPrompt(card.back, card.front);
 
   const handleCheck = () => {
     if (status) return;
@@ -147,6 +153,26 @@ const FillBlank = ({ flashcards, onQuit, onSessionComplete }) => {
 
   // Render the prompt: definition with blanks where the term appears
   const renderPrompt = () => {
+    // Fill-blank card type: front is the sentence, show it with ___ highlighted
+    if (isFillBlankType) {
+      const frontText = (card.front || '').replace(/<[^>]*>/g, '');
+      const blankParts = frontText.split(/(_{2,})/);
+      return (
+        <p className={styles.prompt}>
+          {blankParts.map((part, i) =>
+            /_{2,}/.test(part)
+              ? <span key={i} style={{ display: 'inline-block', minWidth: 80, borderBottom: '2px solid currentColor', margin: '0 4px', textAlign: 'center' }}>
+                  {status ? (
+                    <span style={{ color: status === 'correct' ? 'var(--success)' : 'var(--danger)', fontWeight: 600 }}>
+                      {correctAnswer}
+                    </span>
+                  ) : '______'}
+                </span>
+              : <span key={i}>{part}</span>
+          )}
+        </p>
+      );
+    }
     if (!hasBlank) {
       return (
         <div>

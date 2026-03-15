@@ -53,7 +53,12 @@ const SpinWheel = ({ flashcards, onQuit, onSessionComplete }) => {
     const segAngle = 360 / segments.length;
     const targetAngle = target * segAngle + segAngle / 2;
     const fullSpins = 5 + Math.floor(Math.random() * 3);
-    const finalRotation = rotation + fullSpins * 360 + (360 - targetAngle);
+    // Pointer is at top (12 o'clock). After rotating by R°, the wheel point
+    // at R° (from top, clockwise) ends up under the pointer.
+    // We need finalRotation % 360 === targetAngle.
+    const currentAngle = ((rotation % 360) + 360) % 360;
+    const extra = ((targetAngle - currentAngle) % 360 + 360) % 360;
+    const finalRotation = rotation + fullSpins * 360 + extra;
 
     setRotation(finalRotation);
 
@@ -218,7 +223,7 @@ const SpinWheel = ({ flashcards, onQuit, onSessionComplete }) => {
                       fontSize={count <= 6 ? "7" : count <= 10 ? "5.5" : "4.5"}
                       fontWeight="600"
                       style={{ pointerEvents: "none" }}
-                      transform={`rotate(${midAngle}, ${lx}, ${ly})`}
+                      transform={`rotate(${midAngle > 90 && midAngle < 270 ? midAngle + 180 : midAngle}, ${lx}, ${ly})`}
                     >
                       {term}
                     </text>

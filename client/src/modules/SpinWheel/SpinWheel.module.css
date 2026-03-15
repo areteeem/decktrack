@@ -43,8 +43,8 @@
 /* ───── Wheel ───── */
 .wheelWrapper {
   position: relative;
-  width: min(85vw, 24rem);
-  height: min(85vw, 24rem);
+  width: min(90vw, 32rem);
+  height: min(90vw, 32rem);
 }
 
 .wheelRing {
@@ -306,8 +306,8 @@
 /* ───── Mobile ───── */
 @media (max-width: 480px) {
   .wheelWrapper {
-    width: 90vw;
-    height: 90vw;
+    width: 95vw;
+    height: 95vw;
   }
 
   .actionBtns {

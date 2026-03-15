@@ -1,16 +1,23 @@
 /* eslint-disable jsx-a11y/anchor-is-valid */
 import "./Sidebar.css";
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import logo from "../../common/logo1.svg";
 import { Link } from "react-router-dom";
 import { useLogout } from "../../common/hooks/useLogout";
 import NewDeckModal from "./NewDeckModal";
 import DeckLink from "./DeckLink";
-import { useDecks, useStudentStats } from "../../hooks/useSupabaseData";
+import { useDecks, useStudentStats, useAssignments, usePerDeckStats } from "../../hooks/useSupabaseData";
 import { useAuth } from "../../contexts/AuthContext";
 import { useSettings } from "../../contexts/SettingsContext";
 import { getSessionProgress, getActiveSessionDeckIds } from "../../lib/studySession";
 import { getTotalSeconds, formatStudyTime } from "../../lib/studyTimer";
+
+const SORT_OPTIONS = [
+  { id: "alpha", label: "A–Z" },
+  { id: "alpha-desc", label: "Z–A" },
+  { id: "cards", label: "# Cards" },
+  { id: "recent", label: "Recent" },
+];
 
 const Sidebar = ({ isOpen, setIsOpen }) => {
   const logout = useLogout();
@@ -18,14 +25,65 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
   const { t } = useSettings();
   const { data: decks, loading, error, refetch } = useDecks();
   const { data: studentStats } = useStudentStats(!isTeacher ? user?.id : null);
+  const { data: assignments } = useAssignments();
+  const { data: perDeckStats } = usePerDeckStats();
 
   const [showModal, setShowModal] = useState(false);
   const [studyTime, setStudyTime] = useState(() => formatStudyTime(getTotalSeconds()));
+  const [deckSearch, setDeckSearch] = useState("");
+  const [deckSort, setDeckSort] = useState("alpha");
+  const [decksCollapsed, setDecksCollapsed] = useState(false);
+  const [assignedCollapsed, setAssignedCollapsed] = useState(false);
+  const searchRef = useRef(null);
 
   useEffect(() => {
     const id = setInterval(() => setStudyTime(formatStudyTime(getTotalSeconds())), 5000);
     return () => clearInterval(id);
   }, []);
+
+  // Keyboard shortcut: "/" or Ctrl+K to focus deck search
+  useEffect(() => {
+    const handleKey = (e) => {
+      if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA" || e.target.isContentEditable) return;
+      if (e.key === "/" || (e.ctrlKey && e.key === "k")) {
+        e.preventDefault();
+        searchRef.current?.focus();
+      }
+    };
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  }, []);
+
+  // Sorted + filtered decks
+  const sortedFilteredDecks = useMemo(() => {
+    if (!decks) return [];
+    let list = [...decks];
+    const q = deckSearch.trim().toLowerCase();
+    if (q) list = list.filter((d) => (d.name || "").toLowerCase().includes(q));
+    switch (deckSort) {
+      case "alpha":
+        list.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+        break;
+      case "alpha-desc":
+        list.sort((a, b) => (b.name || "").localeCompare(a.name || ""));
+        break;
+      case "cards":
+        list.sort((a, b) => (b.card_count ?? b.flashcards?.length ?? 0) - (a.card_count ?? a.flashcards?.length ?? 0));
+        break;
+      case "recent":
+        list.sort((a, b) => new Date(b.updated_at || b.created_at || 0) - new Date(a.updated_at || a.created_at || 0));
+        break;
+      default:
+        break;
+    }
+    return list;
+  }, [decks, deckSearch, deckSort]);
+
+  // Active assigned studies
+  const activeAssignments = useMemo(() => {
+    if (!assignments) return [];
+    return assignments.filter((a) => !a.is_archived);
+  }, [assignments]);
 
   // Active study sessions for continue-study links
   const continueSessions = useMemo(() => {
@@ -213,35 +271,110 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
             ))}
           </div>
         )}
-        <div className="decks">
-          <strong className="link new-deck">
-            <strong>{t("decks")}</strong>
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="new-deck-icon"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              onClick={() => setShowModal(true)}
+        {/* Assigned studies (student) — collapsible */}
+        {isStudent && activeAssignments.length > 0 && (
+          <div className="sidebar-section">
+            <button
+              className="section-toggle"
+              onClick={() => setAssignedCollapsed((c) => !c)}
             >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"
-              />
-            </svg>
-          </strong>
-          {loading ? (
-            <p>{t("loadingDecks")}</p>
-          ) : error ? (
-            <p>{t("couldntLoadDecks")}</p>
-          ) : (
-            (decks || []).map((deck) => (
-              <span key={deck.id} onClick={() => setIsOpen(false)}>
-                <DeckLink id={deck.id} name={deck.name} onDeleted={refetch} />
+              <span className="section-toggle-label">
+                {assignedCollapsed ? "▸" : "▾"} {t("assignedStudies") || "Assigned Studies"}
               </span>
-            ))
+              <span className="section-count">{activeAssignments.length}</span>
+            </button>
+            {!assignedCollapsed && activeAssignments.map((a) => {
+              const name = a.custom_name || a.flashy_decks?.name || "Unnamed";
+              const ds = perDeckStats?.[a.id] || perDeckStats?.[String(a.id)] || {};
+              const total = ds.total || 0;
+              const newCount = ds.new_count ?? ds.newCards ?? 0;
+              const studied = total - newCount;
+              const pct = total > 0 ? Math.round((studied / total) * 100) : 0;
+              return (
+                <Link
+                  key={a.id}
+                  className="sidebar-deck-link"
+                  to={`/deck/${a.id}/browse`}
+                  onClick={() => setIsOpen(false)}
+                >
+                  <span className="sidebar-deck-name">📚 {name}</span>
+                  {total > 0 && <span className="sidebar-deck-badge">{pct}%</span>}
+                </Link>
+              );
+            })}
+          </div>
+        )}
+        {/* Decks — with search, sort, collapsible */}
+        <div className="sidebar-section">
+          <button
+            className="section-toggle"
+            onClick={() => setDecksCollapsed((c) => !c)}
+          >
+            <span className="section-toggle-label">
+              {decksCollapsed ? "▸" : "▾"} {t("decks")}
+            </span>
+            <span className="section-count-row">
+              {decks ? <span className="section-count">{decks.length}</span> : null}
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="new-deck-icon"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                onClick={(e) => { e.stopPropagation(); setShowModal(true); }}
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
+              </svg>
+            </span>
+          </button>
+          {!decksCollapsed && (
+            <>
+              {/* Search + sort strip */}
+              {decks && decks.length > 3 && (
+                <div className="sidebar-deck-toolbar">
+                  <input
+                    ref={searchRef}
+                    type="text"
+                    className="sidebar-deck-search"
+                    placeholder="Filter decks… ( / )"
+                    value={deckSearch}
+                    onChange={(e) => setDeckSearch(e.target.value)}
+                  />
+                  <select
+                    className="sidebar-deck-sort"
+                    value={deckSort}
+                    onChange={(e) => setDeckSort(e.target.value)}
+                  >
+                    {SORT_OPTIONS.map((o) => (
+                      <option key={o.id} value={o.id}>{o.label}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+              {loading ? (
+                <p className="sidebar-deck-status">{t("loadingDecks")}</p>
+              ) : error ? (
+                <p className="sidebar-deck-status">{t("couldntLoadDecks")}</p>
+              ) : sortedFilteredDecks.length === 0 ? (
+                <p className="sidebar-deck-status">{deckSearch ? "No matches" : "No decks yet"}</p>
+              ) : (
+                sortedFilteredDecks.map((deck) => (
+                  <span key={deck.id} onClick={() => setIsOpen(false)}>
+                    <DeckLink
+                      id={deck.id}
+                      name={deck.name}
+                      cardCount={deck.card_count ?? deck.flashcards?.length}
+                      onDeleted={refetch}
+                    />
+                  </span>
+                ))
+              )}
+            </>
           )}
         </div>
       </div>

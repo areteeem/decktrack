@@ -65,6 +65,7 @@ const InlineBulkImport = ({ deckId, startSortOrder = 0, onImported }) => {
         ...card,
         deck_id: deckId,
         sort_order: startSortOrder + index,
+        ...(card.card_type ? { card_type: card.card_type } : {}),
       }));
       await createCardsBulk(payload);
       toast.success(`${previewCards.length} ${t("nCardsImported")}`);
@@ -95,7 +96,7 @@ const InlineBulkImport = ({ deckId, startSortOrder = 0, onImported }) => {
 
       {subTab === "upload" ? (
         <div className={styles.uploadBox}>
-          <input type="file" accept=".csv,.xlsx,.xls,.txt" onChange={handleFileChange} />
+          <input type="file" accept=".csv,.xlsx,.xls,.txt,.json" onChange={handleFileChange} />
           <p className={styles.hint}>{t("supportedFormats")}</p>
         </div>
       ) : (
@@ -135,6 +136,7 @@ const InlineBulkImport = ({ deckId, startSortOrder = 0, onImported }) => {
                 <th>{t("term")}</th>
                 <th>{t("definition")}</th>
                 <th>{t("example")}</th>
+                <th>Type</th>
               </tr>
             </thead>
             <tbody>
@@ -143,6 +145,7 @@ const InlineBulkImport = ({ deckId, startSortOrder = 0, onImported }) => {
                   <td>{card.front}</td>
                   <td>{card.back}</td>
                   <td>{card.example_sentence || "—"}</td>
+                  <td>{card.card_type === 'fill_blank' ? '🟣 Fill-blank' : 'Normal'}</td>
                 </tr>
               ))}
             </tbody>

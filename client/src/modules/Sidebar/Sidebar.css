@@ -159,3 +159,136 @@
   margin-bottom: 0.35rem;
   white-space: nowrap;
 }
+
+/* ── Sidebar sections (collapsible) ────── */
+
+.sidebar-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  margin-bottom: 0.35rem;
+}
+
+.section-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0.2rem 0 0.15rem;
+  cursor: pointer;
+  color: var(--fg);
+  font-weight: 700;
+  font-size: 0.85em;
+  font-family: inherit;
+  width: 100%;
+  text-align: left;
+}
+
+.section-toggle:hover {
+  opacity: 0.75;
+}
+
+.section-toggle-label {
+  display: flex;
+  align-items: center;
+  gap: 0.2em;
+}
+
+.section-count-row {
+  display: flex;
+  align-items: center;
+  gap: 0.35em;
+}
+
+.section-count {
+  font-size: 0.72em;
+  color: var(--fg-faint);
+  font-weight: 600;
+}
+
+/* ── Sidebar deck search + sort ────────── */
+
+.sidebar-deck-toolbar {
+  display: flex;
+  gap: 0.25rem;
+  margin-bottom: 0.25rem;
+}
+
+.sidebar-deck-search {
+  flex: 1;
+  min-width: 0;
+  padding: 0.25rem 0.4rem;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  background: var(--card-bg);
+  color: var(--fg);
+  font-size: 0.72em;
+  font-family: inherit;
+  outline: none;
+}
+
+.sidebar-deck-search:focus {
+  border-color: var(--fg-muted);
+}
+
+.sidebar-deck-search::placeholder {
+  color: var(--fg-faint);
+}
+
+.sidebar-deck-sort {
+  padding: 0.2rem 0.25rem;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  background: var(--card-bg);
+  color: var(--fg);
+  font-size: 0.68em;
+  font-family: inherit;
+  cursor: pointer;
+  outline: none;
+}
+
+.sidebar-deck-status {
+  font-size: 0.78em;
+  color: var(--fg-faint);
+  margin: 0.15rem 0;
+}
+
+/* ── Sidebar deck links ────────────────── */
+
+.sidebar-deck-link {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.3rem;
+  padding: 0.2rem 0.4rem;
+  margin-left: -0.4rem;
+  margin-right: -0.4rem;
+  border-radius: var(--radius);
+  text-decoration: none;
+  font-size: 0.82em;
+  font-weight: 500;
+  color: var(--fg-muted);
+  transition: background 0.1s;
+  overflow: hidden;
+}
+
+.sidebar-deck-link:hover {
+  background: var(--card-hover);
+  color: var(--fg);
+}
+
+.sidebar-deck-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.sidebar-deck-badge {
+  flex-shrink: 0;
+  font-size: 0.72em;
+  color: var(--fg-faint);
+  font-weight: 600;
+}

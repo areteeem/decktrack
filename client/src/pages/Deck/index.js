@@ -21,6 +21,15 @@ import dayjs from "dayjs";
 
 const stripHtmlTags = (html) => (html || "").replace(/<[^>]*>/g, "").trim();
 
+const triggerDownload = (blob, filename) => {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+};
+
 const exportDeckCsv = (deckName, flashcards) => {
   const escape = (v) => {
     const s = stripHtmlTags(v);
@@ -29,18 +38,25 @@ const exportDeckCsv = (deckName, flashcards) => {
       : s;
   };
   const rows = [
-    "Term,Definition,Example",
+    "Term,Definition,Example,Type",
     ...flashcards.map((c) =>
-      `${escape(c.front)},${escape(c.back)},${escape(c.example_sentence)}`
+      `${escape(c.front)},${escape(c.back)},${escape(c.example_sentence)},${c.card_type || "normal"}`
     ),
   ];
   const blob = new Blob([rows.join("\n")], { type: "text/csv;charset=utf-8;" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `${stripHtmlTags(deckName) || "deck"}.csv`;
-  a.click();
-  URL.revokeObjectURL(url);
+  triggerDownload(blob, `${stripHtmlTags(deckName) || "deck"}.csv`);
+};
+
+const exportDeckJson = (deckName, flashcards) => {
+  const cards = flashcards.map((c) => ({
+    front: stripHtmlTags(c.front),
+    back: stripHtmlTags(c.back),
+    example_sentence: stripHtmlTags(c.example_sentence),
+    ...(c.card_type && c.card_type !== "normal" ? { card_type: c.card_type } : {}),
+  }));
+  const json = JSON.stringify({ name: stripHtmlTags(deckName), cards }, null, 2);
+  const blob = new Blob([json], { type: "application/json;charset=utf-8;" });
+  triggerDownload(blob, `${stripHtmlTags(deckName) || "deck"}.json`);
 };
 
 const Deck = () => {
@@ -62,6 +78,8 @@ const Deck = () => {
   const [showCourseModal, setShowCourseModal] = useState(false);
   const [useOverflowMenu, setUseOverflowMenu] = useState(false);
   const [showOverflowMenu, setShowOverflowMenu] = useState(false);
+  const [showExportMenu, setShowExportMenu] = useState(false);
+  const exportMenuRef = useRef(null);
   const navigate = useNavigate();
   const actionsRef = useRef(null);
   const actionsMeasureRef = useRef(null);
@@ -350,6 +368,22 @@ const Deck = () => {
     };
   }, [showOverflowMenu]);
 
+  useEffect(() => {
+    if (!showExportMenu) return undefined;
+    const handleClickOutside = (event) => {
+      if (!exportMenuRef.current?.contains(event.target)) setShowExportMenu(false);
+    };
+    const handleEscape = (event) => {
+      if (event.key === "Escape") setShowExportMenu(false);
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    window.addEventListener("keydown", handleEscape);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      window.removeEventListener("keydown", handleEscape);
+    };
+  }, [showExportMenu]);
+
 
   if (loading) return <LoadingScreen />;
   if (deck) {
@@ -426,13 +460,25 @@ const Deck = () => {
             : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
           }
         </button>
-        <button
-          className={styles.viewToggle}
-          onClick={() => exportDeckCsv(deck.name, deck.flashcards)}
-          title={t("exportDeck")}
-        >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-        </button>
+        <div className={styles.overflowWrap} ref={exportMenuRef}>
+          <button
+            className={styles.viewToggle}
+            onClick={() => setShowExportMenu((p) => !p)}
+            title={t("exportDeck")}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          </button>
+          {showExportMenu && (
+            <div className={styles.overflowMenu}>
+              <button className={styles.overflowItem} onClick={() => { setShowExportMenu(false); exportDeckCsv(deck.name, deck.flashcards); }}>
+                <span>Export CSV</span>
+              </button>
+              <button className={styles.overflowItem} onClick={() => { setShowExportMenu(false); exportDeckJson(deck.name, deck.flashcards); }}>
+                <span>Export JSON</span>
+              </button>
+            </div>
+          )}
+        </div>
         <button
           className={styles.viewToggle}
           onClick={handleRenameDeck}
@@ -528,7 +574,10 @@ const Deck = () => {
                 <span>{viewMode === "grid" ? t("switchToTable") : t("switchToGrid")}</span>
               </button>
               <button className={styles.overflowItem} onClick={() => { closeOverflowMenu(); exportDeckCsv(deck.name, deck.flashcards); }}>
-                <span>{t("exportDeck")}</span>
+                <span>Export CSV</span>
+              </button>
+              <button className={styles.overflowItem} onClick={() => { closeOverflowMenu(); exportDeckJson(deck.name, deck.flashcards); }}>
+                <span>Export JSON</span>
               </button>
               <button className={styles.overflowItem} onClick={() => { closeOverflowMenu(); handleRenameDeck(); }}>
                 <span>Rename deck</span>

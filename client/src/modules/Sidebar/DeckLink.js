@@ -5,7 +5,7 @@ import { useState } from "react";
 import { useDeleteDeck } from "../../hooks/useSupabaseData";
 import { toast } from "react-toastify";
 
-const DeckLink = ({ id, name, onDeleted }) => {
+const DeckLink = ({ id, name, cardCount, onDeleted }) => {
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const { deleteDeck } = useDeleteDeck();
 
@@ -23,6 +23,7 @@ const DeckLink = ({ id, name, onDeleted }) => {
       <div className={styles.deckLink}>
         <Link className={styles.link} key={id} to={`/deck/${id}`}>
           {name}
+          {cardCount != null && <span className={styles.cardCount}>{cardCount}</span>}
         </Link>
         <svg
           xmlns="http://www.w3.org/2000/svg"

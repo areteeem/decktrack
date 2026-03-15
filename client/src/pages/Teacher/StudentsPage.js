@@ -317,6 +317,7 @@ const StudentsPage = () => {
 
   const [showAddModal, setShowAddModal] = useState(false);
   const [showBulkAssign, setShowBulkAssign] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
   const [assignModal, setAssignModal] = useState({
     open: false,
     studentId: null,
@@ -332,6 +333,17 @@ const StudentsPage = () => {
 
   const linkedCount = studentRows.filter((student) => student.linkedProfile).length;
   const needsLaunchCount = studentRows.filter((student) => student.status === "needs-launch").length;
+
+  const filteredStudentRows = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return studentRows;
+    return studentRows.filter((s) => {
+      const name = (s.displayName || "").toLowerCase();
+      const email = (s.email || "").toLowerCase();
+      const tutproId = String(s.rosterStudent?.tutproStudentId || "").toLowerCase();
+      return name.includes(q) || email.includes(q) || tutproId.includes(q);
+    });
+  }, [studentRows, searchQuery]);
 
   const refreshAll = async () => {
     await Promise.all([refetchLinkedStudents(), refetchRoster()]);
@@ -397,6 +409,28 @@ const StudentsPage = () => {
         </div>
       </div>
 
+      {/* Search bar */}
+      {studentRows.length > 0 && (
+        <div style={{ margin: "0.75rem 0" }}>
+          <input
+            type="text"
+            placeholder="Search by name, email, or TutPro ID..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            style={{
+              width: "100%",
+              maxWidth: "24rem",
+              padding: "0.5rem 0.75rem",
+              border: "1px solid var(--border-color)",
+              borderRadius: "var(--radius)",
+              background: "var(--bg-secondary, var(--card-bg))",
+              color: "var(--fg)",
+              fontSize: "0.88rem",
+            }}
+          />
+        </div>
+      )}
+
       <div className={styles.syncBanner}>
         <div>
           <strong>Roster sync</strong>
@@ -413,14 +447,14 @@ const StudentsPage = () => {
         )}
       </div>
 
-      {studentRows.length === 0 ? (
+      {filteredStudentRows.length === 0 ? (
         <div className={styles.empty}>
-          <h2>No students yet</h2>
-          <p>Sync your TutPro backup or link an existing DeckTrack student account to get started.</p>
+          <h2>{searchQuery ? "No matching students" : "No students yet"}</h2>
+          <p>{searchQuery ? "Try a different search term." : "Sync your TutPro backup or link an existing DeckTrack student account to get started."}</p>
         </div>
       ) : (
         <div className={styles.grid}>
-          {studentRows.map((student) => {
+          {filteredStudentRows.map((student) => {
             const linkedProfile = student.linkedProfile;
             const rosterStudent = student.rosterStudent;
             const isReady = Boolean(linkedProfile);
