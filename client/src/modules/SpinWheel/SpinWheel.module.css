@@ -100,6 +100,28 @@
   cursor: default;
 }
 
+/* ───── Winning segment yellow blink ───── */
+@keyframes segmentWin {
+  0%, 100% { fill-opacity: 0; }
+  50% { fill-opacity: 1; }
+}
+
+.winSegment {
+  animation: segmentWin 0.2s ease 3;
+  pointer-events: none;
+}
+
+/* ───── Focused card yellow glow ───── */
+@keyframes focusGlow {
+  0%, 100% { box-shadow: 0 0 0 3px rgba(234, 179, 8, 0.25); }
+  50% { box-shadow: 0 0 16px 5px rgba(234, 179, 8, 0.45); }
+}
+
+.cardFocused {
+  animation: focusGlow 1.5s ease-in-out infinite;
+  border-color: rgb(234, 179, 8);
+}
+
 /* ───── Card zoom-in overlay ───── */
 .cardOverlay {
   display: flex;

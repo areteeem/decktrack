@@ -7,6 +7,7 @@ import Practice from "../../modules/Practice";
 import FillBlank from "../../modules/FillBlank";
 import MultipleChoice from "../../modules/MultipleChoice";
 import MatchGame from "../../modules/MatchGame";
+import SpinWheel from "../../modules/SpinWheel";
 import { useDeck, useNewCards, useDueCards, useRecordSession } from "../../hooks/useSupabaseData";
 import { getStudySession, saveStudySession, clearStudySession } from "../../lib/studySession";
 
@@ -215,6 +216,8 @@ const DeckStudy = () => {
       return <MatchGame flashcards={cards} onSessionComplete={handleSessionComplete} {...sharedProps} />;
     case "quiz":
       return <FillBlank flashcards={cards} onSessionComplete={handleSessionComplete} {...sharedProps} />;
+    case "wheel":
+      return <SpinWheel flashcards={cards} onSessionComplete={handleSessionComplete} {...sharedProps} />;
     case "flashcards":
     default:
       // For new cards use Learn, for due/mixed/hard/all use Practice

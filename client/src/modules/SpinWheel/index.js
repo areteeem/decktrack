@@ -26,6 +26,7 @@ const SpinWheel = ({ flashcards, onQuit, onSessionComplete }) => {
   const [showCard, setShowCard] = useState(false); // zoom-in phase
   const [removed, setRemoved] = useState(new Set()); // hidden cards (session-only)
   const [continued, setContinued] = useState(0);
+  const [winningSegIdx, setWinningSegIdx] = useState(null); // segment index for yellow blink
   const sessionStartRef = useRef(new Date().toISOString());
 
   const totalCards = cards.length;
@@ -45,6 +46,7 @@ const SpinWheel = ({ flashcards, onQuit, onSessionComplete }) => {
     setFlipped(false);
     setSelectedIdx(null);
     setShowCard(false);
+    setWinningSegIdx(null);
     setSpinning(true);
 
     const target = Math.floor(Math.random() * segments.length);
@@ -55,12 +57,13 @@ const SpinWheel = ({ flashcards, onQuit, onSessionComplete }) => {
 
     setRotation(finalRotation);
 
-    // After spin settles, reveal selected card with a zoom
+    // After spin settles, highlight winning segment then reveal card
     setTimeout(() => {
       setSpinning(false);
       setSelectedIdx(segments[target].idx);
-      // Small delay then zoom in on the card
-      setTimeout(() => setShowCard(true), 350);
+      setWinningSegIdx(target);
+      // Yellow blink plays for ~600ms, then zoom in on the card
+      setTimeout(() => setShowCard(true), 700);
     }, 3400);
   }, [spinning, segments, rotation]);
 
@@ -70,6 +73,7 @@ const SpinWheel = ({ flashcards, onQuit, onSessionComplete }) => {
     setSelectedIdx(null);
     setFlipped(false);
     setShowCard(false);
+    setWinningSegIdx(null);
   }, [selectedIdx]);
 
   const handleContinue = useCallback(() => {
@@ -78,6 +82,7 @@ const SpinWheel = ({ flashcards, onQuit, onSessionComplete }) => {
     setSelectedIdx(null);
     setFlipped(false);
     setShowCard(false);
+    setWinningSegIdx(null);
   }, [selectedIdx]);
 
   // Session complete
@@ -196,6 +201,14 @@ const SpinWheel = ({ flashcards, onQuit, onSessionComplete }) => {
                       stroke="var(--border-color, #ccc)"
                       strokeWidth="0.6"
                     />
+                    {winningSegIdx === i && (
+                      <path
+                        d={d}
+                        className={styles.winSegment}
+                        fill="rgba(234, 179, 8, 0.4)"
+                        stroke="none"
+                      />
+                    )}
                     <text
                       x={lx}
                       y={ly}
@@ -252,7 +265,7 @@ const SpinWheel = ({ flashcards, onQuit, onSessionComplete }) => {
       {selectedCard && showCard && (
         <div className={styles.cardOverlay}>
           <div
-            className={`${styles.cardReveal} ${flipped ? styles.cardFlipped : ""}`}
+            className={`${styles.cardReveal} ${styles.cardFocused} ${flipped ? styles.cardFlipped : ""}`}
             onClick={() => !flipped && setFlipped(true)}
           >
             <div className={styles.cardFront}>
