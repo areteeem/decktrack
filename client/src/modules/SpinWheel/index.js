@@ -33,7 +33,9 @@ const SpinWheel = ({ flashcards, onQuit, onSessionComplete }) => {
   const [removed, setRemoved] = useState(new Set()); // hidden cards (session-only)
   const [continued, setContinued] = useState(0);
   const [winningSegIdx, setWinningSegIdx] = useState(null); // segment index for yellow blink
+  const [elapsedSeconds, setElapsedSeconds] = useState(0); // stopwatch timer
   const sessionStartRef = useRef(new Date().toISOString());
+  const cardStartTimeRef = useRef(null);
 
   const totalCards = cards.length;
   const remaining = totalCards - removed.size;
@@ -46,6 +48,27 @@ const SpinWheel = ({ flashcards, onQuit, onSessionComplete }) => {
       .filter((item) => !removed.has(item.idx));
     return pool.slice(0, 12);
   }, [cards, removed]);
+
+  // Stopwatch timer - starts when card is shown
+  useEffect(() => {
+    if (showCard && selectedIdx !== null) {
+      cardStartTimeRef.current = Date.now();
+      setElapsedSeconds(0);
+    }
+  }, [showCard, selectedIdx]);
+
+  // Update elapsed seconds every second while card is visible
+  useEffect(() => {
+    if (!showCard || selectedIdx === null) return;
+    const interval = setInterval(() => {
+      if (cardStartTimeRef.current) {
+        const elapsed = Math.floor((Date.now() - cardStartTimeRef.current) / 1000);
+        setElapsedSeconds(elapsed);
+      }
+    }, 100); // Update 10x per second for smoothness
+
+    return () => clearInterval(interval);
+  }, [showCard, selectedIdx]);
 
   const spin = useCallback(() => {
     if (spinning || segments.length === 0) return;
@@ -86,6 +109,8 @@ const SpinWheel = ({ flashcards, onQuit, onSessionComplete }) => {
     setFlipped(false);
     setShowCard(false);
     setWinningSegIdx(null);
+    setElapsedSeconds(0);
+    cardStartTimeRef.current = null;
   }, [selectedIdx]);
 
   const handleContinue = useCallback(() => {
@@ -95,6 +120,8 @@ const SpinWheel = ({ flashcards, onQuit, onSessionComplete }) => {
     setFlipped(false);
     setShowCard(false);
     setWinningSegIdx(null);
+    setElapsedSeconds(0);
+    cardStartTimeRef.current = null;
   }, [selectedIdx]);
 
   // Session complete
@@ -173,6 +200,11 @@ const SpinWheel = ({ flashcards, onQuit, onSessionComplete }) => {
       <div className={styles.header}>
         <ProgressBar current={removed.size} total={totalCards} />
         <span className={styles.progressText}>{remaining} left</span>
+        {showCard && selectedIdx !== null && (
+          <div className={styles.stopwatch}>
+            {elapsedSeconds}s
+          </div>
+        )}
       </div>
 
       {/* Wheel + zoom overlay */}

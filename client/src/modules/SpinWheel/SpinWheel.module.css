@@ -1,17 +1,18 @@
 /* ───── Container ───── */
 .wheelContainer {
-  --wheel-segment-1: #0f172a;
-  --wheel-segment-2: #111827;
-  --wheel-segment-3: #1f2937;
-  --wheel-segment-4: #243042;
-  --wheel-outline: rgba(255, 255, 255, 0.56);
-  --wheel-outline-strong: rgba(255, 255, 255, 0.9);
-  --wheel-highlight: rgba(255, 255, 255, 0.22);
-  --wheel-text: #f8fafc;
-  --wheel-peg-fill: #0b1120;
-  --wheel-hub-bg: #020617;
-  --wheel-hub-inner: #111827;
-  --wheel-hub-text: #ffffff;
+  /* Light theme (white fill, black outline) */
+  --wheel-segment-1: #ffffff;
+  --wheel-segment-2: #ffffff;
+  --wheel-segment-3: #ffffff;
+  --wheel-segment-4: #ffffff;
+  --wheel-outline: rgba(0, 0, 0, 0.75);
+  --wheel-outline-strong: rgba(0, 0, 0, 0.9);
+  --wheel-highlight: rgba(0, 0, 0, 0.15);
+  --wheel-text: #1f2937;
+  --wheel-peg-fill: #ffffff;
+  --wheel-hub-bg: #f5f5f5;
+  --wheel-hub-inner: #ffffff;
+  --wheel-hub-text: #111111;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -24,6 +25,22 @@
   overflow: hidden;
 }
 
+/* Dark theme (black fill, white outline) */
+html[data-theme="dark"] .wheelContainer {
+  --wheel-segment-1: #1a1a1a;
+  --wheel-segment-2: #1a1a1a;
+  --wheel-segment-3: #1a1a1a;
+  --wheel-segment-4: #1a1a1a;
+  --wheel-outline: rgba(255, 255, 255, 0.7);
+  --wheel-outline-strong: rgba(255, 255, 255, 0.95);
+  --wheel-highlight: rgba(255, 255, 255, 0.2);
+  --wheel-text: #f8fafc;
+  --wheel-peg-fill: #111827;
+  --wheel-hub-bg: #0f0f0f;
+  --wheel-hub-inner: #1a1a1a;
+  --wheel-hub-text: #ffffff;
+}
+
 /* ───── Header ───── */
 .header {
   display: flex;
@@ -31,6 +48,20 @@
   justify-content: space-between;
   width: 100%;
   max-width: min(100%, 32rem);
+  position: relative;
+}
+
+.stopwatch {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--fg, #222);
+  font-family: "Courier New", monospace;
+  min-width: 3rem;
+  text-align: right;
+}
+
+html[data-theme="dark"] .stopwatch {
+  color: #f8fafc;
 }
 
 .progressText {
