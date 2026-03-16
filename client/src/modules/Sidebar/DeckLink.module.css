@@ -47,3 +47,11 @@
   font-weight: 600;
   opacity: 0.7;
 }
+
+.pinIcon {
+  flex-shrink: 0;
+  color: var(--fg-muted);
+  font-size: 0.7em;
+  line-height: 1;
+  margin-right: 0.15em;
+}

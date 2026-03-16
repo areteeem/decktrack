@@ -18,6 +18,8 @@ const MODES = [
   { id: "flashcards", tKey: "flashcards" },
   { id: "mcq", tKey: "multipleChoice" },
   { id: "fillblank", tKey: "fillBlank" },
+  { id: "writing", tKey: "writing" },
+  { id: "truefalse", tKey: "trueFalse" },
   { id: "match", tKey: "matching" },
   { id: "quiz", tKey: "quiz" },
   { id: "wheel", tKey: "spinWheel" },

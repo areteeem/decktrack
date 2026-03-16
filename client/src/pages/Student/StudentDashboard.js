@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useCallback } from "react";
 import styles from "./Student.module.css";
-import { useAssignments, useStudentStats, usePerDeckStats, useDecks, useAllOwnDeckCards } from "../../hooks/useSupabaseData";
+import { useAssignments, useStudentStats, usePerDeckStats, useDecks, useAllOwnDeckCards, useStudentCourses, useCoursePeers } from "../../hooks/useSupabaseData";
 import { useAuth } from "../../contexts/AuthContext";
 import LoadingScreen from "../../common/components/LoadingScreen";
 import Badge from "../../common/components/Badge";
@@ -42,8 +42,11 @@ const StudentDashboard = () => {
   const { data: deckStats, refetch: refetchDeckStats } = usePerDeckStats(user?.id);
   const { data: ownDecks, loading: ownDecksLoading, refetch: refetchOwn } = useDecks();
   const { data: personalCards } = useAllOwnDeckCards();
+  const { courses } = useStudentCourses();
+  const { peers } = useCoursePeers();
   const [showNewDeckModal, setShowNewDeckModal] = useState(false);
   const [deckSearch, setDeckSearch] = useState("");
+  const [expandedCourse, setExpandedCourse] = useState(null);
 
   // Refresh assignment stats when returning from a study session (page visibility change)
   const refreshAllStats = useCallback(() => {
@@ -205,6 +208,84 @@ const StudentDashboard = () => {
             <DeckCard key={deck.id} deck={deck} />
           ))}
         </div>
+      )}
+
+      {/* ── Courses (from teacher) ───────────── */}
+      {courses && courses.length > 0 && (
+        <>
+          <h2 style={{ marginTop: "1.5rem", marginBottom: "0.5rem" }}>Courses</h2>
+          <div className={styles.deckGrid}>
+            {courses.map((course) => {
+              const deckCount = (course.flashy_course_decks || []).length;
+              const isExpanded = expandedCourse === course.id;
+              return (
+                <div key={course.id} className={styles.deckCard}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                    <h2 style={{ margin: 0 }}>{course.name}</h2>
+                    <Badge>{deckCount} {deckCount === 1 ? "deck" : "decks"}</Badge>
+                  </div>
+                  {course.description && (
+                    <p className={styles.deckDesc}>{course.description}</p>
+                  )}
+                  <button
+                    onClick={() => setExpandedCourse(isExpanded ? null : course.id)}
+                    style={{
+                      background: "none",
+                      border: "1px solid var(--border-color)",
+                      borderRadius: "var(--radius)",
+                      color: "var(--fg-muted)",
+                      fontSize: "0.8rem",
+                      padding: "0.3rem 0.6rem",
+                      cursor: "pointer",
+                      fontFamily: "inherit",
+                      marginTop: "0.5rem",
+                    }}
+                  >
+                    {isExpanded ? "Hide members" : `Members (${peers.length})`}
+                  </button>
+                  {isExpanded && peers.length > 0 && (
+                    <div style={{ marginTop: "0.5rem", display: "flex", flexWrap: "wrap", gap: "0.35rem" }}>
+                      {peers.map((p) => (
+                        <span
+                          key={p.id}
+                          style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: "0.3rem",
+                            padding: "0.2rem 0.5rem",
+                            borderRadius: "var(--radius)",
+                            background: "var(--bg-secondary, var(--card-bg))",
+                            fontSize: "0.78rem",
+                            color: "var(--fg-muted)",
+                          }}
+                        >
+                          <span
+                            style={{
+                              width: "1.4rem",
+                              height: "1.4rem",
+                              borderRadius: "50%",
+                              background: "var(--fg)",
+                              color: "var(--bg)",
+                              display: "inline-flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              fontSize: "0.65rem",
+                              fontWeight: 700,
+                              flexShrink: 0,
+                            }}
+                          >
+                            {(p.display_name || p.email || "?").charAt(0).toUpperCase()}
+                          </span>
+                          {p.display_name || p.email || "Student"}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </>
       )}
 
       {/* ── Assigned Studies ───────────────────── */}

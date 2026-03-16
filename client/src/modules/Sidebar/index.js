@@ -1,11 +1,12 @@
 /* eslint-disable jsx-a11y/anchor-is-valid */
 import "./Sidebar.css";
-import { useState, useMemo, useEffect, useRef } from "react";
+import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import logo from "../../common/logo1.svg";
 import { Link } from "react-router-dom";
 import { useLogout } from "../../common/hooks/useLogout";
 import NewDeckModal from "./NewDeckModal";
 import DeckLink from "./DeckLink";
+import KeyboardShortcutsModal from "../../common/components/KeyboardShortcutsModal";
 import { useDecks, useStudentStats, useAssignments, usePerDeckStats } from "../../hooks/useSupabaseData";
 import { useAuth } from "../../contexts/AuthContext";
 import { useSettings } from "../../contexts/SettingsContext";
@@ -13,11 +14,17 @@ import { getSessionProgress, getActiveSessionDeckIds } from "../../lib/studySess
 import { getTotalSeconds, formatStudyTime } from "../../lib/studyTimer";
 
 const SORT_OPTIONS = [
-  { id: "alpha", label: "A–Z" },
-  { id: "alpha-desc", label: "Z–A" },
+  { id: "alpha", label: "A\u2013Z" },
+  { id: "alpha-desc", label: "Z\u2013A" },
   { id: "cards", label: "# Cards" },
   { id: "recent", label: "Recent" },
 ];
+
+const SIDEBAR_WIDTH_KEY = "decktrack_sidebar_width";
+const PINNED_DECKS_KEY = "decktrack_pinned_decks";
+const DEFAULT_WIDTH = 208; // ~13rem
+const MIN_WIDTH = 160;
+const MAX_WIDTH = 380;
 
 const Sidebar = ({ isOpen, setIsOpen }) => {
   const logout = useLogout();
@@ -29,22 +36,45 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
   const { data: perDeckStats } = usePerDeckStats();
 
   const [showModal, setShowModal] = useState(false);
+  const [showShortcuts, setShowShortcuts] = useState(false);
   const [studyTime, setStudyTime] = useState(() => formatStudyTime(getTotalSeconds()));
   const [deckSearch, setDeckSearch] = useState("");
   const [deckSort, setDeckSort] = useState("alpha");
   const [decksCollapsed, setDecksCollapsed] = useState(false);
   const [assignedCollapsed, setAssignedCollapsed] = useState(false);
+  const [pinnedIds, setPinnedIds] = useState(() => {
+    try { return JSON.parse(localStorage.getItem(PINNED_DECKS_KEY)) || []; } catch { return []; }
+  });
   const searchRef = useRef(null);
+  const sidebarRef = useRef(null);
+  const [sidebarWidth, setSidebarWidth] = useState(() => {
+    const saved = localStorage.getItem(SIDEBAR_WIDTH_KEY);
+    return saved ? Math.max(MIN_WIDTH, Math.min(MAX_WIDTH, Number(saved))) : DEFAULT_WIDTH;
+  });
+  const [isResizing, setIsResizing] = useState(false);
+
+  const togglePin = useCallback((deckId) => {
+    setPinnedIds((prev) => {
+      const next = prev.includes(deckId) ? prev.filter((id) => id !== deckId) : [...prev, deckId];
+      localStorage.setItem(PINNED_DECKS_KEY, JSON.stringify(next));
+      return next;
+    });
+  }, []);
 
   useEffect(() => {
     const id = setInterval(() => setStudyTime(formatStudyTime(getTotalSeconds())), 5000);
     return () => clearInterval(id);
   }, []);
 
-  // Keyboard shortcut: "/" or Ctrl+K to focus deck search
+  // Keyboard shortcut: "/" or Ctrl+K to focus deck search, "?" for shortcuts
   useEffect(() => {
     const handleKey = (e) => {
       if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA" || e.target.isContentEditable) return;
+      if (e.key === "?" && !e.ctrlKey && !e.metaKey) {
+        e.preventDefault();
+        setShowShortcuts((v) => !v);
+        return;
+      }
       if (e.key === "/" || (e.ctrlKey && e.key === "k")) {
         e.preventDefault();
         searchRef.current?.focus();
@@ -53,6 +83,32 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
   }, []);
+
+  // Sidebar resize drag
+  const handleResizeStart = useCallback((e) => {
+    e.preventDefault();
+    setIsResizing(true);
+    const startX = e.clientX;
+    const startW = sidebarRef.current?.offsetWidth || sidebarWidth;
+    const onMove = (ev) => {
+      const newW = Math.max(MIN_WIDTH, Math.min(MAX_WIDTH, startW + (ev.clientX - startX)));
+      setSidebarWidth(newW);
+    };
+    const onUp = () => {
+      setIsResizing(false);
+      document.removeEventListener("mousemove", onMove);
+      document.removeEventListener("mouseup", onUp);
+      const finalWidth = sidebarRef.current?.offsetWidth || sidebarWidth;
+      localStorage.setItem(SIDEBAR_WIDTH_KEY, String(finalWidth));
+    };
+    document.addEventListener("mousemove", onMove);
+    document.addEventListener("mouseup", onUp);
+  }, [sidebarWidth]);
+
+  // Sync CSS variable
+  useEffect(() => {
+    document.documentElement.style.setProperty("--sidebar-width", `${sidebarWidth}px`);
+  }, [sidebarWidth]);
 
   // Sorted + filtered decks
   const sortedFilteredDecks = useMemo(() => {
@@ -79,6 +135,10 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
     return list;
   }, [decks, deckSearch, deckSort]);
 
+  // Split pinned vs unpinned
+  const pinnedDecks = useMemo(() => sortedFilteredDecks.filter((d) => pinnedIds.includes(d.id)), [sortedFilteredDecks, pinnedIds]);
+  const unpinnedDecks = useMemo(() => sortedFilteredDecks.filter((d) => !pinnedIds.includes(d.id)), [sortedFilteredDecks, pinnedIds]);
+
   // Active assigned studies
   const activeAssignments = useMemo(() => {
     if (!assignments) return [];
@@ -101,9 +161,10 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
   }, [decks]);
 
   return (
-    <div className={isOpen ? "sidebar" : "sidebar collapsed"}>
+    <div className={isOpen ? "sidebar" : "sidebar collapsed"} ref={sidebarRef}>
       <NewDeckModal open={showModal} setOpen={setShowModal} onCreated={refetch} />
-      <div>
+      <KeyboardShortcutsModal open={showShortcuts} setOpen={setShowShortcuts} />
+      <div className="sidebar-scrollable">
         <Link to="/" onClick={() => setIsOpen(false)}>
           <img src={logo} className="logo" alt="logo" />
         </Link>
@@ -363,16 +424,34 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
               ) : sortedFilteredDecks.length === 0 ? (
                 <p className="sidebar-deck-status">{deckSearch ? "No matches" : "No decks yet"}</p>
               ) : (
-                sortedFilteredDecks.map((deck) => (
-                  <span key={deck.id} onClick={() => setIsOpen(false)}>
-                    <DeckLink
-                      id={deck.id}
-                      name={deck.name}
-                      cardCount={deck.card_count ?? deck.flashcards?.length}
-                      onDeleted={refetch}
-                    />
-                  </span>
-                ))
+                <>
+                  {pinnedDecks.map((deck) => (
+                    <span key={deck.id} onClick={() => setIsOpen(false)}>
+                      <DeckLink
+                        id={deck.id}
+                        name={deck.name}
+                        cardCount={deck.card_count ?? deck.flashcards?.length}
+                        onDeleted={refetch}
+                        pinned
+                        onTogglePin={() => togglePin(deck.id)}
+                      />
+                    </span>
+                  ))}
+                  {pinnedDecks.length > 0 && unpinnedDecks.length > 0 && (
+                    <div className="sidebar-pin-divider" />
+                  )}
+                  {unpinnedDecks.map((deck) => (
+                    <span key={deck.id} onClick={() => setIsOpen(false)}>
+                      <DeckLink
+                        id={deck.id}
+                        name={deck.name}
+                        cardCount={deck.card_count ?? deck.flashcards?.length}
+                        onDeleted={refetch}
+                        onTogglePin={() => togglePin(deck.id)}
+                      />
+                    </span>
+                  ))}
+                </>
               )}
             </>
           )}
@@ -389,6 +468,10 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
           {t("logOut")}
         </a>
       </div>
+      <div
+        className={`sidebar-resize-handle${isResizing ? " active" : ""}`}
+        onMouseDown={handleResizeStart}
+      />
     </div>
   );
 };

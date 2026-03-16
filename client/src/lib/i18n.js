@@ -8,12 +8,12 @@
 
 const en = {
   // ── Sidebar / nav ──
-  dashboard: "Dashboard",
-  progress: "Progress",
-  dueToday: "Due today",
-  learnNew: "Learn new",
-  students: "Students",
-  decks: "Decks",
+  dashboard: "dashboard",
+  progress: "progress",
+  dueToday: "due today",
+  learnNew: "learn new",
+  students: "students",
+  decks: "decks",
   settings: "settings",
   logOut: "log out",
 
@@ -44,6 +44,8 @@ const en = {
   fillBlank: "Fill in the blank",
   matching: "Matching",
   spinWheel: "Spin Wheel",
+  writing: "Writing",
+  trueFalse: "True / False",
   sideOrder: "Side order",
   termToDef: "Term → Def",
   defToTerm: "Def → Term",
@@ -184,12 +186,12 @@ const en = {
 
 const uk = {
   // ── Sidebar / nav ──
-  dashboard: "Головна",
-  progress: "Прогрес",
-  dueToday: "На сьогодні",
-  learnNew: "Вивчити нові",
-  students: "Учні",
-  decks: "Колоди",
+  dashboard: "головна",
+  progress: "прогрес",
+  dueToday: "на сьогодні",
+  learnNew: "вивчити нові",
+  students: "учні",
+  decks: "колоди",
   settings: "налаштування",
   logOut: "вийти",
 
@@ -220,6 +222,8 @@ const uk = {
   fillBlank: "Заповнити пропуск",
   matching: "Зіставлення",
   spinWheel: "Колесо фортуни",
+  writing: "Письмо",
+  trueFalse: "Правда / Неправда",
   sideOrder: "Порядок сторін",
   termToDef: "Термін → Визн.",
   defToTerm: "Визн. → Термін",

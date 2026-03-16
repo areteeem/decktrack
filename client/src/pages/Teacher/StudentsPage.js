@@ -318,6 +318,7 @@ const StudentsPage = () => {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showBulkAssign, setShowBulkAssign] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [sortBy, setSortBy] = useState("name");
   const [assignModal, setAssignModal] = useState({
     open: false,
     studentId: null,
@@ -336,14 +337,34 @@ const StudentsPage = () => {
 
   const filteredStudentRows = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
-    if (!q) return studentRows;
-    return studentRows.filter((s) => {
-      const name = (s.displayName || "").toLowerCase();
-      const email = (s.email || "").toLowerCase();
-      const tutproId = String(s.rosterStudent?.tutproStudentId || "").toLowerCase();
-      return name.includes(q) || email.includes(q) || tutproId.includes(q);
-    });
-  }, [studentRows, searchQuery]);
+    let list = studentRows;
+    if (q) {
+      list = list.filter((s) => {
+        const name = (s.displayName || "").toLowerCase();
+        const email = (s.email || "").toLowerCase();
+        const tutproId = String(s.rosterStudent?.tutproStudentId || "").toLowerCase();
+        return name.includes(q) || email.includes(q) || tutproId.includes(q);
+      });
+    }
+    switch (sortBy) {
+      case "name":
+        list = [...list].sort((a, b) => (a.displayName || "").localeCompare(b.displayName || ""));
+        break;
+      case "status":
+        list = [...list].sort((a, b) => (a.status === "linked" ? -1 : 1) - (b.status === "linked" ? -1 : 1));
+        break;
+      case "recent":
+        list = [...list].sort((a, b) => {
+          const aDate = a.linkedProfile?.last_active_at || "";
+          const bDate = b.linkedProfile?.last_active_at || "";
+          return bDate.localeCompare(aDate);
+        });
+        break;
+      default:
+        break;
+    }
+    return list;
+  }, [studentRows, searchQuery, sortBy]);
 
   const refreshAll = async () => {
     await Promise.all([refetchLinkedStudents(), refetchRoster()]);
@@ -378,7 +399,7 @@ const StudentsPage = () => {
 
       <div className={styles.header}>
         <div>
-          <h1>My Students</h1>
+          <h1>my students</h1>
           <p className={styles.helperText}>
             TutPro students sync from your latest backup automatically. Students become assignable in DeckTrack after they open the flashcards link in the student app once.
           </p>
@@ -409,25 +430,25 @@ const StudentsPage = () => {
         </div>
       </div>
 
-      {/* Search bar */}
+      {/* Search + sort bar */}
       {studentRows.length > 0 && (
-        <div style={{ margin: "0.75rem 0" }}>
+        <div className={styles.searchSortBar}>
           <input
             type="text"
+            className={styles.searchInput}
             placeholder="Search by name, email, or TutPro ID..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            style={{
-              width: "100%",
-              maxWidth: "24rem",
-              padding: "0.5rem 0.75rem",
-              border: "1px solid var(--border-color)",
-              borderRadius: "var(--radius)",
-              background: "var(--bg-secondary, var(--card-bg))",
-              color: "var(--fg)",
-              fontSize: "0.88rem",
-            }}
           />
+          <select
+            className={styles.sortSelect}
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value)}
+          >
+            <option value="name">Sort: Name</option>
+            <option value="status">Sort: Status</option>
+            <option value="recent">Sort: Recent</option>
+          </select>
         </div>
       )}
 
@@ -464,14 +485,19 @@ const StudentsPage = () => {
             return (
               <div key={student.key} className={styles.studentCard}>
                 <div className={styles.studentCardTop}>
-                  <div className={styles.studentInfo}>
-                    <h3>{displayName}</h3>
-                    {displayEmail && <p className={styles.email}>{displayEmail}</p>}
+                  <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
+                    <div className={styles.avatar}>
+                      {(displayName || "?").charAt(0).toUpperCase()}
+                    </div>
+                    <div className={styles.studentInfo}>
+                      <h3>{displayName}</h3>
+                      {displayEmail && <p className={styles.email}>{displayEmail}</p>}
+                    </div>
                   </div>
                   <div className={styles.badgeRow}>
                     {student.source === "tutpro" && <Badge>TutPro</Badge>}
-                    {linkedProfile && <Badge>Ready in DeckTrack</Badge>}
-                    {!linkedProfile && <Badge>Needs first launch</Badge>}
+                    {linkedProfile && <Badge>Ready</Badge>}
+                    {!linkedProfile && <Badge>Pending</Badge>}
                   </div>
                 </div>
 

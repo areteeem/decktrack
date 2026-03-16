@@ -1,13 +1,16 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import styles from "./DeckLink.module.css";
 import DeleteDeckModal from "./DeleteDeckModal";
+import ContextMenu from "../../common/components/ContextMenu";
 import { useState } from "react";
 import { useDeleteDeck } from "../../hooks/useSupabaseData";
 import { toast } from "react-toastify";
 
-const DeckLink = ({ id, name, cardCount, onDeleted }) => {
+const DeckLink = ({ id, name, cardCount, onDeleted, pinned, onTogglePin }) => {
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [ctxMenu, setCtxMenu] = useState(null);
   const { deleteDeck } = useDeleteDeck();
+  const navigate = useNavigate();
 
   const handleDelete = async () => {
     try {
@@ -18,10 +21,28 @@ const DeckLink = ({ id, name, cardCount, onDeleted }) => {
     }
   };
 
+  const handleContextMenu = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setCtxMenu({
+      x: e.clientX,
+      y: e.clientY,
+      items: [
+        { label: "Open deck", onClick: () => navigate(`/deck/${id}`) },
+        { label: "Study deck", onClick: () => navigate(`/deck/${id}/study`) },
+        { separator: true },
+        { label: pinned ? "Unpin deck" : "Pin deck", onClick: () => onTogglePin && onTogglePin() },
+        { separator: true },
+        { label: "Delete deck", danger: true, onClick: () => setDeleteModalOpen(true) },
+      ],
+    });
+  };
+
   return (
     <>
-      <div className={styles.deckLink}>
+      <div className={styles.deckLink} onContextMenu={handleContextMenu}>
         <Link className={styles.link} key={id} to={`/deck/${id}`}>
+          {pinned && <span className={styles.pinIcon} title="Pinned">&bull;</span>}
           {name}
           {cardCount != null && <span className={styles.cardCount}>{cardCount}</span>}
         </Link>
@@ -46,6 +67,14 @@ const DeckLink = ({ id, name, cardCount, onDeleted }) => {
         setOpen={setDeleteModalOpen}
         callback={handleDelete}
       />
+      {ctxMenu && (
+        <ContextMenu
+          x={ctxMenu.x}
+          y={ctxMenu.y}
+          items={ctxMenu.items}
+          onClose={() => setCtxMenu(null)}
+        />
+      )}
     </>
   );
 };

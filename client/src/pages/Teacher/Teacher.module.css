@@ -99,6 +99,64 @@
   font-size: 1.1rem;
 }
 
+/* ── Search + sort bar ────────────── */
+
+.searchSortBar {
+  display: flex;
+  gap: 0.5rem;
+  margin: 0.75rem 0;
+  align-items: center;
+}
+
+.searchInput {
+  flex: 1;
+  max-width: 24rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  background: var(--bg-secondary, var(--card-bg));
+  color: var(--fg);
+  font-size: 0.85rem;
+  font-family: inherit;
+  outline: none;
+}
+
+.searchInput:focus {
+  border-color: var(--fg-muted);
+}
+
+.searchInput::placeholder {
+  color: var(--fg-faint);
+}
+
+.sortSelect {
+  padding: 0.45rem 0.5rem;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  background: var(--bg-secondary, var(--card-bg));
+  color: var(--fg);
+  font-size: 0.8rem;
+  font-family: inherit;
+  cursor: pointer;
+  outline: none;
+}
+
+/* ── Avatar ───────────────────────── */
+
+.avatar {
+  width: 2.2rem;
+  height: 2.2rem;
+  border-radius: 50%;
+  background: var(--fg);
+  color: var(--bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 0.95rem;
+  flex-shrink: 0;
+}
+
 /* ── Grid layouts ─────────────────── */
 
 .grid {

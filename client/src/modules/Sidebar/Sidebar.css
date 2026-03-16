@@ -3,12 +3,55 @@
   width: var(--sidebar-width);
   max-width: var(--sidebar-width);
   height: 100%;
-  padding: 1.25rem 1rem;
+  padding: 1.25rem 0 1.25rem 1rem;
   border-right: var(--border);
   background: var(--bg);
   display: flex;
   flex-direction: column;
   justify-content: space-between;
+}
+
+.sidebar-scrollable {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 1rem;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-color) transparent;
+}
+
+.sidebar-scrollable::-webkit-scrollbar {
+  width: 4px;
+}
+
+.sidebar-scrollable::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.sidebar-scrollable::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 4px;
+}
+
+/* ── Resize handle ── */
+
+.sidebar-resize-handle {
+  position: absolute;
+  top: 0;
+  right: -3px;
+  width: 6px;
+  height: 100%;
+  cursor: col-resize;
+  z-index: 10;
+  background: transparent;
+  transition: background 0.15s;
+}
+
+.sidebar-resize-handle:hover,
+.sidebar-resize-handle.active {
+  background: var(--accent, #6366f1);
+  opacity: 0.4;
 }
 
 @media (max-width: 1200px) {
@@ -108,6 +151,10 @@
   display: flex;
   flex-direction: column;
   gap: 0.3rem;
+  flex-shrink: 0;
+  padding-right: 1rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--border-color);
 }
 
 /* ── Continue study ──────────────── */
@@ -253,6 +300,13 @@
   font-size: 0.78em;
   color: var(--fg-faint);
   margin: 0.15rem 0;
+}
+
+.sidebar-pin-divider {
+  height: 1px;
+  background: var(--border-color);
+  margin: 0.35rem 0;
+  opacity: 0.6;
 }
 
 /* ── Sidebar deck links ────────────────── */

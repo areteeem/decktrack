@@ -9,7 +9,7 @@ import EditCardModal from "./EditCardModal";
 import AddCardTabs from "./AddCardTabs";
 import { useState, useEffect, useCallback, useRef } from "react";
 import RetentionBadge from "./RetentionBadge";
-import { useDeck, useDeleteDeck, useDeleteCard, useUpdateDeck, useStudents, useCourses, useCourseActions } from "../../hooks/useSupabaseData";
+import { useDeck, useDeleteDeck, useDeleteCard, useUpdateDeck, useStudents, useCourses, useCourseActions, useCreateDeck, useCreateCardsBulk } from "../../hooks/useSupabaseData";
 import { useSettings } from "../../contexts/SettingsContext";
 import { useAuth } from "../../contexts/AuthContext";
 import { getSessionProgress } from "../../lib/studySession";
@@ -17,6 +17,7 @@ import ConfirmModal from "../../common/components/ConfirmModal";
 import PromptModal from "../../common/components/PromptModal";
 import ManageDeckCoursesModal from "../../common/components/ManageDeckCoursesModal";
 import BulkAssignModal from "../Teacher/BulkAssignModal";
+import ContextMenu from "../../common/components/ContextMenu";
 import dayjs from "dayjs";
 
 const stripHtmlTags = (html) => (html || "").replace(/<[^>]*>/g, "").trim();
@@ -79,6 +80,7 @@ const Deck = () => {
   const [useOverflowMenu, setUseOverflowMenu] = useState(false);
   const [showOverflowMenu, setShowOverflowMenu] = useState(false);
   const [showExportMenu, setShowExportMenu] = useState(false);
+  const [ctxMenu, setCtxMenu] = useState(null);
   const exportMenuRef = useRef(null);
   const navigate = useNavigate();
   const actionsRef = useRef(null);
@@ -94,6 +96,8 @@ const Deck = () => {
   const { t } = useSettings();
   const { isTeacher } = useAuth();
   const { data: students } = useStudents();
+  const { createDeck } = useCreateDeck();
+  const { createCardsBulk } = useCreateCardsBulk();
 
   const deckCourseCount = (courses || []).filter((course) =>
     (course.flashy_course_decks || []).some((entry) => String(entry.deck_id) === String(params.id))
@@ -108,6 +112,15 @@ const Deck = () => {
   const hardCards = flashcards.filter(
     (card) => (card.again_count || 0) >= 3 || (card.ease_factor && card.ease_factor < 2.0)
   ).length;
+  const avgReviews = flashcards.length > 0 ? (deckReviews / flashcards.length).toFixed(1) : 0;
+  const avgEase = flashcards.filter((c) => c.ease_factor).length > 0
+    ? (flashcards.reduce((s, c) => s + (c.ease_factor || 0), 0) / flashcards.filter((c) => c.ease_factor).length).toFixed(2)
+    : "—";
+  const hardestCards = [...flashcards]
+    .filter((c) => (c.again_count || 0) > 0)
+    .sort((a, b) => (b.again_count || 0) - (a.again_count || 0))
+    .slice(0, 5);
+  const [showStats, setShowStats] = useState(false);
   const nextSortOrder = flashcards.reduce(
     (highest, card, index) => Math.max(highest, card.sort_order ?? index),
     -1
@@ -184,6 +197,28 @@ const Deck = () => {
       navigate("/", { replace: true });
     } catch (err) {
       toast.error(err.message || "Failed to archive deck");
+    }
+  };
+
+  const handleDuplicateDeck = async () => {
+    if (!deck) return;
+    try {
+      const newDeck = await createDeck({ name: `${deck.name} (copy)` });
+      if (flashcards.length > 0) {
+        const cards = flashcards.map((c) => ({
+          deck_id: newDeck.id,
+          front: c.front,
+          back: c.back,
+          example_sentence: c.example_sentence || null,
+          card_type: c.card_type || "standard",
+          sort_order: c.sort_order ?? 0,
+        }));
+        await createCardsBulk(cards);
+      }
+      toast.success("Deck duplicated");
+      navigate(`/deck/${newDeck.id}`);
+    } catch (err) {
+      toast.error(err.message || "Failed to duplicate deck");
     }
   };
 
@@ -481,6 +516,13 @@ const Deck = () => {
         </div>
         <button
           className={styles.viewToggle}
+          onClick={handleDuplicateDeck}
+          title="Duplicate deck"
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+        </button>
+        <button
+          className={styles.viewToggle}
           onClick={handleRenameDeck}
           title="Rename deck"
         >
@@ -579,6 +621,9 @@ const Deck = () => {
               <button className={styles.overflowItem} onClick={() => { closeOverflowMenu(); exportDeckJson(deck.name, deck.flashcards); }}>
                 <span>Export JSON</span>
               </button>
+              <button className={styles.overflowItem} onClick={() => { closeOverflowMenu(); handleDuplicateDeck(); }}>
+                <span>Duplicate deck</span>
+              </button>
               <button className={styles.overflowItem} onClick={() => { closeOverflowMenu(); handleRenameDeck(); }}>
                 <span>Rename deck</span>
               </button>
@@ -625,6 +670,57 @@ const Deck = () => {
           </div>
         </div>
         <AddCardTabs deckId={params.id} onChanged={refetch} startSortOrder={nextSortOrder} show={showAddPanel} />
+        {isTeacher && flashcards.length > 0 && (
+          <div className={styles.statsPanel}>
+            <button className={styles.statsToggle} onClick={() => setShowStats((s) => !s)}>
+              {showStats ? "▾" : "▸"} Deck analytics
+            </button>
+            {showStats && (
+              <div className={styles.statsGrid}>
+                <div className={styles.statItem}>
+                  <span className={styles.statValue}>{deckRetention}%</span>
+                  <span className={styles.statLabel}>retention</span>
+                </div>
+                <div className={styles.statItem}>
+                  <span className={styles.statValue}>{avgReviews}</span>
+                  <span className={styles.statLabel}>avg reviews</span>
+                </div>
+                <div className={styles.statItem}>
+                  <span className={styles.statValue}>{avgEase}</span>
+                  <span className={styles.statLabel}>avg ease</span>
+                </div>
+                <div className={styles.statItem}>
+                  <span className={styles.statValue}>{newCards}</span>
+                  <span className={styles.statLabel}>new</span>
+                </div>
+                <div className={styles.statItem}>
+                  <span className={styles.statValue}>{dueCards}</span>
+                  <span className={styles.statLabel}>due</span>
+                </div>
+                <div className={styles.statItem}>
+                  <span className={styles.statValue} style={hardCards > 0 ? { color: "var(--danger)" } : {}}>{hardCards}</span>
+                  <span className={styles.statLabel}>hard</span>
+                </div>
+                {hardestCards.length > 0 && (
+                  <div className={styles.statHardest}>
+                    <span className={styles.statLabel}>Most mistakes</span>
+                    <div className={styles.hardestList}>
+                      {hardestCards.map((c) => (
+                        <span
+                          key={c.id}
+                          className={styles.hardestItem}
+                          onClick={() => { setEditFlashcard(c); setIsModalOpen(true); }}
+                        >
+                          {stripHtmlTags(c.front).slice(0, 30)}{stripHtmlTags(c.front).length > 30 ? "…" : ""} ({c.again_count})
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
         {selectionMode && (
           <div className={styles.bulkBar}>
             <span className={styles.bulkCount}>{selectedCards.size} selected</span>
@@ -652,6 +748,20 @@ const Deck = () => {
                     setEditFlashcard(flashcard);
                     setIsModalOpen(true);
                   }
+                }}
+                onContextMenu={(e) => {
+                  e.preventDefault();
+                  setCtxMenu({
+                    x: e.clientX,
+                    y: e.clientY,
+                    items: [
+                      { label: "Edit card", onClick: () => { setEditFlashcard(flashcard); setIsModalOpen(true); } },
+                      { label: "Copy front text", onClick: () => { navigator.clipboard.writeText(stripHtmlTags(flashcard.front)); toast.success("Copied"); } },
+                      { label: "Copy back text", onClick: () => { navigator.clipboard.writeText(stripHtmlTags(flashcard.back)); toast.success("Copied"); } },
+                      { separator: true },
+                      { label: "Delete card", danger: true, onClick: async () => { await deleteCard(flashcard.id); refetch(); toast.success("Card deleted"); } },
+                    ],
+                  });
                 }}
               >
                 {selectionMode && (
@@ -689,6 +799,20 @@ const Deck = () => {
                       setEditFlashcard(flashcard);
                       setIsModalOpen(true);
                     }
+                  }}
+                  onContextMenu={(e) => {
+                    e.preventDefault();
+                    setCtxMenu({
+                      x: e.clientX,
+                      y: e.clientY,
+                      items: [
+                        { label: "Edit card", onClick: () => { setEditFlashcard(flashcard); setIsModalOpen(true); } },
+                        { label: "Copy front text", onClick: () => { navigator.clipboard.writeText(stripHtmlTags(flashcard.front)); toast.success("Copied"); } },
+                        { label: "Copy back text", onClick: () => { navigator.clipboard.writeText(stripHtmlTags(flashcard.back)); toast.success("Copied"); } },
+                        { separator: true },
+                        { label: "Delete card", danger: true, onClick: async () => { await deleteCard(flashcard.id); refetch(); toast.success("Card deleted"); } },
+                      ],
+                    });
                   }}
                 >
                   {selectionMode && (
@@ -765,6 +889,14 @@ const Deck = () => {
             onAdd={handleAddDeckToCourse}
             onRemove={handleRemoveDeckFromCourse}
             onOpenDashboard={() => navigate("/")}
+          />
+        )}
+        {ctxMenu && (
+          <ContextMenu
+            x={ctxMenu.x}
+            y={ctxMenu.y}
+            items={ctxMenu.items}
+            onClose={() => setCtxMenu(null)}
           />
         )}
       </>

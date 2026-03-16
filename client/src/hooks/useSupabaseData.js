@@ -2120,3 +2120,69 @@ export const useCourseActions = () => {
 
   return { createCourse, updateCourse, deleteCourse, addDeckToCourse, removeDeckFromCourse };
 };
+
+/**
+ * Fetch courses visible to a student (courses owned by their teacher).
+ * Includes course decks and the teacher's profile for the members list.
+ */
+export const useStudentCourses = () => {
+  const { user, profile } = useAuth();
+  const [courses, setCourses] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  const teacherId = profile?.teacher_id;
+
+  const refetch = useCallback(async () => {
+    if (!user || !teacherId) { setCourses([]); setLoading(false); return; }
+    setLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('flashy_courses')
+        .select('*, flashy_course_decks(deck_id, sort_order)')
+        .eq('owner_id', teacherId)
+        .eq('is_archived', false)
+        .order('sort_order')
+        .order('name');
+      if (error) throw error;
+      setCourses(data || []);
+    } catch (err) {
+      console.error('[useStudentCourses]', err);
+      setCourses([]);
+    } finally { setLoading(false); }
+  }, [user, teacherId]);
+
+  useEffect(() => { refetch(); }, [refetch]);
+  return { courses, loading, refetch };
+};
+
+/**
+ * Fetch students that share the same teacher (course "members").
+ * Returns profiles with teacher_id matching the current student's teacher_id.
+ */
+export const useCoursePeers = () => {
+  const { user, profile } = useAuth();
+  const [peers, setPeers] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  const teacherId = profile?.teacher_id;
+
+  const refetch = useCallback(async () => {
+    if (!user || !teacherId) { setPeers([]); setLoading(false); return; }
+    setLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('flashy_profiles')
+        .select('id, display_name, email, role')
+        .eq('teacher_id', teacherId)
+        .eq('role', 'student');
+      if (error) throw error;
+      setPeers(data || []);
+    } catch (err) {
+      console.error('[useCoursePeers]', err);
+      setPeers([]);
+    } finally { setLoading(false); }
+  }, [user, teacherId]);
+
+  useEffect(() => { refetch(); }, [refetch]);
+  return { peers, loading, refetch };
+};

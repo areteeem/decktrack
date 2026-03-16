@@ -248,6 +248,92 @@
   font-weight: 600;
 }
 
+/* ── Stats panel ── */
+
+.statsPanel {
+  margin-bottom: 0.75rem;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  padding: 0.5rem 0.75rem;
+  background: var(--card-bg);
+}
+
+.statsToggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35em;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--fg-muted);
+  font-size: 0.82rem;
+  font-weight: 600;
+  font-family: inherit;
+  padding: 0;
+}
+
+.statsToggle:hover {
+  color: var(--fg);
+}
+
+.statsGrid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-top: 0.5rem;
+  align-items: flex-start;
+}
+
+.statItem {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 3.5rem;
+}
+
+.statValue {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--fg);
+}
+
+.statLabel {
+  font-size: 0.68rem;
+  color: var(--fg-faint);
+  font-weight: 500;
+  text-transform: lowercase;
+}
+
+.statHardest {
+  flex-basis: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin-top: 0.15rem;
+}
+
+.hardestList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.hardestItem {
+  display: inline-block;
+  padding: 0.2rem 0.5rem;
+  border: 1px solid var(--danger, #dc2626);
+  border-radius: var(--radius);
+  font-size: 0.72rem;
+  color: var(--danger, #dc2626);
+  cursor: pointer;
+  transition: background 0.1s;
+}
+
+.hardestItem:hover {
+  background: var(--danger, #dc2626);
+  color: #fff;
+}
+
 /* ── Selection mode ── */
 
 .viewToggleActive {

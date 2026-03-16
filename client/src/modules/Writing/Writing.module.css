@@ -1,0 +1,218 @@
+.layout {
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  grid-template-columns: 100%;
+  grid-template-areas:
+    "header"
+    "content"
+    "footer";
+  height: calc(100vh - 4rem);
+  padding-bottom: 1rem;
+}
+
+.content {
+  grid-area: content;
+  place-self: center;
+  width: 100%;
+  max-width: 36rem;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+}
+
+.header {
+  grid-area: header;
+}
+
+.header h1 {
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.footer {
+  grid-area: footer;
+  place-self: end center;
+  display: flex;
+  gap: 0.5rem;
+}
+
+.card {
+  width: 100%;
+  border: var(--border);
+  border-radius: var(--radius);
+  padding: 1.5rem;
+  background: var(--card-bg);
+  text-align: center;
+}
+
+.prompt {
+  font-size: 1.3rem;
+  font-weight: 600;
+  margin: 0 0 1.25rem;
+}
+
+.promptLabel {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--fg-faint);
+  margin: 0 0 0.25rem;
+}
+
+.inputRow {
+  display: flex;
+  gap: 0.5rem;
+  width: 100%;
+}
+
+.input {
+  flex: 1;
+  padding: 0.6rem 0.75rem;
+  border: 1.5px solid var(--border-color);
+  border-radius: var(--radius);
+  background: var(--card-bg);
+  color: var(--fg);
+  font-size: 0.95rem;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.input:focus {
+  border-color: var(--fg-muted);
+}
+
+.input::placeholder {
+  color: var(--fg-faint);
+}
+
+.inputCorrect {
+  border-color: var(--success);
+  background: rgba(34, 197, 94, 0.06);
+}
+
+.inputWrong {
+  border-color: var(--danger);
+  background: rgba(239, 68, 68, 0.06);
+}
+
+.checkBtn {
+  padding: 0.5rem 1rem;
+  border: var(--border);
+  border-radius: var(--radius);
+  background: var(--card-bg);
+  color: var(--fg);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  white-space: nowrap;
+}
+
+.feedback {
+  margin-top: 0.75rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.feedbackCorrect {
+  color: var(--success);
+}
+
+.feedbackWrong {
+  color: var(--danger);
+}
+
+.correctAnswer {
+  margin-top: 0.35rem;
+  font-size: 0.85rem;
+  color: var(--fg-muted);
+}
+
+.correctAnswer strong {
+  color: var(--success);
+  font-weight: 700;
+}
+
+.nextBtn {
+  padding: 0.45rem 1rem;
+  border: var(--border);
+  border-radius: var(--radius);
+  background: var(--card-bg);
+  color: var(--fg);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  margin-top: 0.75rem;
+}
+
+/* Results */
+.results {
+  text-align: center;
+}
+
+.results h2 {
+  font-size: 1.2rem;
+  margin: 0 0 0.5rem;
+}
+
+.score {
+  font-size: 2rem;
+  font-weight: 700;
+  margin: 0.5rem 0;
+}
+
+.scoreLabel {
+  font-size: 0.8rem;
+  color: var(--fg-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.hardestList {
+  margin-top: 1rem;
+  text-align: left;
+  width: 100%;
+  max-width: 360px;
+}
+
+.hardestTitle {
+  font-size: 0.85rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+  color: var(--fg-muted);
+}
+
+.hardestItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.35rem 0;
+  border-bottom: 1px solid var(--border-color);
+  font-size: 0.8rem;
+}
+
+.hardestTerm {
+  font-weight: 600;
+}
+
+.hardestAnswer {
+  color: var(--danger);
+  font-size: 0.75rem;
+}
+
+.backBtn {
+  margin-top: 1rem;
+  padding: 0.45rem 1rem;
+  border: 1.5px solid var(--border-color);
+  border-radius: var(--radius);
+  background: var(--card-bg);
+  color: var(--fg);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+}
