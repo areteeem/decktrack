@@ -37,6 +37,14 @@
   overflow: hidden;
 }
 
+.actions > * {
+  flex: 0 0 auto;
+}
+
+.actions button {
+  white-space: nowrap;
+}
+
 .actionsCompact {
   justify-content: flex-end;
 }

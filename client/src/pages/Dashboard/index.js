@@ -9,7 +9,7 @@ import ConfirmModal from "../../common/components/ConfirmModal";
 import ContextMenu from "../../common/components/ContextMenu";
 import { useAuth } from "../../contexts/AuthContext";
 import styles from "./Dashboard.module.css";
-import { useDecks, useArchivedDecks, useDeleteDeck, useUpdateDeck, useCourses, useCourseActions } from "../../hooks/useSupabaseData";
+import { useDecks, useArchivedDecks, useDeleteDeck, useUpdateDeck, useCourses, useCourseActions, useStudents } from "../../hooks/useSupabaseData";
 import NewDeckModal from "../../modules/Sidebar/NewDeckModal";
 import { toast } from "react-toastify";
 
@@ -22,7 +22,7 @@ const BulkAddDecksToCourseModal = ({ open, setOpen, course, decks, onSubmit }) =
       setSearch("");
       setSelectedDeckIds(new Set());
     }
-  }, [open, course?.id]);
+  }, [open, course]);
 
   const filteredDecks = useMemo(() => {
     const query = String(search || "").trim().toLowerCase();
@@ -112,6 +112,119 @@ const BulkAddDecksToCourseModal = ({ open, setOpen, course, decks, onSubmit }) =
   );
 };
 
+const CourseStudentsModal = ({ open, setOpen, course, students, onSubmit, onOpenStudents }) => {
+  const [search, setSearch] = useState("");
+  const [selectedStudentIds, setSelectedStudentIds] = useState(() => new Set());
+
+  useEffect(() => {
+    if (!open) {
+      setSearch("");
+      setSelectedStudentIds(new Set());
+      return;
+    }
+
+    const initialIds = (course?.flashy_course_members || [])
+      .map((entry) => String(entry.student_id || '').trim())
+      .filter(Boolean);
+    setSelectedStudentIds(new Set(initialIds));
+  }, [open, course?.id, course?.flashy_course_members]);
+
+  const filteredStudents = useMemo(() => {
+    const query = String(search || "").trim().toLowerCase();
+    return (students || []).filter((student) => {
+      if (!query) return true;
+      return String(student.display_name || '').toLowerCase().includes(query)
+        || String(student.email || '').toLowerCase().includes(query);
+    });
+  }, [students, search]);
+
+  const toggleStudent = (studentId) => {
+    setSelectedStudentIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(studentId)) next.delete(studentId);
+      else next.add(studentId);
+      return next;
+    });
+  };
+
+  const selectFiltered = () => {
+    setSelectedStudentIds(new Set(filteredStudents.map((student) => String(student.id))));
+  };
+
+  const clearSelection = () => setSelectedStudentIds(new Set());
+
+  const handleSubmit = async () => {
+    await onSubmit?.([...selectedStudentIds]);
+  };
+
+  return (
+    <Modal open={open} setOpen={setOpen}>
+      <h3 style={{ marginTop: 0 }}>Assign students to course</h3>
+      <p style={{ color: "var(--fg-muted)", fontSize: "0.9rem" }}>
+        {course ? `Choose who can access "${course.name}".` : "Choose students for this course."}
+      </p>
+
+      <div className={styles.bulkCourseToolbar}>
+        <input
+          type="text"
+          placeholder="Search students..."
+          value={search}
+          onChange={(event) => setSearch(event.target.value)}
+          className={styles.bulkCourseSearch}
+        />
+        <Button callback={selectFiltered} bgcolor="transparent" color="var(--fg)">Select filtered</Button>
+        <Button callback={clearSelection} bgcolor="transparent" color="var(--fg-muted)">Clear</Button>
+      </div>
+
+      {(students || []).length === 0 ? (
+        <div className={styles.bulkCourseEmptyState}>
+          <p style={{ color: "var(--fg-muted)", fontSize: "0.85rem", margin: 0 }}>
+            No linked students yet.
+          </p>
+          <Button callback={onOpenStudents}>Open My students</Button>
+        </div>
+      ) : (
+        <div className={styles.bulkCourseList}>
+          {filteredStudents.map((student) => (
+            <label key={student.id} className={styles.bulkCourseRow}>
+              <input
+                type="checkbox"
+                checked={selectedStudentIds.has(String(student.id))}
+                onChange={() => toggleStudent(String(student.id))}
+              />
+              <div className={styles.bulkCourseRowBody}>
+                <span style={{ fontWeight: 600 }}>
+                  {student.display_name || student.email || "Student"}
+                </span>
+                {student.email && (
+                  <span style={{ color: "var(--fg-muted)", fontSize: "0.78rem" }}>
+                    {student.email}
+                  </span>
+                )}
+              </div>
+            </label>
+          ))}
+          {filteredStudents.length === 0 && (
+            <p style={{ color: "var(--fg-muted)", fontSize: "0.85rem", margin: 0 }}>
+              No matching students.
+            </p>
+          )}
+        </div>
+      )}
+
+      <div className={styles.bulkCourseActions}>
+        <div style={{ color: "var(--fg-muted)", fontSize: "0.85rem" }}>
+          {selectedStudentIds.size} student{selectedStudentIds.size === 1 ? "" : "s"} selected
+        </div>
+        <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+          <Button callback={() => setOpen(false)} bgcolor="transparent" color="var(--fg-muted)">Cancel</Button>
+          <Button callback={handleSubmit}>Save</Button>
+        </div>
+      </div>
+    </Modal>
+  );
+};
+
 const Dashboard = () => {
   const [showNewDeckModal, setShowNewDeckModal] = useState(false);
   const [showArchived, setShowArchived] = useState(false);
@@ -120,6 +233,7 @@ const Dashboard = () => {
   const [showNewCourse, setShowNewCourse] = useState(false);
   const [deckSearch, setDeckSearch] = useState("");
   const [bulkAddCourse, setBulkAddCourse] = useState(null);
+  const [courseStudentsCourse, setCourseStudentsCourse] = useState(null);
   const [confirmDeleteCourse, setConfirmDeleteCourse] = useState(null);
   const [confirmDeleteArchivedDeck, setConfirmDeleteArchivedDeck] = useState(null);
   const [showHeaderMenu, setShowHeaderMenu] = useState(false);
@@ -134,7 +248,15 @@ const Dashboard = () => {
   const { deleteDeck } = useDeleteDeck();
   const { updateDeck } = useUpdateDeck();
   const { courses, refetch: refetchCourses } = useCourses();
-  const { createCourse, deleteCourse, addDeckToCourse, removeDeckFromCourse } = useCourseActions();
+  const { data: students } = useStudents();
+  const {
+    createCourse,
+    deleteCourse,
+    addDeckToCourse,
+    removeDeckFromCourse,
+    addStudentsToCourse,
+    removeStudentsFromCourse,
+  } = useCourseActions();
 
 
   // Build set of deck IDs that belong to any course
@@ -240,6 +362,44 @@ const Dashboard = () => {
     }
   };
 
+  const handleUpdateCourseStudents = async (studentIds) => {
+    if (!courseStudentsCourse?.id) return;
+
+    const activeCourse = (courses || []).find(
+      (course) => String(course.id) === String(courseStudentsCourse.id)
+    ) || courseStudentsCourse;
+
+    const currentIds = new Set(
+      (activeCourse.flashy_course_members || [])
+        .map((entry) => String(entry.student_id || '').trim())
+        .filter(Boolean)
+    );
+
+    const nextIds = [...new Set(
+      (studentIds || []).map((id) => String(id || '').trim()).filter(Boolean)
+    )];
+    const nextIdSet = new Set(nextIds);
+    const toAdd = nextIds.filter((id) => !currentIds.has(id));
+    const toRemove = [...currentIds].filter((id) => !nextIdSet.has(id));
+
+    if (toAdd.length === 0 && toRemove.length === 0) {
+      setCourseStudentsCourse(null);
+      return;
+    }
+
+    try {
+      await Promise.all([
+        toAdd.length ? addStudentsToCourse(activeCourse.id, toAdd) : Promise.resolve(),
+        toRemove.length ? removeStudentsFromCourse(activeCourse.id, toRemove) : Promise.resolve(),
+      ]);
+      toast.success(`Updated students for "${activeCourse.name || 'course'}"`);
+      setCourseStudentsCourse(null);
+      refetchCourses();
+    } catch (err) {
+      toast.error(err.message || "Failed to update course students");
+    }
+  };
+
   const handleDeckContextMenu = useCallback((e, deck) => {
     e.preventDefault();
     setCtxMenu({
@@ -279,6 +439,17 @@ const Dashboard = () => {
         course={bulkAddCourse}
         decks={eligibleDecksForBulkAdd}
         onSubmit={handleBulkAddDecks}
+      />
+      <CourseStudentsModal
+        open={Boolean(courseStudentsCourse)}
+        setOpen={() => setCourseStudentsCourse(null)}
+        course={courseStudentsCourse}
+        students={students || []}
+        onSubmit={handleUpdateCourseStudents}
+        onOpenStudents={() => {
+          setCourseStudentsCourse(null);
+          navigate("/students");
+        }}
       />
       <ConfirmModal
         open={Boolean(confirmDeleteCourse)}
@@ -412,6 +583,7 @@ const Dashboard = () => {
             .map((cd) => (decks || []).find((d) => d.id === cd.deck_id))
             .filter(Boolean)
             .filter(searchFilter);
+          const memberCount = (course.flashy_course_members || []).length;
           const isExpanded = expandedCourses.has(course.id);
           return (
             <div key={course.id} className={styles.courseSection}>
@@ -424,11 +596,18 @@ const Dashboard = () => {
                 </svg>
                 <span className={styles.courseName}>{course.name}</span>
                 <Badge style={{ fontSize: "0.7em" }}>{courseDecks.length}</Badge>
+                <Badge style={{ fontSize: "0.7em" }}>{memberCount} student{memberCount === 1 ? "" : "s"}</Badge>
                 <button
                   onClick={(e) => { e.stopPropagation(); setBulkAddCourse(course); }}
                   className={styles.courseActionBtn}
                 >
                   + Add decks
+                </button>
+                <button
+                  onClick={(e) => { e.stopPropagation(); setCourseStudentsCourse(course); }}
+                  className={styles.courseActionBtn}
+                >
+                  Assign students
                 </button>
                 <button
                   onClick={(e) => { e.stopPropagation(); setConfirmDeleteCourse(course); }}

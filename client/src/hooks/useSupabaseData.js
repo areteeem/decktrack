@@ -2060,13 +2060,22 @@ export const useCourses = () => {
     if (!user) { setCourses([]); setLoading(false); return; }
     setLoading(true);
     try {
-      const { data, error } = await supabase
+      const runFetch = (includeMembers) => supabase
         .from('flashy_courses')
-        .select('*, flashy_course_decks(deck_id, sort_order)')
+        .select(includeMembers
+          ? '*, flashy_course_decks(deck_id, sort_order), flashy_course_members(student_id)'
+          : '*, flashy_course_decks(deck_id, sort_order)'
+        )
         .eq('owner_id', user.id)
         .eq('is_archived', false)
         .order('sort_order')
         .order('name');
+
+      let { data, error } = await runFetch(true);
+      if (error && /flashy_course_members/i.test(String(error.message || ''))) {
+        ({ data, error } = await runFetch(false));
+      }
+
       if (error) throw error;
       setCourses(data || []);
     } catch (err) {
@@ -2129,28 +2138,72 @@ export const useCourseActions = () => {
     if (error) throw error;
   };
 
-  return { createCourse, updateCourse, deleteCourse, addDeckToCourse, removeDeckFromCourse };
+  const addStudentsToCourse = async (courseId, studentIds = []) => {
+    if (!user) throw new Error('Not signed in');
+
+    const normalizedIds = [...new Set(
+      (studentIds || []).map((id) => String(id || '').trim()).filter(Boolean)
+    )];
+    if (!normalizedIds.length) return;
+
+    const rows = normalizedIds.map((studentId) => ({
+      course_id: courseId,
+      student_id: studentId,
+      invited_by: user.id,
+    }));
+
+    const { error } = await supabase
+      .from('flashy_course_members')
+      .upsert(rows, { onConflict: 'course_id,student_id', ignoreDuplicates: true });
+
+    if (error) throw error;
+  };
+
+  const removeStudentsFromCourse = async (courseId, studentIds = []) => {
+    if (!user) throw new Error('Not signed in');
+
+    const normalizedIds = [...new Set(
+      (studentIds || []).map((id) => String(id || '').trim()).filter(Boolean)
+    )];
+    if (!normalizedIds.length) return;
+
+    const { error } = await supabase
+      .from('flashy_course_members')
+      .delete()
+      .eq('course_id', courseId)
+      .in('student_id', normalizedIds);
+
+    if (error) throw error;
+  };
+
+  return {
+    createCourse,
+    updateCourse,
+    deleteCourse,
+    addDeckToCourse,
+    removeDeckFromCourse,
+    addStudentsToCourse,
+    removeStudentsFromCourse,
+  };
 };
 
 /**
- * Fetch courses visible to a student (courses owned by their teacher).
- * Includes course decks and the teacher's profile for the members list.
+ * Fetch courses explicitly assigned to a student.
+ * Includes course decks and course members for in-course roster display.
  */
 export const useStudentCourses = () => {
-  const { user, profile } = useAuth();
+  const { user } = useAuth();
   const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  const teacherId = profile?.teacher_id;
-
   const refetch = useCallback(async () => {
-    if (!user || !teacherId) { setCourses([]); setLoading(false); return; }
+    if (!user) { setCourses([]); setLoading(false); return; }
     setLoading(true);
     try {
       const { data, error } = await supabase
         .from('flashy_courses')
-        .select('*, flashy_course_decks(deck_id, sort_order, flashy_decks(id, name, description))')
-        .eq('owner_id', teacherId)
+        .select('*, flashy_course_decks(deck_id, sort_order, flashy_decks(id, name, description)), flashy_course_members!inner(student_id, flashy_profiles(id, display_name, email, role))')
+        .eq('flashy_course_members.student_id', user.id)
         .eq('is_archived', false)
         .order('sort_order')
         .order('name');
@@ -2160,7 +2213,7 @@ export const useStudentCourses = () => {
       console.error('[useStudentCourses]', err);
       setCourses([]);
     } finally { setLoading(false); }
-  }, [user, teacherId]);
+  }, [user]);
 
   useEffect(() => { refetch(); }, [refetch]);
   return { courses, loading, refetch };

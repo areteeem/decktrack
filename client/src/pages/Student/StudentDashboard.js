@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useCallback } from "react";
 import styles from "./Student.module.css";
-import { useAssignments, useStudentStats, usePerDeckStats, useDecks, useAllOwnDeckCards, useStudentCourses, useCoursePeers } from "../../hooks/useSupabaseData";
+import { useAssignments, useStudentStats, usePerDeckStats, useDecks, useAllOwnDeckCards, useStudentCourses } from "../../hooks/useSupabaseData";
 import { useAuth } from "../../contexts/AuthContext";
 import LoadingScreen from "../../common/components/LoadingScreen";
 import Badge from "../../common/components/Badge";
@@ -43,7 +43,6 @@ const StudentDashboard = () => {
   const { data: ownDecks, loading: ownDecksLoading, refetch: refetchOwn } = useDecks();
   const { data: personalCards } = useAllOwnDeckCards();
   const { courses } = useStudentCourses();
-  const { peers } = useCoursePeers();
   const [showNewDeckModal, setShowNewDeckModal] = useState(false);
   const [deckSearch, setDeckSearch] = useState("");
   const [expandedCourse, setExpandedCourse] = useState(null);
@@ -220,6 +219,13 @@ const StudentDashboard = () => {
                 .map((cd) => cd.flashy_decks)
                 .filter(Boolean)
                 .sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+              const courseMembers = (course.flashy_course_members || [])
+                .map((member) => member.flashy_profiles)
+                .filter(Boolean)
+                .filter((member) => String(member.id) !== String(user?.id || ''))
+                .filter((member, index, source) =>
+                  source.findIndex((entry) => String(entry.id) === String(member.id)) === index
+                );
               const isExpanded = expandedCourse === course.id;
               return (
                 <div key={course.id} className={styles.deckCard}>
@@ -267,9 +273,9 @@ const StudentDashboard = () => {
                       )) : (
                         <p style={{ color: "var(--fg-muted)", fontSize: "0.8rem", margin: 0 }}>No decks in this course</p>
                       )}
-                      {peers.length > 0 && (
+                      {courseMembers.length > 0 && (
                         <div style={{ marginTop: "0.35rem", display: "flex", flexWrap: "wrap", gap: "0.25rem" }}>
-                          {peers.map((p) => (
+                          {courseMembers.map((p) => (
                             <span
                               key={p.id}
                               style={{
