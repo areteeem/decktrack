@@ -43,16 +43,16 @@
 /* ───── Wheel ───── */
 .wheelWrapper {
   position: relative;
-  width: min(90vw, 32rem);
-  height: min(90vw, 32rem);
+  width: min(95vw, 56rem);
+  height: min(95vw, 56rem);
 }
 
 .wheelRing {
   width: 100%;
   height: 100%;
   border-radius: 50%;
-  border: 3px solid var(--border-color, #222);
-  box-shadow: 0 6px 28px rgba(0, 0, 0, 0.12);
+  border: 6px solid #b8860b;
+  box-shadow: 0 0 0 4px #daa520, 0 0 0 8px rgba(218,165,32,0.25), 0 10px 40px rgba(0, 0, 0, 0.25);
   overflow: hidden;
 }
 
@@ -65,16 +65,16 @@
 
 .pointer {
   position: absolute;
-  top: -0.8rem;
+  top: -1.2rem;
   left: 50%;
   transform: translateX(-50%);
   width: 0;
   height: 0;
-  border-left: 0.75rem solid transparent;
-  border-right: 0.75rem solid transparent;
-  border-top: 1.5rem solid var(--fg, #333);
+  border-left: 1.2rem solid transparent;
+  border-right: 1.2rem solid transparent;
+  border-top: 2.4rem solid #e74c3c;
   z-index: 2;
-  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.18));
+  filter: drop-shadow(0 3px 8px rgba(0, 0, 0, 0.35));
 }
 
 /* ───── Spin button (outlined) ───── */
@@ -306,8 +306,8 @@
 /* ───── Mobile ───── */
 @media (max-width: 480px) {
   .wheelWrapper {
-    width: 95vw;
-    height: 95vw;
+    width: 96vw;
+    height: 96vw;
   }
 
   .actionBtns {

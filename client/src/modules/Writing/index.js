@@ -187,7 +187,7 @@ const Writing = ({ flashcards, showTermFirst = true, onQuit, onSessionComplete }
                 fontFamily: "inherit",
               }}
             >
-              ✕
+              ×
             </button>
           )}
         </div>

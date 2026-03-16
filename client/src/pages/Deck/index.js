@@ -79,13 +79,17 @@ const Deck = () => {
   const [showCourseModal, setShowCourseModal] = useState(false);
   const [useOverflowMenu, setUseOverflowMenu] = useState(false);
   const [showOverflowMenu, setShowOverflowMenu] = useState(false);
+  const [overflowMenuPos, setOverflowMenuPos] = useState(null);
   const [showExportMenu, setShowExportMenu] = useState(false);
+  const [exportMenuPos, setExportMenuPos] = useState(null);
   const [ctxMenu, setCtxMenu] = useState(null);
   const exportMenuRef = useRef(null);
+  const exportBtnRef = useRef(null);
   const navigate = useNavigate();
   const actionsRef = useRef(null);
   const actionsMeasureRef = useRef(null);
   const overflowMenuRef = useRef(null);
+  const overflowBtnRef = useRef(null);
   const params = useParams();
   const { data: deck, loading, refetch } = useDeck(params.id);
   const { deleteDeck, loading: deleting } = useDeleteDeck();
@@ -98,6 +102,17 @@ const Deck = () => {
   const { data: students } = useStudents();
   const { createDeck } = useCreateDeck();
   const { createCardsBulk } = useCreateCardsBulk();
+
+  // Compute fixed position for dropdown menus relative to a trigger button
+  const getMenuPos = useCallback((btnRef) => {
+    if (!btnRef?.current) return { top: 0, right: 0 };
+    const rect = btnRef.current.getBoundingClientRect();
+    let top = rect.bottom + 6;
+    let right = window.innerWidth - rect.right;
+    if (right < 0) right = 4;
+    if (top + 320 > window.innerHeight) top = Math.max(4, rect.top - 320);
+    return { top, right };
+  }, []);
 
   const deckCourseCount = (courses || []).filter((course) =>
     (course.flashy_course_decks || []).some((entry) => String(entry.deck_id) === String(params.id))
@@ -210,7 +225,7 @@ const Deck = () => {
           front: c.front,
           back: c.back,
           example_sentence: c.example_sentence || null,
-          card_type: c.card_type || "standard",
+          card_type: c.card_type || "normal",
           sort_order: c.sort_order ?? 0,
         }));
         await createCardsBulk(cards);
@@ -497,14 +512,20 @@ const Deck = () => {
         </button>
         <div className={styles.overflowWrap} ref={exportMenuRef}>
           <button
+            ref={exportBtnRef}
             className={styles.viewToggle}
-            onClick={() => setShowExportMenu((p) => !p)}
+            onClick={() => {
+              setShowExportMenu((p) => {
+                if (!p) setExportMenuPos(getMenuPos(exportBtnRef));
+                return !p;
+              });
+            }}
             title={t("exportDeck")}
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
           </button>
           {showExportMenu && (
-            <div className={styles.overflowMenu}>
+            <div className={styles.overflowMenu} style={exportMenuPos ? { top: exportMenuPos.top, right: exportMenuPos.right } : undefined}>
               <button className={styles.overflowItem} onClick={() => { setShowExportMenu(false); exportDeckCsv(deck.name, deck.flashcards); }}>
                 <span>Export CSV</span>
               </button>
@@ -579,14 +600,20 @@ const Deck = () => {
         {selectionMode && renderSelectionToggle()}
         <div className={styles.overflowWrap} ref={overflowMenuRef}>
           <button
+            ref={overflowBtnRef}
             className={`${styles.viewToggle} ${showOverflowMenu ? styles.viewToggleActive : ""}`}
-            onClick={() => setShowOverflowMenu((prev) => !prev)}
+            onClick={() => {
+              setShowOverflowMenu((prev) => {
+                if (!prev) setOverflowMenuPos(getMenuPos(overflowBtnRef));
+                return !prev;
+              });
+            }}
             title="More actions"
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="5" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="19" r="1.5"/></svg>
           </button>
           {showOverflowMenu && (
-            <div className={styles.overflowMenu}>
+            <div className={styles.overflowMenu} style={overflowMenuPos ? { top: overflowMenuPos.top, right: overflowMenuPos.right } : undefined}>
               {isContinuingSession && (
                 <button className={styles.overflowItem} onClick={() => { closeOverflowMenu(); navigate("study"); }}>
                   <span>{t("study")}</span>
@@ -732,7 +759,7 @@ const Deck = () => {
                 {bulkDeleting ? "Deleting…" : `Delete ${selectedCards.size}`}
               </button>
             )}
-            <button className={styles.bulkBtn} onClick={toggleSelectionMode}>✕</button>
+            <button className={styles.bulkBtn} onClick={toggleSelectionMode}>×</button>
           </div>
         )}
         {viewMode === "grid" ? (

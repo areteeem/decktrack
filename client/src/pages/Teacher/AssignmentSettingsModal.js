@@ -161,7 +161,7 @@ const AssignmentSettingsModal = ({ open, setOpen, assignment, onUpdated }) => {
       <div className={styles.assignmentMeta} style={{ marginBottom: "0.5rem" }}>
         <Badge>{syncEnabled ? "Sync ON" : "Sync OFF"}</Badge>
         {allowStudentCards && <Badge>+ Cards</Badge>}
-        {allowStudentEdit && <Badge>✏ Edit</Badge>}
+        {allowStudentEdit && <Badge>Edit</Badge>}
       </div>
 
       <div className={styles.modalActions} style={{ gap: "0.5rem" }}>

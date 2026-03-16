@@ -170,7 +170,7 @@ const MultipleChoice = ({ flashcards, showTermFirst = true, onQuit, onSessionCom
             <button onClick={onQuit} title="Quit (Esc)" style={{
               background: 'none', border: '1.5px solid var(--border-color)', borderRadius: 'var(--radius)',
               color: 'var(--fg-muted)', cursor: 'pointer', padding: '0.25rem 0.5rem', fontSize: '0.8rem', fontFamily: 'inherit'
-            }}>✕</button>
+            }}>×</button>
           )}
         </div>
         <ProgressBar completed={(current / shuffled.length) * 100} />

@@ -263,7 +263,7 @@ const ProgressPage = () => {
                   }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
                       <strong style={{ fontSize: '0.9rem' }}>{deckName}</strong>
-                      {isCompleted && <Badge style={{ background: 'var(--accent)', color: '#fff', fontSize: '0.7rem' }}>✓ Done</Badge>}
+                      {isCompleted && <Badge style={{ background: 'var(--accent)', color: '#fff', fontSize: '0.7rem' }}>Done</Badge>}
                     </div>
                     {total > 0 && (
                       <>

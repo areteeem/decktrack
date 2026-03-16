@@ -9,8 +9,14 @@ import { useState, useMemo, useEffect, useRef, useCallback } from "react";
  */
 
 const SEGMENT_FILLS = [
-  "var(--card-bg, #fff)",
-  "var(--card-hover, #f5f5f5)",
+  "#e74c3c", // red
+  "#2980b9", // blue
+  "#27ae60", // green
+  "#f1c40f", // yellow
+  "#e67e22", // orange
+  "#8e44ad", // purple
+  "#16a085", // teal
+  "#d35400", // burnt orange
 ];
 
 const SpinWheel = ({ flashcards, onQuit, onSessionComplete }) => {
@@ -53,11 +59,12 @@ const SpinWheel = ({ flashcards, onQuit, onSessionComplete }) => {
     const segAngle = 360 / segments.length;
     const targetAngle = target * segAngle + segAngle / 2;
     const fullSpins = 5 + Math.floor(Math.random() * 3);
-    // Pointer is at top (12 o'clock). After rotating by R°, the wheel point
-    // at R° (from top, clockwise) ends up under the pointer.
-    // We need finalRotation % 360 === targetAngle.
+    // Pointer is at top (12 o'clock). CSS rotate(R°) turns wheel CW by R°,
+    // so the segment originally at (360 − R)° from top ends under the pointer.
+    // We need finalRotation % 360 === 360 − targetAngle.
+    const stopAngle = ((360 - targetAngle) % 360 + 360) % 360;
     const currentAngle = ((rotation % 360) + 360) % 360;
-    const extra = ((targetAngle - currentAngle) % 360 + 360) % 360;
+    const extra = ((stopAngle - currentAngle) % 360 + 360) % 360;
     const finalRotation = rotation + fullSpins * 360 + extra;
 
     setRotation(finalRotation);
@@ -193,58 +200,74 @@ const SpinWheel = ({ flashcards, onQuit, onSessionComplete }) => {
                 const d = `M100,100 L${x1},${y1} A${r},${r} 0 ${largeArc} 1 ${x2},${y2} Z`;
 
                 const midAngle = startAngle + angle / 2;
-                const labelR = 62;
-                const lx = 100 + labelR * Math.cos(toRad(midAngle));
-                const ly = 100 + labelR * Math.sin(toRad(midAngle));
-                const term = String(seg.card.front || seg.card.term || "").slice(0, 14);
+                const term = String(seg.card.front || seg.card.term || "").slice(0, 18);
+
+                // Radial text: reading outward from center along the segment midline
+                const textRotation = midAngle; // degrees from 12 o'clock CW
 
                 return (
                   <g key={seg.idx}>
                     <path
                       d={d}
-                      fill={SEGMENT_FILLS[i % 2]}
-                      stroke="var(--border-color, #ccc)"
-                      strokeWidth="0.6"
+                      fill={SEGMENT_FILLS[i % SEGMENT_FILLS.length]}
+                      stroke="rgba(255,255,255,0.3)"
+                      strokeWidth="0.5"
                     />
                     {winningSegIdx === i && (
                       <path
                         d={d}
                         className={styles.winSegment}
-                        fill="rgba(234, 179, 8, 0.4)"
+                        fill="rgba(255, 255, 255, 0.5)"
                         stroke="none"
                       />
                     )}
                     <text
-                      x={lx}
-                      y={ly}
-                      textAnchor="middle"
+                      x="100"
+                      y="100"
+                      textAnchor="start"
                       dominantBaseline="central"
-                      fill="var(--fg, #333)"
-                      fontSize={count <= 6 ? "7" : count <= 10 ? "5.5" : "4.5"}
-                      fontWeight="600"
-                      style={{ pointerEvents: "none" }}
-                      transform={`rotate(${midAngle > 90 && midAngle < 270 ? midAngle + 180 : midAngle}, ${lx}, ${ly})`}
+                      fill="#fff"
+                      fontSize={count <= 6 ? "5.5" : count <= 10 ? "4.5" : "3.8"}
+                      fontWeight="700"
+                      letterSpacing="0.3"
+                      style={{ pointerEvents: "none", textShadow: "0 1px 2px rgba(0,0,0,0.3)" }}
+                      transform={`rotate(${midAngle - 90}, 100, 100) translate(24, 0)`}
                     >
                       {term}
                     </text>
                   </g>
                 );
               })}
+              {/* Rim pegs */}
+              {segments.map((_, i) => {
+                const pa = i * (360 / segments.length);
+                const px = 100 + 96 * Math.cos(((pa - 90) * Math.PI) / 180);
+                const py = 100 + 96 * Math.sin(((pa - 90) * Math.PI) / 180);
+                return <circle key={`p${i}`} cx={px} cy={py} r="2.5" fill="#fff" stroke="#daa520" strokeWidth="0.5" />;
+              })}
               {/* Center hub */}
               <circle
                 cx="100"
                 cy="100"
-                r="18"
+                r="20"
+                fill="#fff"
+                stroke="#b8860b"
+                strokeWidth="3"
+              />
+              <circle
+                cx="100"
+                cy="100"
+                r="15"
                 fill="var(--card-bg, #fff)"
-                stroke="var(--border-color, #ccc)"
-                strokeWidth="1.5"
+                stroke="#daa520"
+                strokeWidth="1"
               />
               <text
                 x="100"
                 y="100"
                 textAnchor="middle"
                 dominantBaseline="central"
-                fill="var(--fg-muted, #888)"
+                fill="#333"
                 fontSize="7"
                 fontWeight="700"
               >

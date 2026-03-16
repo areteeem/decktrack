@@ -61,7 +61,7 @@ const Card = (props) => {
             <RetentionBadge fontSize="0.55em" retention={retention} />
             {againCount >= 3 && (
               <Badge fontSize="0.55em" style={{ color: "var(--danger)", borderColor: "var(--danger)" }}>
-                🔥 {againCount}
+                {againCount}x
               </Badge>
             )}
             {dueDate && (

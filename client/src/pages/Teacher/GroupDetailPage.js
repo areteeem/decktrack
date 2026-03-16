@@ -4,7 +4,7 @@ import { useGroups, useGroupLeaderboard } from "../../hooks/useSupabaseData";
 import LoadingScreen from "../../common/components/LoadingScreen";
 import Badge from "../../common/components/Badge";
 
-const MEDAL = ["🥇", "🥈", "🥉"];
+const MEDAL = ["1st", "2nd", "3rd"];
 
 const formatTime = (sec) => {
   if (!sec) return "0m";

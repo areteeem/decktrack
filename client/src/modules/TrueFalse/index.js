@@ -198,7 +198,7 @@ const TrueFalse = ({ flashcards, onQuit, onSessionComplete }) => {
                 fontFamily: "inherit",
               }}
             >
-              ✕
+              ×
             </button>
           )}
         </div>

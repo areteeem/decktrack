@@ -301,7 +301,7 @@ const Practice = ({ flashcards, showTermFirst = true, onProgress, onComplete, on
           </h1>
           {onQuit && (
             <button className={styles.quitBtn} onClick={onQuit} title="Quit (Esc)">
-              ✕
+              ×
             </button>
           )}
         </div>

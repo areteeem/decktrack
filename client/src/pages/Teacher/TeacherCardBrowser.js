@@ -547,7 +547,7 @@ const TeacherCardBrowser = () => {
               {bulkDeleting ? "Deleting…" : `Delete ${selectedCards.size}`}
             </button>
           )}
-          <button className={deckStyles.bulkBtn} onClick={toggleSelectionMode}>✕</button>
+          <button className={deckStyles.bulkBtn} onClick={toggleSelectionMode}>×</button>
         </div>
       )}
 
@@ -605,7 +605,7 @@ const TeacherCardBrowser = () => {
                 {card.is_custom && <Badge style={{ fontSize: "0.6rem" }}>Custom</Badge>}
                 {card.mastered && <Badge style={{ fontSize: "0.6rem" }}>Mastered</Badge>}
                 {card.is_new && <Badge style={{ fontSize: "0.6rem" }}>New</Badge>}
-                {card.is_favorite && <Badge style={{ fontSize: "0.6rem" }}>★ Fav</Badge>}
+                {card.is_favorite && <Badge style={{ fontSize: "0.6rem" }}>Fav</Badge>}
                 {!card.is_new && !card.mastered && new Date(card.due) < new Date() && (
                   <Badge style={{ fontSize: "0.6rem" }}>Due</Badge>
                 )}

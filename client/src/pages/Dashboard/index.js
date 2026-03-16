@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef } from "react";
+import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import DeckCard from "../../common/components/DeckCard";
 import LoadingScreen from "../../common/components/LoadingScreen";
@@ -6,6 +6,7 @@ import Button from "../../common/components/Button";
 import Badge from "../../common/components/Badge";
 import Modal from "../../common/components/Modal";
 import ConfirmModal from "../../common/components/ConfirmModal";
+import ContextMenu from "../../common/components/ContextMenu";
 import { useAuth } from "../../contexts/AuthContext";
 import styles from "./Dashboard.module.css";
 import { useDecks, useArchivedDecks, useDeleteDeck, useUpdateDeck, useCourses, useCourseActions } from "../../hooks/useSupabaseData";
@@ -122,7 +123,10 @@ const Dashboard = () => {
   const [confirmDeleteCourse, setConfirmDeleteCourse] = useState(null);
   const [confirmDeleteArchivedDeck, setConfirmDeleteArchivedDeck] = useState(null);
   const [showHeaderMenu, setShowHeaderMenu] = useState(false);
+  const [headerMenuPos, setHeaderMenuPos] = useState(null);
+  const [ctxMenu, setCtxMenu] = useState(null);
   const headerMenuRef = useRef(null);
+  const headerMenuBtnRef = useRef(null);
   const navigate = useNavigate();
   const { isTeacher } = useAuth();
   const { data: decks, loading, error, refetch } = useDecks();
@@ -131,6 +135,7 @@ const Dashboard = () => {
   const { updateDeck } = useUpdateDeck();
   const { courses, refetch: refetchCourses } = useCourses();
   const { createCourse, deleteCourse, addDeckToCourse, removeDeckFromCourse } = useCourseActions();
+
 
   // Build set of deck IDs that belong to any course
   const deckIdsInCourses = useMemo(() => {
@@ -235,6 +240,21 @@ const Dashboard = () => {
     }
   };
 
+  const handleDeckContextMenu = useCallback((e, deck) => {
+    e.preventDefault();
+    setCtxMenu({
+      x: e.clientX,
+      y: e.clientY,
+      items: [
+        { label: "Open deck", onClick: () => navigate(`/deck/${deck.id}`) },
+        { label: "Study deck", onClick: () => navigate(`/deck/${deck.id}/study`) },
+        { separator: true },
+        { label: "Archive deck", onClick: async () => { try { await updateDeck(deck.id, { is_archived: true }); toast.success("Deck archived"); refetch(); refetchArchived(); } catch (err) { toast.error(err.message); } } },
+        { label: "Delete deck", danger: true, onClick: async () => { try { await deleteDeck(deck.id); toast.success("Deck deleted"); refetch(); } catch (err) { toast.error(err.message); } } },
+      ],
+    });
+  }, [navigate, updateDeck, deleteDeck, refetch, refetchArchived]);
+
   // Close header overflow menu on outside click
   useEffect(() => {
     if (!showHeaderMenu) return undefined;
@@ -299,13 +319,26 @@ const Dashboard = () => {
             <div className={styles.actionsNarrow} ref={headerMenuRef}>
               <Button callback={() => setShowNewDeckModal(true)}>+ New deck</Button>
               <button
+                ref={headerMenuBtnRef}
                 className={styles.overflowBtn}
-                onClick={() => setShowHeaderMenu((p) => !p)}
+                onClick={() => {
+                  setShowHeaderMenu((p) => {
+                    if (!p && headerMenuBtnRef.current) {
+                      const rect = headerMenuBtnRef.current.getBoundingClientRect();
+                      let top = rect.bottom + 6;
+                      let right = window.innerWidth - rect.right;
+                      if (right < 0) right = 4;
+                      if (top + 120 > window.innerHeight) top = Math.max(4, rect.top - 120);
+                      setHeaderMenuPos({ top, right });
+                    }
+                    return !p;
+                  });
+                }}
               >
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="5" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="19" r="1.5"/></svg>
               </button>
               {showHeaderMenu && (
-                <div className={styles.overflowMenu}>
+                <div className={styles.overflowMenu} style={headerMenuPos ? { top: headerMenuPos.top, right: headerMenuPos.right } : undefined}>
                   <button className={styles.overflowItem} onClick={() => { setShowHeaderMenu(false); setShowNewCourse(true); }}>New course</button>
                   <button className={styles.overflowItem} onClick={() => { setShowHeaderMenu(false); navigate("/students"); }}>My students</button>
                 </div>
@@ -407,7 +440,7 @@ const Dashboard = () => {
               {isExpanded && (
                 <div className={styles.courseDecks}>
                   {courseDecks.map((deck) => (
-                    <div key={deck.id} className={styles.deckTile}>
+                    <div key={deck.id} className={styles.deckTile} onContextMenu={(e) => handleDeckContextMenu(e, deck)}>
                       <DeckCard deck={deck} />
                       <div className={styles.deckTileActions}>
                         <button
@@ -428,7 +461,9 @@ const Dashboard = () => {
 
         {/* Uncategorized decks */}
         {uncategorizedDecks.filter(searchFilter).map((deck) => (
-          <DeckCard key={deck.id} deck={deck} />
+          <div key={deck.id} onContextMenu={(e) => handleDeckContextMenu(e, deck)}>
+            <DeckCard deck={deck} />
+          </div>
         ))}
       </div>
 
@@ -521,6 +556,7 @@ const Dashboard = () => {
           )}
         </div>
       )}
+      {ctxMenu && <ContextMenu x={ctxMenu.x} y={ctxMenu.y} items={ctxMenu.items} onClose={() => setCtxMenu(null)} />}
     </>
   );
 };

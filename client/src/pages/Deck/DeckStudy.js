@@ -8,7 +8,7 @@ import FillBlank from "../../modules/FillBlank";
 import MultipleChoice from "../../modules/MultipleChoice";
 import MatchGame from "../../modules/MatchGame";
 import SpinWheel from "../../modules/SpinWheel";
-import Writing from "../../modules/Writing";
+import MixedMode from "../../modules/MixedMode";
 import TrueFalse from "../../modules/TrueFalse";
 import { useDeck, useNewCards, useDueCards, useRecordSession } from "../../hooks/useSupabaseData";
 import { getStudySession, saveStudySession, clearStudySession } from "../../lib/studySession";
@@ -220,8 +220,8 @@ const DeckStudy = () => {
       return <FillBlank flashcards={cards} onSessionComplete={handleSessionComplete} {...sharedProps} />;
     case "wheel":
       return <SpinWheel flashcards={cards} onSessionComplete={handleSessionComplete} {...sharedProps} />;
-    case "writing":
-      return <Writing flashcards={cards} showTermFirst={showTermFirst} onSessionComplete={handleSessionComplete} {...sharedProps} />;
+    case "mixedmode":
+      return <MixedMode flashcards={cards} showTermFirst={showTermFirst} onSessionComplete={handleSessionComplete} {...sharedProps} />;
     case "truefalse":
       return <TrueFalse flashcards={cards} onSessionComplete={handleSessionComplete} {...sharedProps} />;
     case "flashcards":

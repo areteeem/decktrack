@@ -57,7 +57,7 @@ const CopyLoginLink = ({ profile, teacherId }) => {
 
   return (
     <Button callback={handleCopy} bgcolor="transparent" color="var(--fg)">
-      {copied ? "Copied ✓" : "Copy login link"}
+      {copied ? "Copied" : "Copy login link"}
     </Button>
   );
 };

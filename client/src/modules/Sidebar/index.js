@@ -358,7 +358,7 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
                   to={`/deck/${a.id}/browse`}
                   onClick={() => setIsOpen(false)}
                 >
-                  <span className="sidebar-deck-name">📚 {name}</span>
+                  <span className="sidebar-deck-name">{name}</span>
                   {total > 0 && <span className="sidebar-deck-badge">{pct}%</span>}
                 </Link>
               );

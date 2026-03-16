@@ -1,0 +1,289 @@
+/* ───── Mixed Mode Layout ───── */
+.layout {
+  display: flex;
+  flex-direction: column;
+  min-height: 80vh;
+  padding: 1rem;
+  max-width: 36rem;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.headerRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.headerRow h1 {
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+.quitBtn {
+  background: none;
+  border: 1.5px solid var(--border-color, #ddd);
+  border-radius: var(--radius, 3px);
+  color: var(--fg-muted, #888);
+  cursor: pointer;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.8rem;
+  font-family: inherit;
+}
+
+.modeTag {
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--fg-muted, #888);
+  margin-bottom: 0.5rem;
+}
+
+.content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ───── Question Card ───── */
+.questionCard {
+  width: 100%;
+  padding: 1.5rem;
+  border-radius: var(--radius, 3px);
+  border: 1.5px solid var(--border-color, #ddd);
+  background: var(--card-bg, #fff);
+  text-align: center;
+}
+
+.prompt {
+  font-size: 1.2rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+  color: var(--fg, #222);
+}
+
+.shownDef {
+  font-size: 1rem;
+  color: var(--fg-muted, #666);
+  margin-bottom: 1rem;
+  padding: 0.75rem;
+  border-radius: var(--radius, 3px);
+  background: var(--bg-muted, #f5f5f5);
+}
+
+/* ───── MCQ Options ───── */
+.options {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: 100%;
+}
+
+.option {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 0.75rem;
+  border: 1.5px solid var(--border-color, #ddd);
+  border-radius: var(--radius, 3px);
+  background: var(--card-bg, #fff);
+  cursor: pointer;
+  font-size: 0.9rem;
+  text-align: left;
+  font-family: inherit;
+  transition: border-color 0.12s;
+}
+
+.option:hover {
+  border-color: var(--fg, #222);
+}
+
+.optionKey {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.4rem;
+  height: 1.4rem;
+  border-radius: 50%;
+  background: var(--bg-muted, #f0f0f0);
+  font-size: 0.75rem;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.correctOption {
+  border-color: #27ae60;
+  background: rgba(39, 174, 96, 0.08);
+}
+
+.wrongOption {
+  border-color: var(--danger, #dc2626);
+  background: rgba(220, 38, 38, 0.06);
+}
+
+/* ───── True/False Buttons ───── */
+.tfButtons {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: center;
+  margin-top: 0.75rem;
+}
+
+.tfBtn {
+  padding: 0.6rem 1.5rem;
+  border: 1.5px solid var(--border-color, #ddd);
+  border-radius: var(--radius, 3px);
+  background: var(--card-bg, #fff);
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 600;
+  font-family: inherit;
+  transition: border-color 0.12s, background 0.12s;
+}
+
+.tfBtn:hover {
+  border-color: var(--fg, #222);
+}
+
+.tfBtnCorrect {
+  border-color: #27ae60;
+  background: rgba(39, 174, 96, 0.08);
+}
+
+.tfBtnWrong {
+  border-color: var(--danger, #dc2626);
+  background: rgba(220, 38, 38, 0.06);
+}
+
+/* ───── Fill Blank Input ───── */
+.fillInput {
+  width: 100%;
+  padding: 0.6rem 0.75rem;
+  border: 1.5px solid var(--border-color, #ddd);
+  border-radius: var(--radius, 3px);
+  background: var(--card-bg, #fff);
+  font-size: 0.95rem;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.12s;
+}
+
+.fillInput:focus {
+  border-color: var(--fg, #222);
+}
+
+.fillInputCorrect {
+  border-color: #27ae60;
+}
+
+.fillInputWrong {
+  border-color: var(--danger, #dc2626);
+}
+
+.fillRow {
+  display: flex;
+  gap: 0.5rem;
+  width: 100%;
+}
+
+.checkBtn {
+  padding: 0.6rem 1rem;
+  border: 1.5px solid var(--fg, #222);
+  border-radius: var(--radius, 3px);
+  background: var(--fg, #222);
+  color: var(--bg, #fff);
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 600;
+  font-family: inherit;
+  white-space: nowrap;
+}
+
+/* ───── Feedback ───── */
+.feedback {
+  margin-top: 0.75rem;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.feedbackCorrect {
+  color: #27ae60;
+}
+
+.feedbackWrong {
+  color: var(--danger, #dc2626);
+}
+
+.correctAnswer {
+  font-size: 0.85rem;
+  color: var(--fg-muted, #888);
+  margin-top: 0.25rem;
+}
+
+.nextBtn {
+  margin-top: 0.75rem;
+  padding: 0.45rem 1rem;
+  border: 1.5px solid var(--border-color, #ddd);
+  border-radius: var(--radius, 3px);
+  background: var(--card-bg, #fff);
+  color: var(--fg, #222);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.nextBtn:hover {
+  background: var(--fg, #222);
+  color: var(--bg, #fff);
+}
+
+/* ───── Results ───── */
+.results {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  text-align: center;
+  padding: 2rem;
+}
+
+.score {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: var(--fg, #222);
+}
+
+.scoreLabel {
+  font-size: 0.9rem;
+  color: var(--fg-muted, #666);
+}
+
+.backBtn {
+  margin-top: 1rem;
+  padding: 0.45rem 1rem;
+  border: 1.5px solid var(--border-color, #ddd);
+  border-radius: var(--radius, 3px);
+  background: var(--card-bg, #fff);
+  color: var(--fg, #222);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.backBtn:hover {
+  background: var(--fg, #222);
+  color: var(--bg, #fff);
+}

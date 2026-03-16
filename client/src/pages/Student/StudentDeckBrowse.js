@@ -93,7 +93,7 @@ const CardDetailModal = ({ open, setOpen, card, onToggleFavorite, onEdit, onDele
       <div className={styles.cardDetailHeader}>
         <Badge>{status}</Badge>
         {card.is_custom && <Badge>Custom</Badge>}
-        {card.is_favorite && <Badge>★ Favorite</Badge>}
+        {card.is_favorite && <Badge>Favorite</Badge>}
       </div>
       <div className={styles.cardPreview}>
         <div className={styles.cardSide}>
@@ -115,7 +115,7 @@ const CardDetailModal = ({ open, setOpen, card, onToggleFavorite, onEdit, onDele
 
       <div className={styles.deckActions} style={{ justifyContent: "flex-end", gap: "0.35rem", marginTop: "0.65rem" }}>
         <Button callback={() => onToggleFavorite(card)} bgcolor="transparent" color="var(--fg)">
-          {card.is_favorite ? "★ Unfavorite" : "☆ Favorite"}
+          {card.is_favorite ? "Unfavorite" : "Favorite"}
         </Button>
         {(allowEdit || card.is_custom) && (
           <Button callback={() => onEdit(card)} bgcolor="transparent" color="var(--fg)">
@@ -346,7 +346,7 @@ const StudentDeckBrowse = () => {
                         custom
                       </Badge>
                     )}
-                    {card.is_favorite && <span style={{ fontSize: "0.85rem" }}>★</span>}
+                    {card.is_favorite && <span style={{ fontSize: "0.75rem", fontWeight: 600 }}>Fav</span>}
                   </div>
                 </div>
 

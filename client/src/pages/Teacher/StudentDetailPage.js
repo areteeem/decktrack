@@ -489,7 +489,7 @@ const StudentDetailPage = () => {
                   <Badge>+ Cards</Badge>
                 )}
                 {a.allow_student_edit && (
-                  <Badge>✏ Edit</Badge>
+                  <Badge>Edit</Badge>
                 )}
                 {a.deadline && (
                   <Badge>
@@ -547,19 +547,19 @@ const StudentDetailPage = () => {
                   {expandedCards[a.id].length === 0 ? (
                     <p style={{ fontSize: "0.8rem", color: "var(--fg-muted)" }}>No cards.</p>
                   ) : (
-                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: "0.4rem" }}>
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))", gap: "0.35rem" }}>
                       {expandedCards[a.id].map((card) => (
                         <div
                           key={card.id}
                           style={{
                             border: "1px solid var(--border-color)",
                             borderRadius: "var(--radius)",
-                            padding: "0.5rem",
-                            fontSize: "0.78rem",
+                            padding: "0.4rem",
+                            fontSize: "0.75rem",
                             position: "relative",
                             display: "flex",
                             flexDirection: "column",
-                            minHeight: "6rem",
+                            minHeight: "4.5rem",
                           }}
                         >
                           <div style={{ position: "absolute", top: "0.3rem", right: "0.3rem", display: "flex", gap: "0.15rem" }}>
@@ -715,18 +715,18 @@ const StudentDetailPage = () => {
                   {expandedPersonal[d.id].length === 0 ? (
                     <p style={{ fontSize: "0.8rem", color: "var(--fg-muted)" }}>No cards.</p>
                   ) : (
-                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: "0.4rem" }}>
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))", gap: "0.35rem" }}>
                       {expandedPersonal[d.id].map((card) => (
                         <div
                           key={card.id}
                           style={{
                             border: "1px solid var(--border-color)",
                             borderRadius: "var(--radius)",
-                            padding: "0.5rem",
-                            fontSize: "0.78rem",
+                            padding: "0.4rem",
+                            fontSize: "0.75rem",
                             display: "flex",
                             flexDirection: "column",
-                            minHeight: "6rem",
+                            minHeight: "4.5rem",
                             position: "relative",
                           }}
                         >

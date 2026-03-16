@@ -145,7 +145,7 @@ const InlineBulkImport = ({ deckId, startSortOrder = 0, onImported }) => {
                   <td>{card.front}</td>
                   <td>{card.back}</td>
                   <td>{card.example_sentence || "—"}</td>
-                  <td>{card.card_type === 'fill_blank' ? '🟣 Fill-blank' : 'Normal'}</td>
+                  <td>{card.card_type === 'fill_blank' ? 'Fill-blank' : 'Normal'}</td>
                 </tr>
               ))}
             </tbody>

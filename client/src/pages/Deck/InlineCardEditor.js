@@ -32,7 +32,7 @@ const InlineCardEditor = ({ deckId, onSaved }) => {
       setFront("");
       setBack("");
       onSaved?.();
-      toast.success(t("saveCard") + " ✓");
+      toast.success(t("saveCard"));
     } catch (err) {
       toast.error(err.message || t("failedSave"));
     }

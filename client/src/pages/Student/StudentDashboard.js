@@ -216,69 +216,95 @@ const StudentDashboard = () => {
           <h2 style={{ marginTop: "1.5rem", marginBottom: "0.5rem" }}>Courses</h2>
           <div className={styles.deckGrid}>
             {courses.map((course) => {
-              const deckCount = (course.flashy_course_decks || []).length;
+              const courseDecks = (course.flashy_course_decks || [])
+                .map((cd) => cd.flashy_decks)
+                .filter(Boolean)
+                .sort((a, b) => (a.name || "").localeCompare(b.name || ""));
               const isExpanded = expandedCourse === course.id;
               return (
                 <div key={course.id} className={styles.deckCard}>
-                  <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                  <div
+                    style={{ display: "flex", alignItems: "center", gap: "0.5rem", cursor: "pointer" }}
+                    onClick={() => setExpandedCourse(isExpanded ? null : course.id)}
+                  >
+                    <svg
+                      width="14" height="14" viewBox="0 0 24 24" fill="none"
+                      stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+                      style={{ transform: isExpanded ? "rotate(90deg)" : "none", transition: "transform 0.15s", flexShrink: 0 }}
+                    >
+                      <polyline points="9 18 15 12 9 6" />
+                    </svg>
                     <h2 style={{ margin: 0 }}>{course.name}</h2>
-                    <Badge>{deckCount} {deckCount === 1 ? "deck" : "decks"}</Badge>
+                    <Badge>{courseDecks.length} {courseDecks.length === 1 ? "deck" : "decks"}</Badge>
                   </div>
                   {course.description && (
                     <p className={styles.deckDesc}>{course.description}</p>
                   )}
-                  <button
-                    onClick={() => setExpandedCourse(isExpanded ? null : course.id)}
-                    style={{
-                      background: "none",
-                      border: "1px solid var(--border-color)",
-                      borderRadius: "var(--radius)",
-                      color: "var(--fg-muted)",
-                      fontSize: "0.8rem",
-                      padding: "0.3rem 0.6rem",
-                      cursor: "pointer",
-                      fontFamily: "inherit",
-                      marginTop: "0.5rem",
-                    }}
-                  >
-                    {isExpanded ? "Hide members" : `Members (${peers.length})`}
-                  </button>
-                  {isExpanded && peers.length > 0 && (
-                    <div style={{ marginTop: "0.5rem", display: "flex", flexWrap: "wrap", gap: "0.35rem" }}>
-                      {peers.map((p) => (
-                        <span
-                          key={p.id}
+                  {isExpanded && (
+                    <div style={{ marginTop: "0.5rem", display: "flex", flexDirection: "column", gap: "0.35rem" }}>
+                      {courseDecks.length > 0 ? courseDecks.map((d) => (
+                        <Link
+                          key={d.id}
+                          to={`/deck/${d.id}`}
                           style={{
-                            display: "inline-flex",
+                            display: "flex",
                             alignItems: "center",
-                            gap: "0.3rem",
-                            padding: "0.2rem 0.5rem",
+                            gap: "0.5rem",
+                            padding: "0.45rem 0.65rem",
                             borderRadius: "var(--radius)",
                             background: "var(--bg-secondary, var(--card-bg))",
-                            fontSize: "0.78rem",
-                            color: "var(--fg-muted)",
+                            color: "var(--fg)",
+                            textDecoration: "none",
+                            fontSize: "0.85rem",
+                            fontWeight: 600,
+                            transition: "background 0.12s",
                           }}
+                          onMouseEnter={(e) => { e.currentTarget.style.background = "var(--card-hover)"; }}
+                          onMouseLeave={(e) => { e.currentTarget.style.background = "var(--bg-secondary, var(--card-bg))"; }}
                         >
-                          <span
-                            style={{
-                              width: "1.4rem",
-                              height: "1.4rem",
-                              borderRadius: "50%",
-                              background: "var(--fg)",
-                              color: "var(--bg)",
-                              display: "inline-flex",
-                              alignItems: "center",
-                              justifyContent: "center",
-                              fontSize: "0.65rem",
-                              fontWeight: 700,
-                              flexShrink: 0,
-                            }}
-                          >
-                            {(p.display_name || p.email || "?").charAt(0).toUpperCase()}
-                          </span>
-                          {p.display_name || p.email || "Student"}
-                        </span>
-                      ))}
+                          {d.name || "Untitled"}
+                        </Link>
+                      )) : (
+                        <p style={{ color: "var(--fg-muted)", fontSize: "0.8rem", margin: 0 }}>No decks in this course</p>
+                      )}
+                      {peers.length > 0 && (
+                        <div style={{ marginTop: "0.35rem", display: "flex", flexWrap: "wrap", gap: "0.25rem" }}>
+                          {peers.map((p) => (
+                            <span
+                              key={p.id}
+                              style={{
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: "0.3rem",
+                                padding: "0.15rem 0.45rem",
+                                borderRadius: "var(--radius)",
+                                background: "var(--bg-secondary, var(--card-bg))",
+                                fontSize: "0.72rem",
+                                color: "var(--fg-muted)",
+                              }}
+                            >
+                              <span
+                                style={{
+                                  width: "1.2rem",
+                                  height: "1.2rem",
+                                  borderRadius: "50%",
+                                  background: "var(--fg)",
+                                  color: "var(--bg)",
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                  fontSize: "0.6rem",
+                                  fontWeight: 700,
+                                  flexShrink: 0,
+                                }}
+                              >
+                                {(p.display_name || p.email || "?").charAt(0).toUpperCase()}
+                              </span>
+                              {p.display_name || p.email || "Student"}
+                            </span>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
@@ -357,7 +383,7 @@ const AssignedDeckCard = ({ assignment, deckStats }) => {
     <div className={styles.deckCard} style={isCompleted ? { borderColor: 'var(--accent)', borderWidth: '2px' } : undefined}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
         <h2 style={{ margin: 0 }}>{deckName}</h2>
-        {isCompleted && <Badge style={{ background: 'var(--accent)', color: '#fff' }}>✓ Completed</Badge>}
+        {isCompleted && <Badge style={{ background: 'var(--accent)', color: '#fff' }}>Completed</Badge>}
       </div>
       {deckDesc && <p className={styles.deckDesc}>{deckDesc}</p>}
       <p className={styles.deckDesc} style={{ marginTop: "0.1rem" }}>Assigned by teacher</p>
@@ -419,7 +445,7 @@ const AssignedDeckCard = ({ assignment, deckStats }) => {
               <Button bgcolor="transparent" color="var(--fg)">Match</Button>
             </Link>
             <Link to={`/study/${assignment.id}/mode/wheel`}>
-              <Button bgcolor="transparent" color="var(--fg)">🎡 Wheel</Button>
+              <Button bgcolor="transparent" color="var(--fg)">Wheel</Button>
             </Link>
           </>
         )}

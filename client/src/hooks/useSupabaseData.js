@@ -2138,7 +2138,7 @@ export const useStudentCourses = () => {
     try {
       const { data, error } = await supabase
         .from('flashy_courses')
-        .select('*, flashy_course_decks(deck_id, sort_order)')
+        .select('*, flashy_course_decks(deck_id, sort_order, flashy_decks(id, name, description))')
         .eq('owner_id', teacherId)
         .eq('is_archived', false)
         .order('sort_order')
