@@ -126,6 +126,17 @@ const enrichStudySession = (session) => {
   };
 };
 
+const getFriendlySupabaseErrorMessage = (error, fallbackMessage) => {
+  const rawMessage = String(error?.message || fallbackMessage || 'Unexpected Supabase error');
+  if (
+    rawMessage.includes("Could not find the 'card_type' column of 'flashy_cards'")
+    || rawMessage.includes("Could not find the 'card_type' column of 'flashy_student_cards'")
+  ) {
+    return 'Supabase is missing the latest card_type migration. Apply migration 018 before creating or editing fill-in-the-blank cards.';
+  }
+  return rawMessage;
+};
+
 // ─────────────────────────────────────────────────────
 // Decks
 // ─────────────────────────────────────────────────────
@@ -390,7 +401,7 @@ export const useCreateCard = () => {
       .select()
       .single();
     setLoading(false);
-    if (error) throw new Error(error.message || 'Failed to create card');
+    if (error) throw new Error(getFriendlySupabaseErrorMessage(error, 'Failed to create card'));
     return data;
   };
 
@@ -417,7 +428,7 @@ export const useCreateCardsBulk = () => {
           .insert(chunk)
           .select();
 
-        if (error) throw new Error(error.message || 'Failed to create cards');
+        if (error) throw new Error(getFriendlySupabaseErrorMessage(error, 'Failed to create cards'));
         inserted.push(...(data || []));
       }
 
@@ -443,7 +454,7 @@ export const useUpdateCard = () => {
       .select()
       .single();
     setLoading(false);
-    if (error) throw new Error(error.message || 'Failed to update card');
+    if (error) throw new Error(getFriendlySupabaseErrorMessage(error, 'Failed to update card'));
     return data;
   };
 

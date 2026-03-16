@@ -9,14 +9,14 @@ import { useState, useMemo, useEffect, useRef, useCallback } from "react";
  */
 
 const SEGMENT_FILLS = [
-  "#e74c3c", // red
-  "#2980b9", // blue
-  "#27ae60", // green
-  "#f1c40f", // yellow
-  "#e67e22", // orange
-  "#8e44ad", // purple
-  "#16a085", // teal
-  "#d35400", // burnt orange
+  "var(--wheel-segment-1)",
+  "var(--wheel-segment-2)",
+  "var(--wheel-segment-3)",
+  "var(--wheel-segment-4)",
+  "var(--wheel-segment-1)",
+  "var(--wheel-segment-2)",
+  "var(--wheel-segment-3)",
+  "var(--wheel-segment-4)",
 ];
 
 const SpinWheel = ({ flashcards, onQuit, onSessionComplete }) => {
@@ -202,22 +202,19 @@ const SpinWheel = ({ flashcards, onQuit, onSessionComplete }) => {
                 const midAngle = startAngle + angle / 2;
                 const term = String(seg.card.front || seg.card.term || "").slice(0, 18);
 
-                // Radial text: reading outward from center along the segment midline
-                const textRotation = midAngle; // degrees from 12 o'clock CW
-
                 return (
                   <g key={seg.idx}>
                     <path
                       d={d}
                       fill={SEGMENT_FILLS[i % SEGMENT_FILLS.length]}
-                      stroke="rgba(255,255,255,0.3)"
-                      strokeWidth="0.5"
+                      stroke="var(--wheel-outline)"
+                      strokeWidth="0.8"
                     />
                     {winningSegIdx === i && (
                       <path
                         d={d}
                         className={styles.winSegment}
-                        fill="rgba(255, 255, 255, 0.5)"
+                        fill="var(--wheel-highlight)"
                         stroke="none"
                       />
                     )}
@@ -226,11 +223,11 @@ const SpinWheel = ({ flashcards, onQuit, onSessionComplete }) => {
                       y="100"
                       textAnchor="start"
                       dominantBaseline="central"
-                      fill="#fff"
+                      fill="var(--wheel-text)"
                       fontSize={count <= 6 ? "5.5" : count <= 10 ? "4.5" : "3.8"}
-                      fontWeight="700"
-                      letterSpacing="0.3"
-                      style={{ pointerEvents: "none", textShadow: "0 1px 2px rgba(0,0,0,0.3)" }}
+                      fontWeight="600"
+                      letterSpacing="0.25"
+                      style={{ pointerEvents: "none" }}
                       transform={`rotate(${midAngle - 90}, 100, 100) translate(24, 0)`}
                     >
                       {term}
@@ -243,31 +240,31 @@ const SpinWheel = ({ flashcards, onQuit, onSessionComplete }) => {
                 const pa = i * (360 / segments.length);
                 const px = 100 + 96 * Math.cos(((pa - 90) * Math.PI) / 180);
                 const py = 100 + 96 * Math.sin(((pa - 90) * Math.PI) / 180);
-                return <circle key={`p${i}`} cx={px} cy={py} r="2.5" fill="#fff" stroke="#daa520" strokeWidth="0.5" />;
+                return <circle key={`p${i}`} cx={px} cy={py} r="2.2" fill="var(--wheel-peg-fill)" stroke="var(--wheel-outline)" strokeWidth="0.55" />;
               })}
               {/* Center hub */}
               <circle
                 cx="100"
                 cy="100"
                 r="20"
-                fill="#fff"
-                stroke="#b8860b"
-                strokeWidth="3"
+                fill="var(--wheel-hub-bg)"
+                stroke="var(--wheel-outline-strong)"
+                strokeWidth="2.4"
               />
               <circle
                 cx="100"
                 cy="100"
                 r="15"
-                fill="var(--card-bg, #fff)"
-                stroke="#daa520"
-                strokeWidth="1"
+                fill="var(--wheel-hub-inner)"
+                stroke="var(--wheel-outline)"
+                strokeWidth="0.9"
               />
               <text
                 x="100"
                 y="100"
                 textAnchor="middle"
                 dominantBaseline="central"
-                fill="#333"
+                fill="var(--wheel-hub-text)"
                 fontSize="7"
                 fontWeight="700"
               >

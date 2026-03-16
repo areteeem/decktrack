@@ -59,7 +59,7 @@ export default function SharedDeckPage() {
 
         const { data: c } = await sb
           .from("flashy_cards")
-          .select("front, back, example_sentence, sort_order")
+          .select("front, back, example_sentence, card_type, sort_order")
           .eq("deck_id", d.id)
           .order("sort_order");
 
@@ -111,6 +111,7 @@ export default function SharedDeckPage() {
           back: c.back,
           example_sentence: c.example_sentence || "",
           sort_order: c.sort_order ?? i,
+          ...(c.card_type ? { card_type: c.card_type } : {}),
         }));
         const { error: cardsErr } = await getSupabase()
           .from("flashy_cards")
