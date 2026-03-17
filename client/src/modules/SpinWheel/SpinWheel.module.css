@@ -91,8 +91,8 @@ html[data-theme="dark"] .stopwatch {
 /* ───── Wheel ───── */
 .wheelWrapper {
   position: relative;
-  width: min(84vw, calc(100dvh - 13.5rem), 35rem);
-  height: min(84vw, calc(100dvh - 13.5rem), 35rem);
+  width: min(78vw, calc(100dvh - 15rem), 31rem);
+  height: min(78vw, calc(100dvh - 15rem), 31rem);
   transition: width 0.35s ease, height 0.35s ease, opacity 0.35s ease;
 }
 
@@ -389,8 +389,8 @@ html[data-theme="dark"] .stopwatch {
   }
 
   .wheelWrapper {
-    width: min(90vw, calc(100dvh - 12.75rem), 33rem);
-    height: min(90vw, calc(100dvh - 12.75rem), 33rem);
+    width: min(84vw, calc(100dvh - 14.5rem));
+    height: min(84vw, calc(100dvh - 14.5rem));
   }
 
   .wheelShrunk .wheelWrapper {

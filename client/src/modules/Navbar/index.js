@@ -67,11 +67,25 @@ const useBreadcrumbs = () => {
 const Navbar = ({ setIsOpen, isOpen }) => {
   const [studyTime, setStudyTime] = useState(() => formatStudyTime(getTotalSeconds()));
   const breadcrumbs = useBreadcrumbs();
+  const [isScrolled, setIsScrolled] = useState(false);
 
   // Refresh every 5s
   useEffect(() => {
     const id = setInterval(() => setStudyTime(formatStudyTime(getTotalSeconds())), 5000);
     return () => clearInterval(id);
+  }, []);
+
+  // Scroll-aware gradient blur — hidden when at top of page
+  useEffect(() => {
+    let ticking = false;
+    const onScroll = () => {
+      if (!ticking) {
+        requestAnimationFrame(() => { setIsScrolled(window.scrollY > 50); ticking = false; });
+        ticking = true;
+      }
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
   return (
@@ -119,7 +133,7 @@ const Navbar = ({ setIsOpen, isOpen }) => {
           </svg>
         </div>
       </nav>
-      <div className={styles.gradientBlur} aria-hidden="true" />
+      <div className={`${styles.gradientBlur}${isScrolled ? ` ${styles.isScrolled}` : ''}`} aria-hidden="true" />
     </>
   );
 };

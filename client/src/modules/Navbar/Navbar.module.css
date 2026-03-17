@@ -90,6 +90,7 @@
 }
 
 /* ── Progressive gradient blur overlay ── */
+/* Hidden at top of page so it doesn't cover filters/headers. */
 .gradientBlur {
   position: fixed;
   top: 0;
@@ -102,6 +103,11 @@
   -webkit-mask-image: linear-gradient(to bottom, black 0%, black 8%, transparent 100%);
   pointer-events: none;
   z-index: 5;
+  opacity: 0;
+  transition: opacity 0.4s ease;
+}
+.gradientBlur.isScrolled {
+  opacity: 1;
 }
 
 /* Desktop: offset for sidebar */
