@@ -291,9 +291,171 @@
   font-size: 0.85rem;
 }
 
-.assignRow span:first-child {
+.assignRow span:first-of-type {
   flex: 1;
   font-weight: 500;
+}
+
+.assignTopControls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.7rem;
+}
+
+.inlineToggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.78rem;
+  color: var(--fg-muted);
+}
+
+.inlineToggle input {
+  margin: 0;
+}
+
+.assignTemplateRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-bottom: 0.7rem;
+}
+
+.assignTemplateButton {
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  padding: 0.28rem 0.55rem;
+  font-size: 0.75rem;
+  background: var(--card-bg);
+  color: var(--fg);
+  cursor: pointer;
+}
+
+.assignTemplateButton:hover {
+  border-color: var(--fg-muted);
+}
+
+.assignQueueControls {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.6rem;
+}
+
+.assignStatus {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.72rem;
+  border-radius: 999px;
+  padding: 0.12rem 0.4rem;
+  border: 1px solid var(--border-color);
+  color: var(--fg-muted);
+  background: var(--card-bg);
+}
+
+.assignStatusAssigning {
+  color: var(--warning);
+  border-color: color-mix(in srgb, var(--warning) 45%, var(--border-color));
+}
+
+.assignStatusAssigned {
+  color: var(--success, #16a34a);
+  border-color: color-mix(in srgb, var(--success, #16a34a) 45%, var(--border-color));
+}
+
+.assignStatusDuplicate {
+  color: var(--fg-muted);
+}
+
+.assignStatusError {
+  color: var(--danger, #b91c1c);
+  border-color: color-mix(in srgb, var(--danger, #b91c1c) 45%, var(--border-color));
+}
+
+.healthChipRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+.healthChip {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--border-color);
+  border-radius: 999px;
+  padding: 0.12rem 0.45rem;
+  font-size: 0.7rem;
+  color: var(--fg-muted);
+  background: var(--bg-secondary);
+}
+
+.healthRiskLow {
+  color: var(--success, #15803d);
+}
+
+.healthRiskMedium {
+  color: var(--warning, #b45309);
+}
+
+.healthRiskHigh {
+  color: var(--danger, #b91c1c);
+}
+
+.auditText {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--fg-faint);
+}
+
+.moreMenu {
+  position: relative;
+}
+
+.moreSummary {
+  list-style: none;
+  cursor: pointer;
+  padding: 0.38rem 0.6rem;
+  border: var(--border);
+  border-radius: var(--radius);
+  font-size: 0.78rem;
+  color: var(--fg);
+  background: var(--card-bg);
+}
+
+.moreSummary::-webkit-details-marker {
+  display: none;
+}
+
+.moreActions {
+  position: absolute;
+  top: calc(100% + 0.25rem);
+  right: 0;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  min-width: 12rem;
+  background: var(--card-bg);
+  border: var(--border);
+  border-radius: var(--radius);
+  padding: 0.2rem;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
+}
+
+.moreActionButton {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  padding: 0.4rem 0.5rem;
+  color: var(--fg);
+  border-radius: calc(var(--radius) - 3px);
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+
+.moreActionButton:hover {
+  background: var(--bg-secondary);
 }
 
 /* ── Stats grid ───────────────────── */

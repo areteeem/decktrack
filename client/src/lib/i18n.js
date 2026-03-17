@@ -16,6 +16,7 @@ const en = {
   decks: "decks",
   settings: "settings",
   logOut: "log out",
+  assignedStudies: "assigned decks",
 
   // ── Deck page ──
   addCard: "+ Add card",
@@ -194,6 +195,7 @@ const uk = {
   decks: "колоди",
   settings: "налаштування",
   logOut: "вийти",
+  assignedStudies: "призначені колоди",
 
   // ── Deck page ──
   addCard: "+ Додати картку",

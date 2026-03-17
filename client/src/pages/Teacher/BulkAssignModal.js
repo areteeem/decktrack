@@ -41,6 +41,7 @@ const BulkAssignModal = ({ open, setOpen, students, onAssigned, initialDeckId, i
   const [addToPersonalLibrary, setAddToPersonalLibrary] = useState(saved.addToPersonalLibrary ?? false);
   const [requiredPool, setRequiredPool] = useState(saved.requiredPool ?? "any");
   const [requiredMode, setRequiredMode] = useState(saved.requiredMode ?? "any");
+  const [closeAfterAssign, setCloseAfterAssign] = useState(saved.closeAfterAssign === true);
   const [deckSearch, setDeckSearch] = useState("");
 
   const selectedDeck = useMemo(
@@ -71,6 +72,7 @@ const BulkAssignModal = ({ open, setOpen, students, onAssigned, initialDeckId, i
     setAddToPersonalLibrary(s.addToPersonalLibrary ?? false);
     setRequiredPool(s.requiredPool ?? "any");
     setRequiredMode(s.requiredMode ?? "any");
+    setCloseAfterAssign(s.closeAfterAssign === true);
     setDeckSearch("");
   };
 
@@ -104,7 +106,16 @@ const BulkAssignModal = ({ open, setOpen, students, onAssigned, initialDeckId, i
 
   const handleAssign = async () => {
     if (!selectedDeckId || selectedStudents.size === 0) return;
-    saveSettings({ syncEnabled, studyGoalDaily: parseInt(studyGoalDaily) || 0, allowStudentCards, allowStudentEdit, addToPersonalLibrary, requiredPool, requiredMode });
+    saveSettings({
+      syncEnabled,
+      studyGoalDaily: parseInt(studyGoalDaily) || 0,
+      allowStudentCards,
+      allowStudentEdit,
+      addToPersonalLibrary,
+      requiredPool,
+      requiredMode,
+      closeAfterAssign,
+    });
     try {
       const results = await bulkAssign(selectedDeckId, [...selectedStudents], {
         syncEnabled,
@@ -123,8 +134,10 @@ const BulkAssignModal = ({ open, setOpen, students, onAssigned, initialDeckId, i
       } else {
         toast.info("All selected students already have this deck.");
       }
-      handleClose(false);
       onAssigned?.();
+      if (closeAfterAssign) {
+        handleClose(false);
+      }
     } catch (err) {
       toast.error(err.message || "Failed to assign deck");
     }
@@ -301,6 +314,16 @@ const BulkAssignModal = ({ open, setOpen, students, onAssigned, initialDeckId, i
                 <strong>Also add deck to student library</strong>
                 <p className={styles.helperText} style={{ margin: 0 }}>
                   Creates a personal copy in each selected student's own decks, so they can keep it outside assigned studies too.
+                </p>
+              </div>
+            </label>
+
+            <label style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontSize: "0.85rem" }}>
+              <input type="checkbox" checked={closeAfterAssign} onChange={(e) => setCloseAfterAssign(e.target.checked)} />
+              <div>
+                <strong>Close after assign</strong>
+                <p className={styles.helperText} style={{ margin: 0 }}>
+                  Keep this disabled to continue assigning without reopening the modal.
                 </p>
               </div>
             </label>

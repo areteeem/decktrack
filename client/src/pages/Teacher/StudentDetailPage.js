@@ -1,5 +1,5 @@
 import { useParams } from "react-router";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import styles from "./Teacher.module.css";
 import {
   useStudentStats,
@@ -12,6 +12,7 @@ import {
   useDeleteDeck,
   useUpdateCard,
   useDeleteCard,
+  useLogActivity,
 } from "../../hooks/useSupabaseData";
 import { useAuth } from "../../contexts/AuthContext";
 import LoadingScreen from "../../common/components/LoadingScreen";
@@ -20,7 +21,8 @@ import Button from "../../common/components/Button";
 import Modal from "../../common/components/Modal";
 import ConfirmModal from "../../common/components/ConfirmModal";
 import RichTextInput from "../../common/components/RichTextInput";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
+import { buildStudentAppLaunchUrl, getProfileTutproStudentId } from "../../lib/tutproRoster";
 import { supabase } from "../../lib/supabaseClient";
 import { toast } from "react-toastify";
 import AssignmentSettingsModal from "./AssignmentSettingsModal";
@@ -116,8 +118,39 @@ const sessionRetentionLabel = (session) => {
   return `${days} days left`;
 };
 
+const copyText = async (text) => {
+  const value = String(text || '').trim();
+  if (!value) return false;
+  try {
+    await navigator.clipboard.writeText(value);
+    return true;
+  } catch {
+    const ta = document.createElement('textarea');
+    ta.value = value;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    return true;
+  }
+};
+
+const getStudentAppLoginUrl = (profile, teacherId) => {
+  const resolvedTeacherId = String(profile?.teacher_id || teacherId || '').trim();
+  const studentId = getProfileTutproStudentId(profile);
+  const studentName = String(profile?.display_name || profile?.email || '').trim();
+  if (!resolvedTeacherId || !studentId || !studentName) return null;
+  return buildStudentAppLaunchUrl({
+    baseUrl: window.location.origin,
+    teacherId: resolvedTeacherId,
+    studentId,
+    studentName,
+  });
+};
+
 const StudentDetailPage = () => {
   const { studentId } = useParams();
+  const navigate = useNavigate();
   const { user } = useAuth();
   const { data: stats, loading: statsLoading } = useStudentStats(studentId);
   const [student, setStudent] = useState(null);
@@ -150,6 +183,132 @@ const StudentDetailPage = () => {
   const { deleteDeck: deletePersonalDeck } = useDeleteDeck();
   const { updateCard: updatePersonalCard } = useUpdateCard();
   const { deleteCard: deletePersonalCard } = useDeleteCard();
+  const { logActivity } = useLogActivity();
+
+  const detailStudentId = String(student?.id || studentId || '').trim();
+
+  const assignmentHealth = useMemo(() => {
+    const now = Date.now();
+    const dueSoonThreshold = now + (3 * 24 * 60 * 60 * 1000);
+    let total = 0;
+    let pending = 0;
+    let dueSoon = 0;
+    let overdue = 0;
+
+    (assignments || []).forEach((assignment) => {
+      if (assignment?.is_archived) return;
+      total += 1;
+
+      const progress = Number(assignment?.progress_percent);
+      const isCompleted = assignment?.completed === true || progress >= 100;
+      if (isCompleted) return;
+
+      pending += 1;
+      const deadlineTs = Date.parse(String(assignment?.deadline || ''));
+      if (!Number.isFinite(deadlineTs)) return;
+      if (deadlineTs < now) overdue += 1;
+      else if (deadlineTs <= dueSoonThreshold) dueSoon += 1;
+    });
+
+    return { total, pending, dueSoon, overdue };
+  }, [assignments]);
+
+  const studentAppLoginUrl = useMemo(
+    () => getStudentAppLoginUrl(student, user?.id),
+    [student, user?.id]
+  );
+
+  const studentProgressUrl = useMemo(() => {
+    if (!detailStudentId) return null;
+    return `${window.location.origin}/students/${encodeURIComponent(detailStudentId)}`;
+  }, [detailStudentId]);
+
+  const logStudentAction = useCallback(async (action, metadata = {}) => {
+    if (!detailStudentId) return;
+    try {
+      await logActivity(action, 'student', detailStudentId, metadata);
+    } catch (err) {
+      console.warn('[StudentDetailPage] action log failed', err?.message || err);
+    }
+  }, [detailStudentId, logActivity]);
+
+  const handleOpenAssignFlow = useCallback(() => {
+    if (!detailStudentId) return;
+    navigate(`/students?assign=${encodeURIComponent(detailStudentId)}`);
+  }, [detailStudentId, navigate]);
+
+  const handleOpenStudentApp = useCallback(() => {
+    if (!studentAppLoginUrl) {
+      toast.info('Student app launch link is not available yet.');
+      return;
+    }
+    window.open(studentAppLoginUrl, '_blank', 'noopener,noreferrer');
+    logStudentAction('open_student_app', { source: 'student_detail' });
+  }, [logStudentAction, studentAppLoginUrl]);
+
+  const handleCopyLoginLink = useCallback(async () => {
+    if (!studentAppLoginUrl) {
+      toast.info('Login link is not available for this student yet.');
+      return;
+    }
+    await copyText(studentAppLoginUrl);
+    toast.success('Login link copied!');
+    logStudentAction('copy_login_link', { source: 'student_detail' });
+  }, [logStudentAction, studentAppLoginUrl]);
+
+  const handleCopyProfileLink = useCallback(async () => {
+    if (!studentProgressUrl) {
+      toast.info('Profile link is not available.');
+      return;
+    }
+    await copyText(studentProgressUrl);
+    toast.success('Profile link copied!');
+    logStudentAction('copy_profile_link', { source: 'student_detail' });
+  }, [logStudentAction, studentProgressUrl]);
+
+  const handleCopyBundle = useCallback(async () => {
+    const deckNames = (assignments || [])
+      .filter((assignment) => !assignment?.is_archived)
+      .map((assignment) => String(assignment?.custom_name || '').trim() || String(assignment?.flashy_decks?.name || '').trim())
+      .filter(Boolean)
+      .slice(0, 10);
+
+    const lines = [
+      `Student: ${student?.display_name || student?.email || 'Student'}`,
+      student?.email ? `Email: ${student.email}` : '',
+      `Login link: ${studentAppLoginUrl || 'Not available'}`,
+      `Profile link: ${studentProgressUrl || 'Not available'}`,
+      `Assigned decks: ${assignmentHealth.total}`,
+      `Pending: ${assignmentHealth.pending}, due soon: ${assignmentHealth.dueSoon}, overdue: ${assignmentHealth.overdue}`,
+      deckNames.length ? `Deck list: ${deckNames.join(', ')}` : 'Deck list: none',
+    ].filter(Boolean);
+
+    await copyText(lines.join('\n'));
+    toast.success('Student bundle copied!');
+    logStudentAction('copy_student_bundle', { source: 'student_detail' });
+  }, [assignmentHealth.dueSoon, assignmentHealth.overdue, assignmentHealth.pending, assignmentHealth.total, assignments, logStudentAction, student?.display_name, student?.email, studentAppLoginUrl, studentProgressUrl]);
+
+  const handlePrepareReminder = useCallback(async () => {
+    const displayName = student?.display_name || student?.email || 'Student';
+    const body = [
+      `Hi ${displayName},`,
+      'Please open your student app and continue your assigned DeckTrack studies.',
+      studentAppLoginUrl ? `Login link: ${studentAppLoginUrl}` : '',
+    ].filter(Boolean).join('\n\n');
+
+    const email = String(student?.email || '').trim();
+    if (email) {
+      const mailto = `mailto:${encodeURIComponent(email)}?subject=${encodeURIComponent('DeckTrack study reminder')}&body=${encodeURIComponent(body)}`;
+      window.open(mailto, '_blank', 'noopener,noreferrer');
+    }
+
+    await copyText(body);
+    toast.success(email ? 'Reminder opened in mail app and copied.' : 'Reminder copied.');
+    logStudentAction('reminder_prepared', {
+      source: 'student_detail',
+      hasEmail: Boolean(email),
+    });
+  }, [logStudentAction, student?.display_name, student?.email, studentAppLoginUrl]);
 
   const openEditCard = (card, assignmentId) => {
     setEditFront(card.front || '');
@@ -432,6 +591,36 @@ const StudentDetailPage = () => {
           <h1>{student.display_name || student.email || "Student"}</h1>
         </div>
         <p className={styles.email}>{student.email}</p>
+      </div>
+
+      <div style={{
+        border: 'var(--border)',
+        borderRadius: 'var(--radius)',
+        background: 'var(--card-bg)',
+        padding: '0.65rem',
+        marginBottom: '0.85rem',
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
+          <div>
+            <p className={styles.helperText} style={{ margin: 0 }}>Quick actions</p>
+            <div className={styles.healthChipRow} style={{ marginTop: '0.35rem' }}>
+              <span className={styles.healthChip}>{assignmentHealth.total} assigned</span>
+              <span className={styles.healthChip}>{assignmentHealth.pending} pending</span>
+              <span className={styles.healthChip}>{assignmentHealth.dueSoon} due soon</span>
+              {assignmentHealth.overdue > 0 && (
+                <span className={`${styles.healthChip} ${styles.healthRiskHigh}`}>{assignmentHealth.overdue} overdue</span>
+              )}
+            </div>
+          </div>
+          <div className={styles.studentActions}>
+            <Button callback={handleOpenAssignFlow}>Assign deck</Button>
+            <Button callback={handleOpenStudentApp} bgcolor="transparent" color="var(--fg)">Open student app</Button>
+            <Button callback={handleCopyLoginLink} bgcolor="transparent" color="var(--fg)">Copy login link</Button>
+            <Button callback={handleCopyProfileLink} bgcolor="transparent" color="var(--fg)">Copy profile link</Button>
+            <Button callback={handleCopyBundle} bgcolor="transparent" color="var(--fg)">Copy quick bundle</Button>
+            <Button callback={handlePrepareReminder} bgcolor="transparent" color="var(--fg-muted)">Prepare reminder</Button>
+          </div>
+        </div>
       </div>
 
       {/* Stats overview */}
