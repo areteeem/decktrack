@@ -247,6 +247,18 @@ const TeacherCardBrowser = () => {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("all");
   const [search, setSearch] = useState("");
+  const [isScrolled, setIsScrolled] = useState(false);
+  useEffect(() => {
+    let ticking = false;
+    const onScroll = () => {
+      if (!ticking) {
+        requestAnimationFrame(() => { setIsScrolled(window.scrollY > 50); ticking = false; });
+        ticking = true;
+      }
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
   const [viewMode, setViewMode] = useState("grid");
 
   const [editModal, setEditModal] = useState({ open: false, card: null });
@@ -492,47 +504,61 @@ const TeacherCardBrowser = () => {
         </div>
       </div>
 
-      {/* Search + filter bar */}
-      <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem", alignItems: "center", marginBottom: "0.75rem" }}>
-        <input
-          type="text"
-          placeholder="Search cards..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          style={{
-            padding: "0.45rem 0.65rem",
-            border: "1px solid var(--border-color)",
-            borderRadius: "var(--radius)",
-            background: "var(--bg-secondary)",
-            color: "var(--fg)",
-            fontSize: "0.8rem",
-            flex: "1 1 200px",
-            minWidth: 0,
-          }}
-        />
-      </div>
+      {/* Search + filter bar — Sticky pinned */}
+      <div className={`${styles.stickyFilters}${search || filter !== 'all' ? ` ${styles.isStuck}` : ''}${isScrolled ? ` ${styles.isScrolled}` : ''}`}>
+        <div className={styles.stickyFiltersInner}>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem", alignItems: "center" }}>
+            <input
+              type="text"
+              placeholder="Search cards..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              style={{
+                padding: "0.45rem 0.65rem",
+                border: "1px solid var(--border-color)",
+                borderRadius: "var(--radius)",
+                background: "var(--bg-secondary)",
+                color: "var(--fg)",
+                fontSize: "0.8rem",
+                flex: "1 1 200px",
+                minWidth: 0,
+              }}
+            />
+            {(search || filter !== 'all') && (
+              <button
+                type="button"
+                className={styles.clearAllBtn}
+                onClick={() => { setSearch(''); setFilter('all'); }}
+              >
+                ✕ Clear
+                <span className={styles.clearAllBadge}>{(search ? 1 : 0) + (filter !== 'all' ? 1 : 0)}</span>
+              </button>
+            )}
+          </div>
 
-      {/* Filter chips */}
-      <div style={{ display: "flex", flexWrap: "wrap", gap: "0.35rem", marginBottom: "0.75rem" }}>
-        {FILTERS.map((f) => (
-          <button
-            key={f}
-            onClick={() => setFilter(f)}
-            style={{
-              padding: "0.3rem 0.65rem",
-              borderRadius: "9999px",
-              border: "1px solid var(--border-color)",
-              background: filter === f ? "var(--fg)" : "transparent",
-              color: filter === f ? "var(--bg)" : "var(--fg-muted)",
-              fontSize: "0.72rem",
-              cursor: "pointer",
-              textTransform: "capitalize",
-              transition: "all 0.15s",
-            }}
-          >
-            {f} ({counts[f] || 0})
-          </button>
-        ))}
+          {/* Filter chips */}
+          <div style={{ display: "flex", flexWrap: "wrap", gap: "0.35rem" }}>
+            {FILTERS.map((f) => (
+              <button
+                key={f}
+                onClick={() => setFilter(f)}
+                style={{
+                  padding: "0.3rem 0.65rem",
+                  borderRadius: "9999px",
+                  border: "1px solid var(--border-color)",
+                  background: filter === f ? "var(--fg)" : "transparent",
+                  color: filter === f ? "var(--bg)" : "var(--fg-muted)",
+                  fontSize: "0.72rem",
+                  cursor: "pointer",
+                  textTransform: "capitalize",
+                  transition: "all 0.15s",
+                }}
+              >
+                {f} ({counts[f] || 0})
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
 
       {/* Bulk selection bar */}

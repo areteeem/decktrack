@@ -2243,40 +2243,83 @@ export const useCourseActions = () => {
 /**
  * Fetch courses explicitly assigned to a student.
  * Includes course decks and course members for in-course roster display.
+ * Implements defensive querying with fallbacks for RLS policy issues.
  */
 export const useStudentCourses = () => {
   const { user } = useAuth();
   const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   const refetch = useCallback(async () => {
-    if (!user) { setCourses([]); setLoading(false); return; }
+    if (!user) { 
+      console.log('[useStudentCourses] No user, clearing courses');
+      setCourses([]); 
+      setLoading(false); 
+      return; 
+    }
+    
     setLoading(true);
+    setError(null);
+    
     try {
-      const baseSelect = 'id, name, description, color, icon, sort_order, owner_id, flashy_course_decks(deck_id, sort_order, flashy_decks(id, name, description, category)), flashy_course_members!inner(student_id, flashy_profiles(id, display_name, email, role))';
+      const userId = String(user.id || '').trim();
+      console.log('[useStudentCourses] Starting fetch for user:', userId);
+      
+      const baseSelect = 'id, name, description, color, icon, sort_order, owner_id, flashy_course_decks(deck_id, sort_order, flashy_decks(id, name, description, category)), flashy_course_members(student_id, flashy_profiles(id, display_name, email, role))';
+      
+      // ATTEMPT 1: Full query with visibility table
+      console.log('[useStudentCourses] Attempting query with visibility table...');
       let { data, error } = await supabase
         .from('flashy_courses')
         .select(`${baseSelect}, flashy_course_student_deck_visibility(student_id, deck_id, is_hidden)`)
-        .eq('flashy_course_members.student_id', user.id)
         .eq('is_archived', false)
         .order('sort_order')
         .order('name');
 
-      if (error && /flashy_course_student_deck_visibility/i.test(String(error.message || ''))) {
+      if (error) {
+        console.warn('[useStudentCourses] Visibility query failed:', error.message);
+        
+        // ATTEMPT 2: Query without visibility table (RLS may block it)
+        console.log('[useStudentCourses] Attempting query without visibility table...');
         ({ data, error } = await supabase
           .from('flashy_courses')
           .select(baseSelect)
-          .eq('flashy_course_members.student_id', user.id)
           .eq('is_archived', false)
           .order('sort_order')
           .order('name'));
+        
+        if (error) {
+          console.error('[useStudentCourses] Base query also failed:', error.message);
+          throw error;
+        }
       }
 
-      if (error) throw error;
-      const filteredCourses = (data || []).map((course) => {
+      console.log('[useStudentCourses] Query returned courses:', data?.length || 0);
+      
+      if (!data || data.length === 0) {
+        console.log('[useStudentCourses] No courses found in database');
+        setCourses([]);
+        return;
+      }
+
+      // Filter courses where current student is a member
+      const studentCourses = data.filter((course) => {
+        const members = course.flashy_course_members || [];
+        const isMember = members.some((m) => String(m.student_id || '').trim() === userId);
+        if (!isMember) {
+          console.log('[useStudentCourses] Filtering out course (not a member):', course.id, course.name);
+        }
+        return isMember;
+      });
+
+      console.log('[useStudentCourses] Courses after membership filter:', studentCourses.length);
+
+      // Process visibility and decks
+      const filteredCourses = studentCourses.map((course) => {
         const hiddenDeckIds = new Set(
           (course.flashy_course_student_deck_visibility || [])
-            .filter((row) => String(row.student_id || '').trim() === String(user.id || '').trim() && row.is_hidden === true)
+            .filter((row) => String(row.student_id || '').trim() === userId && row.is_hidden === true)
             .map((row) => String(row.deck_id || '').trim())
             .filter(Boolean)
         );
@@ -2291,15 +2334,21 @@ export const useStudentCourses = () => {
           flashy_course_decks: visibleDecks,
         };
       });
+
+      console.log('[useStudentCourses] Final filtered courses:', filteredCourses.length);
       setCourses(filteredCourses);
     } catch (err) {
-      console.error('[useStudentCourses]', err);
+      const errorMsg = err?.message || String(err);
+      console.error('[useStudentCourses] Fatal error:', errorMsg);
+      setError(errorMsg);
       setCourses([]);
-    } finally { setLoading(false); }
+    } finally { 
+      setLoading(false); 
+    }
   }, [user]);
 
   useEffect(() => { refetch(); }, [refetch]);
-  return { courses, loading, refetch };
+  return { courses, loading, error, refetch };
 };
 
 /**

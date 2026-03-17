@@ -827,6 +827,18 @@ const StudentsPage = () => {
   const [showBulkAssign, setShowBulkAssign] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState("name");
+  const [isScrolled, setIsScrolled] = useState(false);
+  useEffect(() => {
+    let ticking = false;
+    const onScroll = () => {
+      if (!ticking) {
+        requestAnimationFrame(() => { setIsScrolled(window.scrollY > 50); ticking = false; });
+        ticking = true;
+      }
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
   const [stickyAssignNext, setStickyAssignNext] = useState(() => {
     try {
       return JSON.parse(localStorage.getItem(STICKY_NEXT_STUDENT_KEY)) === true;
@@ -1145,23 +1157,39 @@ const StudentsPage = () => {
       </div>
 
       {studentRows.length > 0 && (
-        <div className={styles.searchSortBar}>
-          <input
-            type="text"
-            className={styles.searchInput}
-            placeholder="Search by name, email, or TutPro ID..."
-            value={searchQuery}
-            onChange={(event) => setSearchQuery(event.target.value)}
-          />
-          <select
-            className={styles.sortSelect}
-            value={sortBy}
-            onChange={(event) => setSortBy(event.target.value)}
-          >
-            <option value="name">Sort: Name</option>
-            <option value="status">Sort: Status</option>
-            <option value="recent">Sort: Recent</option>
-          </select>
+        <div className={`${styles.stickyFilters}${searchQuery || sortBy !== 'name' ? ` ${styles.isStuck}` : ''}${isScrolled ? ` ${styles.isScrolled}` : ''}`}>
+          <div className={styles.stickyFiltersInner}>
+            <div className={styles.stickyFiltersStatus}>
+              <div className={styles.searchSortBar} style={{ margin: 0 }}>
+                <input
+                  type="text"
+                  className={styles.searchInput}
+                  placeholder="Search by name, email, or TutPro ID..."
+                  value={searchQuery}
+                  onChange={(event) => setSearchQuery(event.target.value)}
+                />
+                <select
+                  className={styles.sortSelect}
+                  value={sortBy}
+                  onChange={(event) => setSortBy(event.target.value)}
+                >
+                  <option value="name">Sort: Name</option>
+                  <option value="status">Sort: Status</option>
+                  <option value="recent">Sort: Recent</option>
+                </select>
+              </div>
+              {(searchQuery || sortBy !== 'name') && (
+                <button
+                  type="button"
+                  className={styles.clearAllBtn}
+                  onClick={() => { setSearchQuery(''); setSortBy('name'); }}
+                >
+                  ✕ Clear
+                  <span className={styles.clearAllBadge}>{(searchQuery ? 1 : 0) + (sortBy !== 'name' ? 1 : 0)}</span>
+                </button>
+              )}
+            </div>
+          </div>
         </div>
       )}
 

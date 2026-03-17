@@ -75,49 +75,52 @@ const Navbar = ({ setIsOpen, isOpen }) => {
   }, []);
 
   return (
-    <nav className={styles.navbar}>
-      <div className={styles.left}>
-        <Link to="/" className="navbar-brand">
-          <img src={logo} className={styles.logo} alt="logo" />
-        </Link>
-        {breadcrumbs.length > 0 && (
-          <div className={styles.breadcrumbs}>
-            {breadcrumbs.map((crumb, i) => (
-              <span key={i} className={styles.crumbItem}>
-                <span className={styles.crumbSep}>/</span>
-                {crumb.to ? (
-                  <Link to={crumb.to} className={styles.crumbLink}>{crumb.label}</Link>
-                ) : (
-                  <span className={styles.crumbCurrent}>{crumb.label}</span>
-                )}
-              </span>
-            ))}
-          </div>
-        )}
-      </div>
-      <div className={styles.right}>
-        {getTotalSeconds() > 0 && (
-          <span className={styles.studyTime} title="Total study time">
-            ⏱ {studyTime}
-          </span>
-        )}
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          className={styles.sidebarToggle}
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-          onClick={() => setIsOpen(!isOpen)}
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M4 6h16M4 12h16M4 18h16"
-          />
-        </svg>
-      </div>
-    </nav>
+    <>
+      <nav className={styles.navbar}>
+        <div className={styles.left}>
+          <Link to="/" className="navbar-brand">
+            <img src={logo} className={styles.logo} alt="logo" />
+          </Link>
+          {breadcrumbs.length > 0 && (
+            <div className={styles.breadcrumbs}>
+              {breadcrumbs.map((crumb, i) => (
+                <span key={i} className={styles.crumbItem}>
+                  <span className={styles.crumbSep}>/</span>
+                  {crumb.to ? (
+                    <Link to={crumb.to} className={styles.crumbLink}>{crumb.label}</Link>
+                  ) : (
+                    <span className={styles.crumbCurrent}>{crumb.label}</span>
+                  )}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+        <div className={styles.right}>
+          {getTotalSeconds() > 0 && (
+            <span className={styles.studyTime} title="Total study time">
+              ⏱ {studyTime}
+            </span>
+          )}
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            className={styles.sidebarToggle}
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            onClick={() => setIsOpen(!isOpen)}
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M4 6h16M4 12h16M4 18h16"
+            />
+          </svg>
+        </div>
+      </nav>
+      <div className={styles.gradientBlur} aria-hidden="true" />
+    </>
   );
 };
 

@@ -42,7 +42,7 @@ const StudentDashboard = () => {
   const { data: deckStats, refetch: refetchDeckStats } = usePerDeckStats(user?.id);
   const { data: ownDecks, loading: ownDecksLoading, refetch: refetchOwn } = useDecks();
   const { data: personalCards } = useAllOwnDeckCards();
-  const { courses, loading: coursesLoading } = useStudentCourses();
+  const { courses, loading: coursesLoading, error: coursesError, refetch: refetchCourses } = useStudentCourses();
   const [showNewDeckModal, setShowNewDeckModal] = useState(false);
   const [deckSearch, setDeckSearch] = useState("");
   const [expandedCourse, setExpandedCourse] = useState(null);
@@ -233,6 +233,26 @@ const StudentDashboard = () => {
       <h2 style={{ marginTop: "1.5rem", marginBottom: "0.5rem" }}>Courses</h2>
       {coursesLoading ? (
         <p style={{ color: "var(--fg-muted)", fontSize: "0.85rem", marginBottom: "1.25rem" }}>Loading courses...</p>
+      ) : coursesError ? (
+        <div style={{ marginBottom: "1.25rem" }}>
+          <p style={{ color: "#e53e3e", fontSize: "0.85rem", marginBottom: "0.5rem" }}>
+            Error loading courses: {coursesError}
+          </p>
+          <button
+            onClick={() => refetchCourses()}
+            style={{
+              padding: "0.4rem 0.8rem",
+              fontSize: "0.8rem",
+              borderRadius: "var(--radius)",
+              border: "1px solid var(--border-color)",
+              background: "var(--bg-secondary)",
+              color: "var(--fg)",
+              cursor: "pointer",
+            }}
+          >
+            Retry
+          </button>
+        </div>
       ) : (!courses || courses.length === 0) ? (
         <p style={{ color: "var(--fg-muted)", fontSize: "0.85rem", marginBottom: "1.25rem" }}>No courses assigned yet.</p>
       ) : (
