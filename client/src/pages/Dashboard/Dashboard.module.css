@@ -150,6 +150,39 @@
   margin: 0;
 }
 
+.courseMemberSummary {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 0.35rem;
+  padding-top: 0.65rem;
+  border-top: 1px solid var(--border-color);
+}
+
+.courseMemberChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.courseMemberChip {
+  border: 1px solid var(--border-color);
+  border-radius: 999px;
+  background: var(--bg-secondary);
+  color: var(--fg);
+  padding: 0.35rem 0.65rem;
+  font-size: 0.76rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.12s, background 0.12s;
+}
+
+.courseMemberChip:hover {
+  border-color: var(--fg-muted);
+  background: var(--card-hover);
+}
+
 .emptyState {
   border: 1.5px dashed var(--border-color);
   border-radius: var(--radius);

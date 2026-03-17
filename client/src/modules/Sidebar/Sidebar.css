@@ -333,6 +333,54 @@
   color: var(--fg);
 }
 
+.sidebar-assignment-row {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.sidebar-assignment-link {
+  flex: 1;
+  min-width: 0;
+}
+
+.sidebar-assignment-delete {
+  opacity: 0;
+  pointer-events: none;
+  border: none;
+  background: transparent;
+  color: var(--fg-faint);
+  border-radius: 999px;
+  width: 1.5rem;
+  height: 1.5rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 0.95rem;
+  line-height: 1;
+  transition: opacity 0.12s, color 0.12s, background 0.12s;
+}
+
+.sidebar-assignment-row:hover .sidebar-assignment-delete,
+.sidebar-assignment-delete:focus-visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.sidebar-assignment-delete:hover,
+.sidebar-assignment-delete:focus-visible {
+  color: var(--danger, #dc2626);
+  background: var(--card-hover);
+  outline: none;
+}
+
+.sidebar-assignment-delete:disabled {
+  opacity: 1;
+  pointer-events: auto;
+  cursor: wait;
+}
+
 .sidebar-deck-name {
   overflow: hidden;
   text-overflow: ellipsis;

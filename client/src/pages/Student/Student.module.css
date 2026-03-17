@@ -124,6 +124,61 @@
   flex-wrap: wrap;
 }
 
+.completedSection {
+  margin-top: 1rem;
+}
+
+.completedToggle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  border: var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-secondary);
+  color: var(--fg);
+  padding: 0.7rem 0.85rem;
+  font-size: 0.88rem;
+  font-weight: 700;
+  cursor: pointer;
+  margin-bottom: 0.75rem;
+}
+
+.completedToggle:hover {
+  background: var(--card-hover);
+}
+
+.modeMenuWrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  margin-top: 0.2rem;
+}
+
+.modeMenuToggle {
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  background: var(--bg-secondary);
+  color: var(--fg-muted);
+  padding: 0.5rem 0.65rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: left;
+}
+
+.modeMenuToggle:hover {
+  color: var(--fg);
+  border-color: var(--fg-muted);
+}
+
+.modeMenuList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
 /* ── Per-deck progress bar ──────── */
 .deckProgress {
   display: flex;
@@ -261,6 +316,7 @@
   word-break: break-word;
   overflow: hidden;
   display: -webkit-box;
+  line-clamp: 4;
   -webkit-line-clamp: 4;
   -webkit-box-orient: vertical;
 }

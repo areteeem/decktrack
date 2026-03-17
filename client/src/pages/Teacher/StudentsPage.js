@@ -125,11 +125,12 @@ const AssignDeckModal = ({ open, setOpen, studentId, studentName, onAssigned }) 
   const [assigning, setAssigning] = useState(null);
   const [requiredPool, setRequiredPool] = useState('any');
   const [requiredMode, setRequiredMode] = useState('any');
+  const [addToPersonalLibrary, setAddToPersonalLibrary] = useState(false);
 
   const handleAssign = async (deckId) => {
     setAssigning(deckId);
     try {
-      await assignDeck(deckId, studentId, { requiredPool, requiredMode });
+      await assignDeck(deckId, studentId, { requiredPool, requiredMode, addToPersonalLibrary });
       toast.success("Deck assigned!");
       onAssigned?.();
       setOpen(false);
@@ -194,6 +195,20 @@ const AssignDeckModal = ({ open, setOpen, studentId, studentName, onAssigned }) 
           <option value="wheel">Spin wheel</option>
         </select>
       </div>
+      <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', marginBottom: '0.8rem', fontSize: '0.84rem' }}>
+        <input
+          type="checkbox"
+          checked={addToPersonalLibrary}
+          onChange={(event) => setAddToPersonalLibrary(event.target.checked)}
+          style={{ marginTop: '0.1rem' }}
+        />
+        <span>
+          <strong>Also add deck to student library</strong>
+          <span style={{ display: 'block', color: 'var(--fg-muted)', marginTop: '0.15rem' }}>
+            The student gets the normal assigned study plus a personal copy in their own deck list.
+          </span>
+        </span>
+      </label>
       {loading ? (
         <p>Loading decks...</p>
       ) : (

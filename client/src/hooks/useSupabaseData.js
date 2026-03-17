@@ -865,48 +865,50 @@ export const useAssignDeck = () => {
     const requiredModeRaw = String(options?.requiredMode || 'any').trim().toLowerCase();
     const allowedModes = new Set(['any', 'flashcards', 'quiz', 'mcq', 'match', 'wheel']);
     const requiredMode = allowedModes.has(requiredModeRaw) ? requiredModeRaw : 'any';
-    // Create assignment
-    const { data: assignment, error: aErr } = await supabase
-      .from('flashy_deck_assignments')
-      .insert({
-        teacher_deck_id: teacherDeckId,
-        student_id: studentId,
-        teacher_id: user.id,
-        required_pool: requiredPool,
-        required_mode: requiredMode,
-      })
-      .select()
-      .single();
-    if (aErr) throw aErr;
+    const payload = {
+      p_teacher_deck_id: teacherDeckId,
+      p_teacher_id: user.id,
+      p_student_ids: [studentId],
+      p_sync_enabled: options.syncEnabled ?? true,
+      p_custom_name: options.customName ?? '',
+      p_study_goal_daily: options.studyGoalDaily ?? 0,
+      p_allow_student_cards: options.allowStudentCards ?? true,
+      p_allow_student_edit: options.allowStudentEdit ?? true,
+      p_group_assignment_id: options.groupAssignmentId ?? null,
+      p_required_pool: requiredPool,
+      p_required_mode: requiredMode,
+      p_add_to_personal_library: options.addToPersonalLibrary ?? options.addToLibrary ?? false,
+    };
 
-    // Copy all cards from the master deck to student cards
-    const { data: masterCards } = await supabase
-      .from('flashy_cards')
-      .select('*')
-      .eq('deck_id', teacherDeckId)
-      .order('sort_order');
+    let { data: assignmentRows, error } = await supabase.rpc('flashy_bulk_assign_deck', payload);
 
-    if (masterCards && masterCards.length > 0) {
-      const studentCards = masterCards.map(c => ({
-        assignment_id: assignment.id,
-        source_card_id: c.id,
-        student_id: studentId,
-        front: c.front,
-        back: c.back,
-        example_sentence: c.example_sentence,
-        pronunciation: c.pronunciation,
-        part_of_speech: c.part_of_speech,
-        image_url: c.image_url,
-        notes: c.notes,
-        difficulty: c.difficulty,
-        sort_order: c.sort_order,
-      }));
-      const { error: cErr } = await supabase
-        .from('flashy_student_cards')
-        .insert(studentCards);
-      if (cErr) throw cErr;
+    const errorText = String(error?.message || error || '');
+    const missingSignature = error
+      && /Could not find the function public\.flashy_bulk_assign_deck/i.test(errorText);
+
+    if (missingSignature) {
+      const legacyPayload = { ...payload };
+      delete legacyPayload.p_add_to_personal_library;
+      ({ data: assignmentRows, error } = await supabase.rpc('flashy_bulk_assign_deck', legacyPayload));
     }
 
+    if (error) throw error;
+
+    const assignmentId = Array.isArray(assignmentRows)
+      ? assignmentRows[0]?.assignment_id
+      : assignmentRows?.assignment_id;
+
+    if (!assignmentId) {
+      throw new Error('Assignment completed but no assignment id was returned');
+    }
+
+    const { data: assignment, error: assignmentError } = await supabase
+      .from('flashy_deck_assignments')
+      .select('*')
+      .eq('id', assignmentId)
+      .single();
+
+    if (assignmentError) throw assignmentError;
     return assignment;
   };
 
@@ -1658,6 +1660,7 @@ export const useBulkAssignDeck = () => {
         p_group_assignment_id: options.groupAssignmentId ?? null,
         p_required_pool: options.requiredPool ?? 'any',
         p_required_mode: options.requiredMode ?? 'any',
+        p_add_to_personal_library: options.addToPersonalLibrary ?? options.addToLibrary ?? false,
       };
 
       let { data, error } = await supabase.rpc('flashy_bulk_assign_deck', rpcPayload);
@@ -1670,6 +1673,7 @@ export const useBulkAssignDeck = () => {
         const legacyPayload = { ...rpcPayload };
         delete legacyPayload.p_required_pool;
         delete legacyPayload.p_required_mode;
+        delete legacyPayload.p_add_to_personal_library;
         const legacyResult = await supabase.rpc('flashy_bulk_assign_deck', legacyPayload);
         data = legacyResult?.data;
         error = legacyResult?.error;
@@ -2060,20 +2064,25 @@ export const useCourses = () => {
     if (!user) { setCourses([]); setLoading(false); return; }
     setLoading(true);
     try {
-      const runFetch = (includeMembers) => supabase
+      const runFetch = ({ includeMembers, includeVisibility }) => supabase
         .from('flashy_courses')
-        .select(includeMembers
-          ? '*, flashy_course_decks(deck_id, sort_order), flashy_course_members(student_id)'
-          : '*, flashy_course_decks(deck_id, sort_order)'
-        )
+        .select([
+          'id, owner_id, name, description, color, icon, sort_order, is_archived, created_at, updated_at',
+          'flashy_course_decks(deck_id, sort_order)',
+          includeMembers ? 'flashy_course_members(student_id)' : null,
+          includeVisibility ? 'flashy_course_student_deck_visibility(student_id, deck_id, is_hidden)' : null,
+        ].filter(Boolean).join(', '))
         .eq('owner_id', user.id)
         .eq('is_archived', false)
         .order('sort_order')
         .order('name');
 
-      let { data, error } = await runFetch(true);
+      let { data, error } = await runFetch({ includeMembers: true, includeVisibility: true });
+      if (error && /flashy_course_student_deck_visibility/i.test(String(error.message || ''))) {
+        ({ data, error } = await runFetch({ includeMembers: true, includeVisibility: false }));
+      }
       if (error && /flashy_course_members/i.test(String(error.message || ''))) {
-        ({ data, error } = await runFetch(false));
+        ({ data, error } = await runFetch({ includeMembers: false, includeVisibility: false }));
       }
 
       if (error) throw error;
@@ -2176,6 +2185,48 @@ export const useCourseActions = () => {
     if (error) throw error;
   };
 
+  const setStudentCourseDeckVisibility = async ({ courseId, studentId, deckIds = [], isHidden = true }) => {
+    if (!user) throw new Error('Not signed in');
+
+    const normalizedDeckIds = [...new Set(
+      (deckIds || []).map((id) => String(id || '').trim()).filter(Boolean)
+    )];
+
+    if (!courseId || !studentId || normalizedDeckIds.length === 0) return;
+
+    const rows = normalizedDeckIds.map((deckId) => ({
+      course_id: courseId,
+      student_id: studentId,
+      deck_id: deckId,
+      is_hidden: Boolean(isHidden),
+    }));
+
+    const { error } = await supabase
+      .from('flashy_course_student_deck_visibility')
+      .upsert(rows, { onConflict: 'course_id,student_id,deck_id' });
+
+    if (error) throw error;
+  };
+
+  const clearStudentCourseDeckVisibility = async ({ courseId, studentId, deckIds = [] }) => {
+    if (!user) throw new Error('Not signed in');
+
+    const normalizedDeckIds = [...new Set(
+      (deckIds || []).map((id) => String(id || '').trim()).filter(Boolean)
+    )];
+
+    if (!courseId || !studentId || normalizedDeckIds.length === 0) return;
+
+    const { error } = await supabase
+      .from('flashy_course_student_deck_visibility')
+      .delete()
+      .eq('course_id', courseId)
+      .eq('student_id', studentId)
+      .in('deck_id', normalizedDeckIds);
+
+    if (error) throw error;
+  };
+
   return {
     createCourse,
     updateCourse,
@@ -2184,6 +2235,8 @@ export const useCourseActions = () => {
     removeDeckFromCourse,
     addStudentsToCourse,
     removeStudentsFromCourse,
+    setStudentCourseDeckVisibility,
+    clearStudentCourseDeckVisibility,
   };
 };
 
@@ -2200,15 +2253,45 @@ export const useStudentCourses = () => {
     if (!user) { setCourses([]); setLoading(false); return; }
     setLoading(true);
     try {
-      const { data, error } = await supabase
+      const baseSelect = 'id, name, description, color, icon, sort_order, owner_id, flashy_course_decks(deck_id, sort_order, flashy_decks(id, name, description, category)), flashy_course_members!inner(student_id, flashy_profiles(id, display_name, email, role))';
+      let { data, error } = await supabase
         .from('flashy_courses')
-        .select('*, flashy_course_decks(deck_id, sort_order, flashy_decks(id, name, description)), flashy_course_members!inner(student_id, flashy_profiles(id, display_name, email, role))')
+        .select(`${baseSelect}, flashy_course_student_deck_visibility(student_id, deck_id, is_hidden)`)
         .eq('flashy_course_members.student_id', user.id)
         .eq('is_archived', false)
         .order('sort_order')
         .order('name');
+
+      if (error && /flashy_course_student_deck_visibility/i.test(String(error.message || ''))) {
+        ({ data, error } = await supabase
+          .from('flashy_courses')
+          .select(baseSelect)
+          .eq('flashy_course_members.student_id', user.id)
+          .eq('is_archived', false)
+          .order('sort_order')
+          .order('name'));
+      }
+
       if (error) throw error;
-      setCourses(data || []);
+      const filteredCourses = (data || []).map((course) => {
+        const hiddenDeckIds = new Set(
+          (course.flashy_course_student_deck_visibility || [])
+            .filter((row) => String(row.student_id || '').trim() === String(user.id || '').trim() && row.is_hidden === true)
+            .map((row) => String(row.deck_id || '').trim())
+            .filter(Boolean)
+        );
+
+        const visibleDecks = (course.flashy_course_decks || []).filter((entry) => {
+          const deckId = String(entry.deck_id || entry.flashy_decks?.id || '').trim();
+          return deckId && !hiddenDeckIds.has(deckId);
+        });
+
+        return {
+          ...course,
+          flashy_course_decks: visibleDecks,
+        };
+      });
+      setCourses(filteredCourses);
     } catch (err) {
       console.error('[useStudentCourses]', err);
       setCourses([]);

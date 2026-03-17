@@ -7,7 +7,8 @@ import { useLogout } from "../../common/hooks/useLogout";
 import NewDeckModal from "./NewDeckModal";
 import DeckLink from "./DeckLink";
 import KeyboardShortcutsModal from "../../common/components/KeyboardShortcutsModal";
-import { useDecks, useStudentStats, useAssignments, usePerDeckStats } from "../../hooks/useSupabaseData";
+import { toast } from "react-toastify";
+import { useDecks, useStudentStats, useAssignments, usePerDeckStats, useUnassignDeck } from "../../hooks/useSupabaseData";
 import { useAuth } from "../../contexts/AuthContext";
 import { useSettings } from "../../contexts/SettingsContext";
 import { getSessionProgress, getActiveSessionDeckIds } from "../../lib/studySession";
@@ -32,12 +33,14 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
   const { t } = useSettings();
   const { data: decks, loading, error, refetch } = useDecks();
   const { data: studentStats } = useStudentStats(!isTeacher ? user?.id : null);
-  const { data: assignments } = useAssignments();
+  const { data: assignments, refetch: refetchAssignments } = useAssignments();
   const { data: perDeckStats } = usePerDeckStats();
+  const { unassign } = useUnassignDeck();
 
   const [showModal, setShowModal] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [studyTime, setStudyTime] = useState(() => formatStudyTime(getTotalSeconds()));
+  const [removingAssignmentId, setRemovingAssignmentId] = useState(null);
   const [deckSearch, setDeckSearch] = useState("");
   const [deckSort, setDeckSort] = useState("alpha");
   const [decksCollapsed, setDecksCollapsed] = useState(false);
@@ -144,6 +147,23 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
     if (!assignments) return [];
     return assignments.filter((a) => !a.is_archived);
   }, [assignments]);
+
+  const handleRemoveAssignment = useCallback(async (assignmentId, assignmentName) => {
+    if (!assignmentId) return;
+    const confirmed = window.confirm(`Remove "${assignmentName || 'this study'}" from assigned studies?`);
+    if (!confirmed) return;
+
+    setRemovingAssignmentId(assignmentId);
+    try {
+      await unassign(assignmentId);
+      await refetchAssignments?.({ background: true });
+      toast.success("Study removed");
+    } catch (removeError) {
+      toast.error(removeError?.message || "Failed to remove study");
+    } finally {
+      setRemovingAssignmentId(null);
+    }
+  }, [refetchAssignments, unassign]);
 
   // Active study sessions for continue-study links
   const continueSessions = useMemo(() => {
@@ -345,22 +365,37 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
               <span className="section-count">{activeAssignments.length}</span>
             </button>
             {!assignedCollapsed && activeAssignments.map((a) => {
-              const name = a.custom_name || a.flashy_decks?.name || "Unnamed";
+              const name = String(a.custom_name || '').trim() || a.flashy_decks?.name || "Unnamed";
               const ds = perDeckStats?.[a.id] || perDeckStats?.[String(a.id)] || {};
               const total = ds.total || 0;
               const newCount = ds.new_count ?? ds.newCards ?? 0;
               const studied = total - newCount;
               const pct = total > 0 ? Math.round((studied / total) * 100) : 0;
               return (
-                <Link
-                  key={a.id}
-                  className="sidebar-deck-link"
-                  to={`/deck/${a.id}/browse`}
-                  onClick={() => setIsOpen(false)}
-                >
-                  <span className="sidebar-deck-name">{name}</span>
-                  {total > 0 && <span className="sidebar-deck-badge">{pct}%</span>}
-                </Link>
+                <div key={a.id} className="sidebar-assignment-row">
+                  <Link
+                    className="sidebar-deck-link sidebar-assignment-link"
+                    to={`/deck/${a.id}/browse`}
+                    onClick={() => setIsOpen(false)}
+                  >
+                    <span className="sidebar-deck-name">{name}</span>
+                    {total > 0 && <span className="sidebar-deck-badge">{pct}%</span>}
+                  </Link>
+                  <button
+                    type="button"
+                    className="sidebar-assignment-delete"
+                    onClick={(event) => {
+                      event.preventDefault();
+                      event.stopPropagation();
+                      handleRemoveAssignment(a.id, name);
+                    }}
+                    disabled={removingAssignmentId === a.id}
+                    title={t("delete") || "Remove from studies"}
+                    aria-label={`Remove ${name}`}
+                  >
+                    {removingAssignmentId === a.id ? "..." : "×"}
+                  </button>
+                </div>
               );
             })}
           </div>

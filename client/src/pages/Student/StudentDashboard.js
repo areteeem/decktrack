@@ -46,6 +46,7 @@ const StudentDashboard = () => {
   const [showNewDeckModal, setShowNewDeckModal] = useState(false);
   const [deckSearch, setDeckSearch] = useState("");
   const [expandedCourse, setExpandedCourse] = useState(null);
+  const [showCompletedAssignments, setShowCompletedAssignments] = useState(false);
 
   // Refresh assignment stats when returning from a study session (page visibility change)
   const refreshAllStats = useCallback(() => {
@@ -88,10 +89,29 @@ const StudentDashboard = () => {
   const filteredAssignments = useMemo(() => {
     if (!searchLower) return activeAssignments;
     return activeAssignments.filter(a => {
-      const name = (a.custom_name || a.flashy_decks?.name || '').toLowerCase();
+      const name = (String(a.custom_name || '').trim() || a.flashy_decks?.name || '').toLowerCase();
       return name.includes(searchLower);
     });
   }, [activeAssignments, searchLower]);
+
+  const { pendingAssignments, completedAssignments } = useMemo(() => {
+    const pending = [];
+    const completed = [];
+
+    (filteredAssignments || []).forEach((assignment) => {
+      const ds = Array.isArray(deckStats)
+        ? (deckStats.find((item) => item.assignment_id === assignment.id) || {})
+        : (deckStats?.[assignment.id] || deckStats?.[String(assignment.id)] || {});
+      const total = ds.total || 0;
+      const newCount = ds.new_count ?? ds.newCards ?? 0;
+      const studied = total - newCount;
+      const done = assignment.completed === true || (total > 0 && studied >= total);
+      if (done) completed.push(assignment);
+      else pending.push(assignment);
+    });
+
+    return { pendingAssignments: pending, completedAssignments: completed };
+  }, [deckStats, filteredAssignments]);
 
   if (loading) return <LoadingScreen />;
 
@@ -321,18 +341,42 @@ const StudentDashboard = () => {
       )}
 
       {/* ── Assigned Studies ───────────────────── */}
-      {(!filteredAssignments || filteredAssignments.length === 0) ? (
+      {(pendingAssignments.length === 0 && completedAssignments.length === 0) ? (
         <div className={styles.empty}>
           <p style={{ color: "var(--fg-muted)", fontSize: "0.85rem" }}>No assigned studies yet.</p>
         </div>
       ) : (
         <>
-          <h2 style={{ marginBottom: "0.5rem" }}>Assigned Studies</h2>
-          <div className={styles.deckGrid}>
-            {filteredAssignments.map((a) => (
-              <AssignedDeckCard key={a.id} assignment={a} deckStats={deckStats} />
-            ))}
-          </div>
+          {pendingAssignments.length > 0 && (
+            <>
+              <h2 style={{ marginBottom: "0.5rem" }}>Assigned Studies</h2>
+              <div className={styles.deckGrid}>
+                {pendingAssignments.map((a) => (
+                  <AssignedDeckCard key={a.id} assignment={a} deckStats={deckStats} />
+                ))}
+              </div>
+            </>
+          )}
+
+          {completedAssignments.length > 0 && (
+            <div className={styles.completedSection}>
+              <button
+                type="button"
+                className={styles.completedToggle}
+                onClick={() => setShowCompletedAssignments((prev) => !prev)}
+              >
+                <span>{showCompletedAssignments || Boolean(searchLower) ? '▾' : '▸'} Completed Studies</span>
+                <Badge>{completedAssignments.length}</Badge>
+              </button>
+              {(showCompletedAssignments || Boolean(searchLower)) && (
+                <div className={styles.deckGrid}>
+                  {completedAssignments.map((a) => (
+                    <AssignedDeckCard key={a.id} assignment={a} deckStats={deckStats} />
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </>
       )}
     </div>
@@ -340,8 +384,9 @@ const StudentDashboard = () => {
 };
 
 const AssignedDeckCard = ({ assignment, deckStats }) => {
+  const [showModeMenu, setShowModeMenu] = useState(false);
   const deckName =
-    assignment.custom_name ||
+    String(assignment.custom_name || '').trim() ||
     assignment.flashy_decks?.name ||
     "Unnamed Deck";
   const deckDesc = assignment.flashy_decks?.description || "";
@@ -436,29 +481,41 @@ const AssignedDeckCard = ({ assignment, deckStats }) => {
         <Link to={primaryRoute}>
           <Button>{primaryLabel}</Button>
         </Link>
-        {requiredPool === 'any' && requiredMode === 'any' && (
-          <>
-            <Link to={`/study/${assignment.id}/new`}>
-              <Button bgcolor="transparent" color="var(--fg)">Learn New</Button>
-            </Link>
-            <Link to={`/study/${assignment.id}/due`}>
-              <Button bgcolor="transparent" color="var(--fg)">Study Due</Button>
-            </Link>
-            <Link to={`/study/${assignment.id}/mode/mcq`}>
-              <Button bgcolor="transparent" color="var(--fg)">Quiz</Button>
-            </Link>
-            <Link to={`/study/${assignment.id}/mode/match`}>
-              <Button bgcolor="transparent" color="var(--fg)">Match</Button>
-            </Link>
-            <Link to={`/study/${assignment.id}/mode/wheel`}>
-              <Button bgcolor="transparent" color="var(--fg)">Wheel</Button>
-            </Link>
-          </>
-        )}
         <Link to={`/deck/${assignment.id}/browse`}>
           <Button bgcolor="transparent" color="var(--fg)">Browse</Button>
         </Link>
       </div>
+
+      {requiredPool === 'any' && requiredMode === 'any' && (
+        <div className={styles.modeMenuWrap}>
+          <button
+            type="button"
+            className={styles.modeMenuToggle}
+            onClick={() => setShowModeMenu((prev) => !prev)}
+          >
+            {showModeMenu ? 'Hide study modes' : 'More study modes'}
+          </button>
+          {showModeMenu && (
+            <div className={styles.modeMenuList}>
+              <Link to={`/study/${assignment.id}/new`}>
+                <Button bgcolor="transparent" color="var(--fg)">Learn New</Button>
+              </Link>
+              <Link to={`/study/${assignment.id}/due`}>
+                <Button bgcolor="transparent" color="var(--fg)">Study Due</Button>
+              </Link>
+              <Link to={`/study/${assignment.id}/mode/mcq`}>
+                <Button bgcolor="transparent" color="var(--fg)">Quiz</Button>
+              </Link>
+              <Link to={`/study/${assignment.id}/mode/match`}>
+                <Button bgcolor="transparent" color="var(--fg)">Match</Button>
+              </Link>
+              <Link to={`/study/${assignment.id}/mode/wheel`}>
+                <Button bgcolor="transparent" color="var(--fg)">Wheel</Button>
+              </Link>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 };

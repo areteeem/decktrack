@@ -38,6 +38,7 @@ const BulkAssignModal = ({ open, setOpen, students, onAssigned, initialDeckId, i
   const [studyGoalDaily, setStudyGoalDaily] = useState(saved.studyGoalDaily ?? 0);
   const [allowStudentCards, setAllowStudentCards] = useState(saved.allowStudentCards ?? true);
   const [allowStudentEdit, setAllowStudentEdit] = useState(saved.allowStudentEdit ?? true);
+  const [addToPersonalLibrary, setAddToPersonalLibrary] = useState(saved.addToPersonalLibrary ?? false);
   const [requiredPool, setRequiredPool] = useState(saved.requiredPool ?? "any");
   const [requiredMode, setRequiredMode] = useState(saved.requiredMode ?? "any");
   const [deckSearch, setDeckSearch] = useState("");
@@ -67,6 +68,7 @@ const BulkAssignModal = ({ open, setOpen, students, onAssigned, initialDeckId, i
     setStudyGoalDaily(s.studyGoalDaily ?? 0);
     setAllowStudentCards(s.allowStudentCards ?? true);
     setAllowStudentEdit(s.allowStudentEdit ?? true);
+    setAddToPersonalLibrary(s.addToPersonalLibrary ?? false);
     setRequiredPool(s.requiredPool ?? "any");
     setRequiredMode(s.requiredMode ?? "any");
     setDeckSearch("");
@@ -102,7 +104,7 @@ const BulkAssignModal = ({ open, setOpen, students, onAssigned, initialDeckId, i
 
   const handleAssign = async () => {
     if (!selectedDeckId || selectedStudents.size === 0) return;
-    saveSettings({ syncEnabled, studyGoalDaily: parseInt(studyGoalDaily) || 0, allowStudentCards, allowStudentEdit, requiredPool, requiredMode });
+    saveSettings({ syncEnabled, studyGoalDaily: parseInt(studyGoalDaily) || 0, allowStudentCards, allowStudentEdit, addToPersonalLibrary, requiredPool, requiredMode });
     try {
       const results = await bulkAssign(selectedDeckId, [...selectedStudents], {
         syncEnabled,
@@ -110,6 +112,7 @@ const BulkAssignModal = ({ open, setOpen, students, onAssigned, initialDeckId, i
         studyGoalDaily: parseInt(studyGoalDaily) || 0,
         allowStudentCards,
         allowStudentEdit,
+        addToPersonalLibrary,
         requiredPool,
         requiredMode,
       });
@@ -288,6 +291,16 @@ const BulkAssignModal = ({ open, setOpen, students, onAssigned, initialDeckId, i
                 <strong>Allow students to edit cards</strong>
                 <p className={styles.helperText} style={{ margin: 0 }}>
                   Students can customize synced card content (their edits stay private).
+                </p>
+              </div>
+            </label>
+
+            <label style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontSize: "0.85rem" }}>
+              <input type="checkbox" checked={addToPersonalLibrary} onChange={(e) => setAddToPersonalLibrary(e.target.checked)} />
+              <div>
+                <strong>Also add deck to student library</strong>
+                <p className={styles.helperText} style={{ margin: 0 }}>
+                  Creates a personal copy in each selected student's own decks, so they can keep it outside assigned studies too.
                 </p>
               </div>
             </label>

@@ -225,6 +225,146 @@ const CourseStudentsModal = ({ open, setOpen, course, students, onSubmit, onOpen
   );
 };
 
+const CourseDeckVisibilityModal = ({ open, setOpen, course, students, decks, initialStudentId, onSubmit }) => {
+  const [selectedStudentId, setSelectedStudentId] = useState("");
+  const [visibleDeckIds, setVisibleDeckIds] = useState(() => new Set());
+
+  const memberOptions = useMemo(() => {
+    const memberIds = new Set((course?.flashy_course_members || []).map((entry) => String(entry.student_id || '').trim()).filter(Boolean));
+    return (students || []).filter((student) => memberIds.has(String(student.id || '').trim()));
+  }, [course?.flashy_course_members, students]);
+
+  const courseDeckOptions = useMemo(() => {
+    const deckIds = (course?.flashy_course_decks || []).map((entry) => String(entry.deck_id || '').trim()).filter(Boolean);
+    return deckIds
+      .map((deckId) => (decks || []).find((deck) => String(deck.id) === deckId))
+      .filter(Boolean);
+  }, [course?.flashy_course_decks, decks]);
+
+  const hiddenByStudent = useMemo(() => {
+    const map = new Map();
+    (course?.flashy_course_student_deck_visibility || []).forEach((entry) => {
+      const studentId = String(entry.student_id || '').trim();
+      const deckId = String(entry.deck_id || '').trim();
+      if (!studentId || !deckId || entry.is_hidden !== true) return;
+      const current = map.get(studentId) || new Set();
+      current.add(deckId);
+      map.set(studentId, current);
+    });
+    return map;
+  }, [course?.flashy_course_student_deck_visibility]);
+
+  useEffect(() => {
+    if (!open) {
+      setSelectedStudentId("");
+      setVisibleDeckIds(new Set());
+      return;
+    }
+
+    const fallbackStudentId = String(initialStudentId || memberOptions[0]?.id || '').trim();
+    setSelectedStudentId(fallbackStudentId);
+  }, [open, initialStudentId, memberOptions]);
+
+  useEffect(() => {
+    if (!open) return;
+
+    const allDeckIds = courseDeckOptions.map((deck) => String(deck.id || '').trim()).filter(Boolean);
+    const hiddenDeckIds = hiddenByStudent.get(String(selectedStudentId || '').trim()) || new Set();
+    setVisibleDeckIds(new Set(allDeckIds.filter((deckId) => !hiddenDeckIds.has(deckId))));
+  }, [courseDeckOptions, hiddenByStudent, open, selectedStudentId]);
+
+  const toggleDeckVisibility = (deckId) => {
+    setVisibleDeckIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(deckId)) next.delete(deckId);
+      else next.add(deckId);
+      return next;
+    });
+  };
+
+  const showAllDecks = () => {
+    setVisibleDeckIds(new Set(courseDeckOptions.map((deck) => String(deck.id || '').trim()).filter(Boolean)));
+  };
+
+  const hideAllDecks = () => setVisibleDeckIds(new Set());
+
+  const handleSubmit = async () => {
+    const allDeckIds = courseDeckOptions.map((deck) => String(deck.id || '').trim()).filter(Boolean);
+    await onSubmit?.({
+      courseId: course?.id,
+      studentId: selectedStudentId,
+      allDeckIds,
+      visibleDeckIds: [...visibleDeckIds],
+    });
+  };
+
+  return (
+    <Modal open={open} setOpen={() => setOpen(null)}>
+      <h3 style={{ marginTop: 0 }}>What decks to show?</h3>
+      <p style={{ color: "var(--fg-muted)", fontSize: "0.9rem" }}>
+        Choose which decks this student can see inside {course?.name ? `"${course.name}"` : 'the course'}.
+      </p>
+
+      {memberOptions.length === 0 ? (
+        <p style={{ color: "var(--fg-muted)", fontSize: "0.85rem" }}>Add students to the course first.</p>
+      ) : courseDeckOptions.length === 0 ? (
+        <p style={{ color: "var(--fg-muted)", fontSize: "0.85rem" }}>Add decks to the course first.</p>
+      ) : (
+        <>
+          <div className={styles.bulkCourseToolbar}>
+            <select
+              value={selectedStudentId}
+              onChange={(event) => setSelectedStudentId(event.target.value)}
+              className={styles.bulkCourseSearch}
+            >
+              {memberOptions.map((student) => (
+                <option key={student.id} value={student.id}>
+                  {student.display_name || student.email || 'Student'}
+                </option>
+              ))}
+            </select>
+            <Button callback={showAllDecks} bgcolor="transparent" color="var(--fg)">Show all</Button>
+            <Button callback={hideAllDecks} bgcolor="transparent" color="var(--fg-muted)">Hide all</Button>
+          </div>
+
+          <div className={styles.bulkCourseList}>
+            {courseDeckOptions.map((deck) => {
+              const deckId = String(deck.id || '').trim();
+              const visible = visibleDeckIds.has(deckId);
+              return (
+                <label key={deckId} className={styles.bulkCourseRow}>
+                  <input
+                    type="checkbox"
+                    checked={visible}
+                    onChange={() => toggleDeckVisibility(deckId)}
+                  />
+                  <div className={styles.bulkCourseRowBody}>
+                    <span style={{ fontWeight: 600 }}>{deck.name}</span>
+                    <div style={{ display: "flex", gap: "0.35rem", flexWrap: "wrap" }}>
+                      <Badge>{visible ? 'Visible' : 'Hidden'}</Badge>
+                      {deck.category && <Badge>{deck.category}</Badge>}
+                    </div>
+                  </div>
+                </label>
+              );
+            })}
+          </div>
+        </>
+      )}
+
+      <div className={styles.bulkCourseActions}>
+        <div style={{ color: "var(--fg-muted)", fontSize: "0.85rem" }}>
+          {visibleDeckIds.size} of {courseDeckOptions.length} visible
+        </div>
+        <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+          <Button callback={() => setOpen(null)} bgcolor="transparent" color="var(--fg-muted)">Cancel</Button>
+          <Button callback={handleSubmit} disabled={!selectedStudentId || courseDeckOptions.length === 0}>Save</Button>
+        </div>
+      </div>
+    </Modal>
+  );
+};
+
 const Dashboard = () => {
   const [showNewDeckModal, setShowNewDeckModal] = useState(false);
   const [showArchived, setShowArchived] = useState(false);
@@ -234,6 +374,7 @@ const Dashboard = () => {
   const [deckSearch, setDeckSearch] = useState("");
   const [bulkAddCourse, setBulkAddCourse] = useState(null);
   const [courseStudentsCourse, setCourseStudentsCourse] = useState(null);
+  const [courseVisibilityState, setCourseVisibilityState] = useState(null);
   const [confirmDeleteCourse, setConfirmDeleteCourse] = useState(null);
   const [confirmDeleteArchivedDeck, setConfirmDeleteArchivedDeck] = useState(null);
   const [showHeaderMenu, setShowHeaderMenu] = useState(false);
@@ -256,6 +397,8 @@ const Dashboard = () => {
     removeDeckFromCourse,
     addStudentsToCourse,
     removeStudentsFromCourse,
+    setStudentCourseDeckVisibility,
+    clearStudentCourseDeckVisibility,
   } = useCourseActions();
 
 
@@ -395,8 +538,47 @@ const Dashboard = () => {
       toast.success(`Updated students for "${activeCourse.name || 'course'}"`);
       setCourseStudentsCourse(null);
       refetchCourses();
+      if ((activeCourse.flashy_course_decks || []).length > 0 && nextIds.length > 0) {
+        setCourseVisibilityState({ course: activeCourse, studentId: nextIds[0] });
+      }
     } catch (err) {
       toast.error(err.message || "Failed to update course students");
+    }
+  };
+
+  const handleSaveCourseVisibility = async ({ courseId, studentId, allDeckIds, visibleDeckIds }) => {
+    const normalizedCourseId = String(courseId || '').trim();
+    const normalizedStudentId = String(studentId || '').trim();
+    const normalizedAllDeckIds = [...new Set((allDeckIds || []).map((id) => String(id || '').trim()).filter(Boolean))];
+    const normalizedVisibleDeckIds = new Set((visibleDeckIds || []).map((id) => String(id || '').trim()).filter(Boolean));
+
+    if (!normalizedCourseId || !normalizedStudentId) return;
+
+    const hiddenDeckIds = normalizedAllDeckIds.filter((deckId) => !normalizedVisibleDeckIds.has(deckId));
+
+    try {
+      if (normalizedAllDeckIds.length > 0) {
+        await clearStudentCourseDeckVisibility({
+          courseId: normalizedCourseId,
+          studentId: normalizedStudentId,
+          deckIds: normalizedAllDeckIds,
+        });
+      }
+
+      if (hiddenDeckIds.length > 0) {
+        await setStudentCourseDeckVisibility({
+          courseId: normalizedCourseId,
+          studentId: normalizedStudentId,
+          deckIds: hiddenDeckIds,
+          isHidden: true,
+        });
+      }
+
+      toast.success('Updated visible decks');
+      setCourseVisibilityState(null);
+      refetchCourses();
+    } catch (err) {
+      toast.error(err.message || 'Failed to save visible decks');
     }
   };
 
@@ -450,6 +632,15 @@ const Dashboard = () => {
           setCourseStudentsCourse(null);
           navigate("/students");
         }}
+      />
+      <CourseDeckVisibilityModal
+        open={Boolean(courseVisibilityState)}
+        setOpen={setCourseVisibilityState}
+        course={courseVisibilityState?.course || null}
+        students={students || []}
+        decks={decks || []}
+        initialStudentId={courseVisibilityState?.studentId || ''}
+        onSubmit={handleSaveCourseVisibility}
       />
       <ConfirmModal
         open={Boolean(confirmDeleteCourse)}
@@ -609,6 +800,20 @@ const Dashboard = () => {
                 >
                   Assign students
                 </button>
+                {memberCount > 0 && courseDecks.length > 0 && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setCourseVisibilityState({
+                        course,
+                        studentId: String(course.flashy_course_members?.[0]?.student_id || ''),
+                      });
+                    }}
+                    className={styles.courseActionBtn}
+                  >
+                    What decks to show?
+                  </button>
+                )}
                 <button
                   onClick={(e) => { e.stopPropagation(); setConfirmDeleteCourse(course); }}
                   className={`${styles.courseActionBtn} ${styles.courseActionDanger}`}
@@ -632,6 +837,27 @@ const Dashboard = () => {
                     </div>
                   ))}
                   {courseDecks.length === 0 && <p className={styles.courseEmpty}>No matching decks</p>}
+                  {memberCount > 0 && (
+                    <div className={styles.courseMemberSummary}>
+                      <strong>Students</strong>
+                      <div className={styles.courseMemberChips}>
+                        {(course.flashy_course_members || []).map((member) => {
+                          const student = (students || []).find((entry) => String(entry.id) === String(member.student_id));
+                          const label = student?.display_name || student?.email || 'Student';
+                          return (
+                            <button
+                              key={member.student_id}
+                              type="button"
+                              className={styles.courseMemberChip}
+                              onClick={() => setCourseVisibilityState({ course, studentId: String(member.student_id || '') })}
+                            >
+                              {label}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
