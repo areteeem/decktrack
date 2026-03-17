@@ -1,5 +1,5 @@
 import { useParams, useNavigate } from "react-router";
-import { useState, useMemo, useCallback, useEffect } from "react";
+import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import LoadingScreen from "../../common/components/LoadingScreen";
 import StudySetup from "../../modules/StudySetup";
 import Learn from "../../modules/Learn";
@@ -31,6 +31,129 @@ const resolveShowTermFirst = (sideOrder) => {
   return true;
 };
 
+const toNumber = (value, fallback = 0) => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+};
+
+const getLegacyProgressIndex = (session) => {
+  if (typeof session?.currentIndex === "number" && session.currentIndex >= 0) {
+    return session.currentIndex;
+  }
+  if (Array.isArray(session?.completedIds)) {
+    return session.completedIds.length;
+  }
+  return 0;
+};
+
+const getLegacyStartedAt = (session) => {
+  const startedIso = session?.startedAt || new Date().toISOString();
+  const startedMs = new Date(startedIso).getTime();
+  return {
+    iso: startedIso,
+    ts: Number.isFinite(startedMs) ? startedMs : Date.now(),
+  };
+};
+
+const buildLegacyModeState = (session) => {
+  if (!session || session.modeState) return session?.modeState || null;
+
+  const cardOrder = Array.isArray(session.cardOrder) ? session.cardOrder : [];
+  const completedIds = Array.isArray(session.completedIds) ? session.completedIds : [];
+  const currentIndex = Math.max(0, getLegacyProgressIndex(session));
+  const { iso: sessionStartedAtIso, ts: sessionStartedAtTs } = getLegacyStartedAt(session);
+  const stats = session.stats || {};
+  const fallbackStats = {
+    reviewed: toNumber(stats.reviewed, completedIds.length),
+    again: toNumber(stats.again, 0),
+    hard: toNumber(stats.hard, 0),
+    good: toNumber(stats.good, 0),
+    easy: toNumber(stats.easy, 0),
+  };
+
+  switch (session.mode) {
+    case "flashcards":
+      return {
+        queueIds: cardOrder,
+        position: Math.min(currentIndex, Math.max(0, cardOrder.length - 1)),
+        isFlipped: false,
+        sessionStats: fallbackStats,
+        cardResults: session.cardResults || {},
+        sessionStartedAt: sessionStartedAtTs,
+      };
+    case "mcq":
+      return {
+        current: currentIndex,
+        selected: null,
+        correctCount: toNumber(stats.correct, 0),
+        cardResults: session.cardResults || {},
+        sessionStartedAt: sessionStartedAtIso,
+      };
+    case "fillblank":
+    case "quiz":
+      return {
+        current: currentIndex,
+        answer: "",
+        status: null,
+        correctCount: toNumber(stats.correct, 0),
+        cardResults: session.cardResults || {},
+        sessionStartedAt: sessionStartedAtIso,
+      };
+    case "truefalse":
+      return {
+        current: currentIndex,
+        answered: null,
+        correctCount: toNumber(stats.correct, 0),
+        cardResults: session.cardResults || {},
+        sessionStartedAt: sessionStartedAtIso,
+      };
+    case "mixedmode":
+      return {
+        current: currentIndex,
+        answered: false,
+        correctCount: toNumber(stats.correct, 0),
+        lastCorrect: null,
+        mcqSelected: null,
+        tfChoice: null,
+        fillValue: "",
+        fillChecked: false,
+        sessionStartedAt: sessionStartedAtIso,
+      };
+    case "match": {
+      const batchSize = 6;
+      const batchIndex = Math.floor(completedIds.length / batchSize);
+      const batchStart = batchIndex * batchSize;
+      const inProgressMatchedIds = cardOrder.slice(batchStart, completedIds.length);
+      return {
+        batchIndex,
+        selectedTerm: null,
+        matchedIds: inProgressMatchedIds,
+        wrongPair: null,
+        totalMatched: completedIds.length,
+        startTime: sessionStartedAtTs,
+        elapsed: 0,
+        missCount: {},
+        definitionOrder: [],
+        sessionStartedAt: sessionStartedAtIso,
+      };
+    }
+    case "wheel":
+      return {
+        selectedCardId: null,
+        flipped: false,
+        rotation: 0,
+        showCard: false,
+        removedIds: completedIds,
+        continued: Math.max(0, toNumber(stats.reviewed, completedIds.length) - completedIds.length),
+        winningSegIdx: null,
+        cardShownAt: null,
+        sessionStartedAt: sessionStartedAtIso,
+      };
+    default:
+      return null;
+  }
+};
+
 /**
  * Unified study page for a deck.
  * Shows a setup screen first, then launches the chosen study mode.
@@ -49,6 +172,7 @@ const DeckStudy = () => {
   const { recordSession } = useRecordSession();
 
   const [config, setConfig] = useState(null);
+  const configRef = useRef(config);
   // "choose" = show resume/new choice, null = no saved session
   const [resumeChoice, setResumeChoice] = useState(null);
 
@@ -75,6 +199,10 @@ const DeckStudy = () => {
         return newCards || [];
     }
   }, [allCards, dueCards, hardCards, newCards]);
+
+  useEffect(() => {
+    configRef.current = config;
+  }, [config]);
 
   // Check for existing session on mount
   useEffect(() => {
@@ -121,10 +249,13 @@ const DeckStudy = () => {
   }, [deckId, getCardsForPool]);
 
   const handleModeStateChange = useCallback((patch) => {
-    const session = getStudySession(deckId) || config;
+    if (!patch || typeof patch !== "object") return;
+    const session = getStudySession(deckId) || configRef.current;
     if (!session) return;
-    saveStudySession(deckId, { ...session, ...patch });
-  }, [config, deckId]);
+    const nextSession = { ...session, ...patch };
+    saveStudySession(deckId, nextSession);
+    setConfig((prev) => (prev ? { ...prev, ...patch } : prev));
+  }, [deckId]);
 
   // Called when session is complete — keep session data for results, mark as done
   const handleComplete = useCallback(() => {
@@ -160,6 +291,10 @@ const DeckStudy = () => {
   const cardsById = useMemo(
     () => new Map(poolCards.map((card) => [String(card.id), card])),
     [poolCards]
+  );
+  const resolvedModeState = useMemo(
+    () => (config ? buildLegacyModeState(config) : null),
+    [config]
   );
 
   if (loading) return <LoadingScreen />;
@@ -233,7 +368,7 @@ const DeckStudy = () => {
   // Common props for all modules
   const sharedProps = { onQuit: handleQuit };
   const sharedSessionProps = {
-    sessionState: config.modeState || null,
+    sessionState: resolvedModeState,
     onStateChange: handleModeStateChange,
   };
 
