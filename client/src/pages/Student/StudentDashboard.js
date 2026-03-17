@@ -42,7 +42,7 @@ const StudentDashboard = () => {
   const { data: deckStats, refetch: refetchDeckStats } = usePerDeckStats(user?.id);
   const { data: ownDecks, loading: ownDecksLoading, refetch: refetchOwn } = useDecks();
   const { data: personalCards } = useAllOwnDeckCards();
-  const { courses } = useStudentCourses();
+  const { courses, loading: coursesLoading } = useStudentCourses();
   const [showNewDeckModal, setShowNewDeckModal] = useState(false);
   const [deckSearch, setDeckSearch] = useState("");
   const [expandedCourse, setExpandedCourse] = useState(null);
@@ -230,114 +230,116 @@ const StudentDashboard = () => {
       )}
 
       {/* ── Courses (from teacher) ───────────── */}
-      {courses && courses.length > 0 && (
-        <>
-          <h2 style={{ marginTop: "1.5rem", marginBottom: "0.5rem" }}>Courses</h2>
-          <div className={styles.deckGrid}>
-            {courses.map((course) => {
-              const courseDecks = (course.flashy_course_decks || [])
-                .map((cd) => cd.flashy_decks)
-                .filter(Boolean)
-                .sort((a, b) => (a.name || "").localeCompare(b.name || ""));
-              const courseMembers = (course.flashy_course_members || [])
-                .map((member) => member.flashy_profiles)
-                .filter(Boolean)
-                .filter((member) => String(member.id) !== String(user?.id || ''))
-                .filter((member, index, source) =>
-                  source.findIndex((entry) => String(entry.id) === String(member.id)) === index
-                );
-              const isExpanded = expandedCourse === course.id;
-              return (
-                <div key={course.id} className={styles.deckCard}>
-                  <div
-                    style={{ display: "flex", alignItems: "center", gap: "0.5rem", cursor: "pointer" }}
-                    onClick={() => setExpandedCourse(isExpanded ? null : course.id)}
+      <h2 style={{ marginTop: "1.5rem", marginBottom: "0.5rem" }}>Courses</h2>
+      {coursesLoading ? (
+        <p style={{ color: "var(--fg-muted)", fontSize: "0.85rem", marginBottom: "1.25rem" }}>Loading courses...</p>
+      ) : (!courses || courses.length === 0) ? (
+        <p style={{ color: "var(--fg-muted)", fontSize: "0.85rem", marginBottom: "1.25rem" }}>No courses assigned yet.</p>
+      ) : (
+        <div className={styles.deckGrid}>
+          {courses.map((course) => {
+            const courseDecks = (course.flashy_course_decks || [])
+              .map((cd) => cd.flashy_decks)
+              .filter(Boolean)
+              .sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+            const courseMembers = (course.flashy_course_members || [])
+              .map((member) => member.flashy_profiles)
+              .filter(Boolean)
+              .filter((member) => String(member.id) !== String(user?.id || ''))
+              .filter((member, index, source) =>
+                source.findIndex((entry) => String(entry.id) === String(member.id)) === index
+              );
+            const isExpanded = expandedCourse === course.id;
+            return (
+              <div key={course.id} className={styles.deckCard}>
+                <div
+                  style={{ display: "flex", alignItems: "center", gap: "0.5rem", cursor: "pointer" }}
+                  onClick={() => setExpandedCourse(isExpanded ? null : course.id)}
+                >
+                  <svg
+                    width="14" height="14" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+                    style={{ transform: isExpanded ? "rotate(90deg)" : "none", transition: "transform 0.15s", flexShrink: 0 }}
                   >
-                    <svg
-                      width="14" height="14" viewBox="0 0 24 24" fill="none"
-                      stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
-                      style={{ transform: isExpanded ? "rotate(90deg)" : "none", transition: "transform 0.15s", flexShrink: 0 }}
-                    >
-                      <polyline points="9 18 15 12 9 6" />
-                    </svg>
-                    <h2 style={{ margin: 0 }}>{course.name}</h2>
-                    <Badge>{courseDecks.length} {courseDecks.length === 1 ? "deck" : "decks"}</Badge>
-                  </div>
-                  {course.description && (
-                    <p className={styles.deckDesc}>{course.description}</p>
-                  )}
-                  {isExpanded && (
-                    <div style={{ marginTop: "0.5rem", display: "flex", flexDirection: "column", gap: "0.35rem" }}>
-                      {courseDecks.length > 0 ? courseDecks.map((d) => (
-                        <Link
-                          key={d.id}
-                          to={`/deck/${d.id}`}
-                          style={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: "0.5rem",
-                            padding: "0.45rem 0.65rem",
-                            borderRadius: "var(--radius)",
-                            background: "var(--bg-secondary, var(--card-bg))",
-                            color: "var(--fg)",
-                            textDecoration: "none",
-                            fontSize: "0.85rem",
-                            fontWeight: 600,
-                            transition: "background 0.12s",
-                          }}
-                          onMouseEnter={(e) => { e.currentTarget.style.background = "var(--card-hover)"; }}
-                          onMouseLeave={(e) => { e.currentTarget.style.background = "var(--bg-secondary, var(--card-bg))"; }}
-                        >
-                          {d.name || "Untitled"}
-                        </Link>
-                      )) : (
-                        <p style={{ color: "var(--fg-muted)", fontSize: "0.8rem", margin: 0 }}>No decks in this course</p>
-                      )}
-                      {courseMembers.length > 0 && (
-                        <div style={{ marginTop: "0.35rem", display: "flex", flexWrap: "wrap", gap: "0.25rem" }}>
-                          {courseMembers.map((p) => (
+                    <polyline points="9 18 15 12 9 6" />
+                  </svg>
+                  <h2 style={{ margin: 0 }}>{course.name}</h2>
+                  <Badge>{courseDecks.length} {courseDecks.length === 1 ? "deck" : "decks"}</Badge>
+                </div>
+                {course.description && (
+                  <p className={styles.deckDesc}>{course.description}</p>
+                )}
+                {isExpanded && (
+                  <div style={{ marginTop: "0.5rem", display: "flex", flexDirection: "column", gap: "0.35rem" }}>
+                    {courseDecks.length > 0 ? courseDecks.map((d) => (
+                      <Link
+                        key={d.id}
+                        to={`/deck/${d.id}`}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "0.5rem",
+                          padding: "0.45rem 0.65rem",
+                          borderRadius: "var(--radius)",
+                          background: "var(--bg-secondary, var(--card-bg))",
+                          color: "var(--fg)",
+                          textDecoration: "none",
+                          fontSize: "0.85rem",
+                          fontWeight: 600,
+                          transition: "background 0.12s",
+                        }}
+                        onMouseEnter={(e) => { e.currentTarget.style.background = "var(--card-hover)"; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.background = "var(--bg-secondary, var(--card-bg))"; }}
+                      >
+                        {d.name || "Untitled"}
+                      </Link>
+                    )) : (
+                      <p style={{ color: "var(--fg-muted)", fontSize: "0.8rem", margin: 0 }}>No decks in this course</p>
+                    )}
+                    {courseMembers.length > 0 && (
+                      <div style={{ marginTop: "0.35rem", display: "flex", flexWrap: "wrap", gap: "0.25rem" }}>
+                        {courseMembers.map((p) => (
+                          <span
+                            key={p.id}
+                            style={{
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: "0.3rem",
+                              padding: "0.15rem 0.45rem",
+                              borderRadius: "var(--radius)",
+                              background: "var(--bg-secondary, var(--card-bg))",
+                              fontSize: "0.72rem",
+                              color: "var(--fg-muted)",
+                            }}
+                          >
                             <span
-                              key={p.id}
                               style={{
+                                width: "1.2rem",
+                                height: "1.2rem",
+                                borderRadius: "50%",
+                                background: "var(--fg)",
+                                color: "var(--bg)",
                                 display: "inline-flex",
                                 alignItems: "center",
-                                gap: "0.3rem",
-                                padding: "0.15rem 0.45rem",
-                                borderRadius: "var(--radius)",
-                                background: "var(--bg-secondary, var(--card-bg))",
-                                fontSize: "0.72rem",
-                                color: "var(--fg-muted)",
+                                justifyContent: "center",
+                                fontSize: "0.6rem",
+                                fontWeight: 700,
+                                flexShrink: 0,
                               }}
                             >
-                              <span
-                                style={{
-                                  width: "1.2rem",
-                                  height: "1.2rem",
-                                  borderRadius: "50%",
-                                  background: "var(--fg)",
-                                  color: "var(--bg)",
-                                  display: "inline-flex",
-                                  alignItems: "center",
-                                  justifyContent: "center",
-                                  fontSize: "0.6rem",
-                                  fontWeight: 700,
-                                  flexShrink: 0,
-                                }}
-                              >
-                                {(p.display_name || p.email || "?").charAt(0).toUpperCase()}
-                              </span>
-                              {p.display_name || p.email || "Student"}
+                              {(p.display_name || p.email || "?").charAt(0).toUpperCase()}
                             </span>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </>
+                            {p.display_name || p.email || "Student"}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
       )}
 
       {/* ── Assigned Studies ───────────────────── */}
