@@ -10,22 +10,39 @@ import LoadingScreen from "../../common/components/LoadingScreen";
  */
 const BATCH_SIZE = 6;
 
-const MatchGame = ({ flashcards, onQuit, onSessionComplete }) => {
-  const shuffled = useMemo(() => {
-    if (!flashcards) return [];
-    return [...flashcards].sort(() => Math.random() - 0.5);
-  }, [flashcards]);
+const shuffleItems = (items) => [...items].sort(() => Math.random() - 0.5);
 
-  const [batchIndex, setBatchIndex] = useState(0);
-  const [selectedTerm, setSelectedTerm] = useState(null);
-  const [matched, setMatched] = useState(new Set());
-  const [wrongPair, setWrongPair] = useState(null);
-  const [totalMatched, setTotalMatched] = useState(0);
-  const [startTime] = useState(Date.now());
-  const [elapsed, setElapsed] = useState(0);
-  const [missCount, setMissCount] = useState({});
+const buildDefinitionOrder = (cards) => shuffleItems(cards).map((card) => card.id);
+
+const MatchGame = ({ flashcards, onQuit, onSessionComplete, sessionState, onStateChange }) => {
+  const shuffled = useMemo(() => flashcards || [], [flashcards]);
+  const initialBatch = useMemo(() => shuffled.slice(0, BATCH_SIZE), [shuffled]);
+  const restoredStateRef = useRef({
+    batchIndex: typeof sessionState?.batchIndex === "number" ? sessionState.batchIndex : 0,
+    selectedTerm: sessionState?.selectedTerm ?? null,
+    matchedIds: Array.isArray(sessionState?.matchedIds) ? sessionState.matchedIds : [],
+    wrongPair: sessionState?.wrongPair ?? null,
+    totalMatched: Number(sessionState?.totalMatched || 0),
+    startTime: typeof sessionState?.startTime === "number" ? sessionState.startTime : Date.now(),
+    elapsed: Number(sessionState?.elapsed || 0),
+    missCount: sessionState?.missCount || {},
+    definitionOrder: Array.isArray(sessionState?.definitionOrder) && sessionState.definitionOrder.length > 0
+      ? sessionState.definitionOrder
+      : buildDefinitionOrder(initialBatch),
+    sessionStartedAt: sessionState?.sessionStartedAt || new Date().toISOString(),
+  });
+
+  const [batchIndex, setBatchIndex] = useState(restoredStateRef.current.batchIndex);
+  const [selectedTerm, setSelectedTerm] = useState(restoredStateRef.current.selectedTerm);
+  const [matched, setMatched] = useState(new Set(restoredStateRef.current.matchedIds));
+  const [wrongPair, setWrongPair] = useState(restoredStateRef.current.wrongPair);
+  const [totalMatched, setTotalMatched] = useState(restoredStateRef.current.totalMatched);
+  const [startTime] = useState(restoredStateRef.current.startTime);
+  const [elapsed, setElapsed] = useState(restoredStateRef.current.elapsed);
+  const [missCount, setMissCount] = useState(restoredStateRef.current.missCount);
+  const [definitionOrder, setDefinitionOrder] = useState(restoredStateRef.current.definitionOrder);
   const timerRef = useRef(null);
-  const sessionStartRef = useRef(new Date().toISOString());
+  const sessionStartRef = useRef(restoredStateRef.current.sessionStartedAt);
   const sessionCompleteRef = useRef(false);
 
   const isComplete = totalMatched >= shuffled.length;
@@ -50,8 +67,47 @@ const MatchGame = ({ flashcards, onQuit, onSessionComplete }) => {
 
   // Shuffled definitions for the batch
   const shuffledDefs = useMemo(() => {
-    return [...batch].sort(() => Math.random() - 0.5);
+    const cardsById = new Map(batch.map((card) => [String(card.id), card]));
+    return definitionOrder.map((cardId) => cardsById.get(String(cardId))).filter(Boolean);
+  }, [batch, definitionOrder]);
+
+  useEffect(() => {
+    const batchIds = batch.map((card) => String(card.id));
+    setDefinitionOrder((prev) => {
+      const previous = Array.isArray(prev) ? prev.map(String) : [];
+      const matchesBatch = previous.length === batchIds.length && previous.every((cardId) => batchIds.includes(cardId));
+      return matchesBatch ? previous : buildDefinitionOrder(batch);
+    });
   }, [batch]);
+
+  useEffect(() => {
+    if (!onStateChange) return;
+    const completedBatchIds = shuffled.slice(0, batchIndex * BATCH_SIZE).map((card) => card.id);
+    const completedIds = [...new Set([...completedBatchIds, ...Array.from(matched)])];
+    const totalMisses = Object.values(missCount).reduce((sum, value) => sum + Number(value || 0), 0);
+
+    onStateChange({
+      completedIds,
+      currentIndex: completedIds.length,
+      stats: {
+        reviewed: completedIds.length,
+        correct: completedIds.length,
+        incorrect: totalMisses,
+      },
+      modeState: {
+        batchIndex,
+        selectedTerm,
+        matchedIds: Array.from(matched),
+        wrongPair,
+        totalMatched,
+        startTime,
+        elapsed,
+        missCount,
+        definitionOrder,
+        sessionStartedAt: sessionStartRef.current,
+      },
+    });
+  }, [batchIndex, definitionOrder, elapsed, matched, missCount, onStateChange, selectedTerm, shuffled, startTime, totalMatched, wrongPair]);
 
   const handleTermClick = useCallback((cardId) => {
     if (matched.has(cardId)) return;

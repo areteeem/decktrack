@@ -12,6 +12,7 @@
  *   mode            – study mode (flashcards/mcq/fillblank/match/quiz)
  *   sideOrder       – term / def / mixed
  *   shuffle         – boolean
+ *   showTermFirst   – resolved study direction for the active run
  *   cardOrder       – array of card IDs in study order
  *   completedIds    – array of card IDs already graded
  *   currentIndex    – index of current card in cardOrder
@@ -19,6 +20,7 @@
  *   startedAt       – ISO timestamp of session start
  *   updatedAt       – ISO timestamp of last update
  *   stats           – { reviewed, again, hard, good, easy }
+ *   modeState       – mode-specific in-progress state snapshot
  */
 
 import { STORAGE_KEYS } from './storageKeys';
@@ -34,6 +36,11 @@ export const getStudySession = (deckId) => {
     const raw = localStorage.getItem(getKey(deckId));
     if (!raw) return null;
     const session = JSON.parse(raw);
+
+    if (session?.finished) {
+      clearStudySession(deckId);
+      return null;
+    }
 
     // Expire sessions older than 24h
     if (session.updatedAt && Date.now() - new Date(session.updatedAt).getTime() > 24 * 60 * 60 * 1000) {

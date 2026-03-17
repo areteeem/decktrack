@@ -8,40 +8,84 @@ import LoadingScreen from "../../common/components/LoadingScreen";
  * Shows the term and 4 definition options (1 correct + 3 distractors).
  * Requires at least 4 cards in the deck.
  */
-const MultipleChoice = ({ flashcards, showTermFirst = true, onQuit, onSessionComplete }) => {
-  const shuffled = useMemo(() => {
-    if (!flashcards) return [];
-    return [...flashcards].sort(() => Math.random() - 0.5);
-  }, [flashcards]);
+const shuffleItems = (items) => [...items].sort(() => Math.random() - 0.5);
 
-  const [current, setCurrent] = useState(0);
-  const [selected, setSelected] = useState(null);
-  const [correctCount, setCorrectCount] = useState(0);
-  const [cardResults, setCardResults] = useState({});
-  const sessionStartRef = useRef(new Date().toISOString());
-  const sessionCompleteRef = useRef(false);
-
-  // Generate 4 options for the current card
-  const options = useMemo(() => {
-    if (!shuffled.length || current >= shuffled.length) return [];
-    const card = shuffled[current];
+const buildQuestions = (cards, showTermFirst) => {
+  if (!Array.isArray(cards)) return [];
+  return cards.map((card, currentIndex) => {
     const correctAnswer = showTermFirst ? card.back : card.front;
-    
-    // Get 3 random distractor answers from other cards
-    const others = shuffled
-      .filter((_, i) => i !== current)
-      .sort(() => Math.random() - 0.5)
+    const others = shuffleItems(cards.filter((_, i) => i !== currentIndex))
       .slice(0, 3)
-      .map(c => showTermFirst ? c.back : c.front);
-
-    // Combine and shuffle
-    const allOptions = [correctAnswer, ...others].sort(() => Math.random() - 0.5);
-    return allOptions.map((text, i) => ({
+      .map((candidate) => (showTermFirst ? candidate.back : candidate.front));
+    const options = shuffleItems([correctAnswer, ...others]).map((text, optionIndex) => ({
       text,
-      key: String(i + 1),
+      key: String(optionIndex + 1),
       isCorrect: text === correctAnswer,
     }));
-  }, [shuffled, current, showTermFirst]);
+
+    return {
+      cardId: card.id,
+      prompt: showTermFirst ? card.front : card.back,
+      options,
+    };
+  });
+};
+
+const MultipleChoice = ({ flashcards, showTermFirst = true, onQuit, onSessionComplete, sessionState, onStateChange }) => {
+  const restoredStateRef = useRef({
+    questions: Array.isArray(sessionState?.questions) && sessionState.questions.length > 0
+      ? sessionState.questions
+      : buildQuestions(flashcards || [], showTermFirst),
+    current: typeof sessionState?.current === "number" ? sessionState.current : 0,
+    selected: typeof sessionState?.selected === "number" ? sessionState.selected : null,
+    correctCount: Number(sessionState?.correctCount || 0),
+    cardResults: sessionState?.cardResults || {},
+    sessionStartedAt: sessionState?.sessionStartedAt || new Date().toISOString(),
+  });
+  const cardById = useMemo(() => {
+    const map = new Map();
+    (flashcards || []).forEach((card) => {
+      map.set(String(card.id), card);
+    });
+    return map;
+  }, [flashcards]);
+
+  const [questions] = useState(restoredStateRef.current.questions);
+  const [current, setCurrent] = useState(restoredStateRef.current.current);
+  const [selected, setSelected] = useState(restoredStateRef.current.selected);
+  const [correctCount, setCorrectCount] = useState(restoredStateRef.current.correctCount);
+  const [cardResults, setCardResults] = useState(restoredStateRef.current.cardResults);
+  const sessionStartRef = useRef(restoredStateRef.current.sessionStartedAt);
+  const sessionCompleteRef = useRef(false);
+  const currentQuestion = questions[current] || null;
+  const options = useMemo(() => currentQuestion?.options || [], [currentQuestion]);
+
+  useEffect(() => {
+    if (!onStateChange) return;
+    const completedIds = questions.slice(0, current).map((question) => question.cardId);
+    if (selected !== null && currentQuestion?.cardId != null) {
+      completedIds.push(currentQuestion.cardId);
+    }
+
+    onStateChange({
+      completedIds: [...new Set(completedIds)],
+      currentIndex: current,
+      stats: {
+        reviewed: completedIds.length,
+        correct: correctCount,
+        incorrect: Math.max(0, completedIds.length - correctCount),
+      },
+      cardResults,
+      modeState: {
+        questions,
+        current,
+        selected,
+        correctCount,
+        cardResults,
+        sessionStartedAt: sessionStartRef.current,
+      },
+    });
+  }, [cardResults, correctCount, current, currentQuestion?.cardId, onStateChange, questions, selected]);
 
   const handleSelect = useCallback((index) => {
     if (selected !== null) return;
@@ -51,17 +95,17 @@ const MultipleChoice = ({ flashcards, showTermFirst = true, onQuit, onSessionCom
       setCorrectCount(c => c + 1);
     }
     // Track per-card result
-    const card = shuffled[current];
+    const card = currentQuestion ? cardById.get(String(currentQuestion.cardId)) : null;
     setCardResults(prev => ({
       ...prev,
-      [current]: {
+      [String(currentQuestion?.cardId || current)]: {
         front: card?.front || '',
         back: card?.back || '',
         correct: isCorrect,
         selectedText: options[index]?.text || '',
       }
     }));
-  }, [selected, options, shuffled, current]);
+  }, [cardById, current, currentQuestion, options, selected]);
 
   const handleNext = useCallback(() => {
     setSelected(null);
@@ -71,7 +115,7 @@ const MultipleChoice = ({ flashcards, showTermFirst = true, onQuit, onSessionCom
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.key === "Escape" && onQuit) { onQuit(); return; }
-      if (current >= shuffled.length) return;
+      if (current >= questions.length) return;
       
       if (selected !== null) {
         if (e.key === "Enter" || e.key === " ") {
@@ -88,27 +132,27 @@ const MultipleChoice = ({ flashcards, showTermFirst = true, onQuit, onSessionCom
     };
     window.addEventListener("keydown", handleKeyDown, true);
     return () => window.removeEventListener("keydown", handleKeyDown, true);
-  }, [selected, options, current, shuffled.length, handleSelect, handleNext, onQuit]);
+  }, [selected, options, current, questions.length, handleSelect, handleNext, onQuit]);
 
   // Fire session complete callback when quiz finishes
   useEffect(() => {
-    if (current >= shuffled.length && shuffled.length > 0 && !sessionCompleteRef.current && onSessionComplete) {
+    if (current >= questions.length && questions.length > 0 && !sessionCompleteRef.current && onSessionComplete) {
       sessionCompleteRef.current = true;
       const now = new Date().toISOString();
       onSessionComplete({
         session_type: 'test',
-        cards_studied: shuffled.length,
+        cards_studied: questions.length,
         cards_correct: correctCount,
-        cards_incorrect: shuffled.length - correctCount,
+        cards_incorrect: questions.length - correctCount,
         started_at: sessionStartRef.current,
         finished_at: now,
       });
     }
-  }, [current, shuffled.length, correctCount, onSessionComplete]);
+  }, [current, questions.length, correctCount, onSessionComplete]);
 
   if (!flashcards) return <LoadingScreen />;
 
-  if (shuffled.length < 4) {
+  if (questions.length < 4) {
     return (
       <div className={styles.layout}>
         <div className={styles.content}>
@@ -118,8 +162,8 @@ const MultipleChoice = ({ flashcards, showTermFirst = true, onQuit, onSessionCom
     );
   }
 
-  if (current >= shuffled.length) {
-    const pct = Math.round((correctCount / shuffled.length) * 100);
+  if (current >= questions.length) {
+    const pct = Math.round((correctCount / questions.length) * 100);
     const wrongCards = Object.values(cardResults).filter(r => !r.correct).slice(0, 5);
     return (
       <div className={styles.layout}>
@@ -128,7 +172,7 @@ const MultipleChoice = ({ flashcards, showTermFirst = true, onQuit, onSessionCom
             <h2>Quiz complete!</h2>
             <div className={styles.score}>{pct}%</div>
             <div className={styles.scoreLabel}>
-              {correctCount} / {shuffled.length} correct
+              {correctCount} / {questions.length} correct
             </div>
             {wrongCards.length > 0 && (
               <div style={{ marginTop: '1rem', textAlign: 'left', width: '100%', maxWidth: 360 }}>
@@ -156,15 +200,15 @@ const MultipleChoice = ({ flashcards, showTermFirst = true, onQuit, onSessionCom
     );
   }
 
-  const card = shuffled[current];
-  const prompt = showTermFirst ? card.front : card.back;
+  const card = currentQuestion ? cardById.get(String(currentQuestion.cardId)) : null;
+  const prompt = currentQuestion?.prompt || (card ? (showTermFirst ? card.front : card.back) : "");
 
   return (
     <div className={styles.layout}>
       <div className={styles.header}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <h1>
-            Multiple choice {current + 1}/{shuffled.length}
+            Multiple choice {current + 1}/{questions.length}
           </h1>
           {onQuit && (
             <button onClick={onQuit} title="Quit (Esc)" style={{
@@ -173,7 +217,7 @@ const MultipleChoice = ({ flashcards, showTermFirst = true, onQuit, onSessionCom
             }}>×</button>
           )}
         </div>
-        <ProgressBar completed={(current / shuffled.length) * 100} />
+        <ProgressBar completed={(current / questions.length) * 100} />
       </div>
       <div className={styles.content}>
         <div className={styles.quizCard}>

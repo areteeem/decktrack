@@ -21,21 +21,53 @@ const buildBlankPrompt = (definition, term) => {
   return { parts: result, hasBlank: true };
 };
 
-const FillBlank = ({ flashcards, onQuit, onSessionComplete }) => {
-  const shuffled = useMemo(() => {
-    if (!flashcards) return [];
-    return [...flashcards].sort(() => Math.random() - 0.5);
-  }, [flashcards]);
+const FillBlank = ({ flashcards, onQuit, onSessionComplete, sessionState, onStateChange }) => {
+  const orderedCards = useMemo(() => flashcards || [], [flashcards]);
+  const restoredStateRef = useRef({
+    current: typeof sessionState?.current === "number" ? sessionState.current : 0,
+    answer: String(sessionState?.answer || ""),
+    status: sessionState?.status || null,
+    correctCount: Number(sessionState?.correctCount || 0),
+    cardResults: sessionState?.cardResults || {},
+    sessionStartedAt: sessionState?.sessionStartedAt || new Date().toISOString(),
+  });
 
-  const [current, setCurrent] = useState(0);
-  const [answer, setAnswer] = useState("");
-  const [status, setStatus] = useState(null); // null | 'correct' | 'wrong'
-  const [correctCount, setCorrectCount] = useState(0);
+  const [current, setCurrent] = useState(restoredStateRef.current.current);
+  const [answer, setAnswer] = useState(restoredStateRef.current.answer);
+  const [status, setStatus] = useState(restoredStateRef.current.status); // null | 'correct' | 'wrong'
+  const [correctCount, setCorrectCount] = useState(restoredStateRef.current.correctCount);
   // Per-card tracking: { [index]: { front, back, correct: bool, userAnswer } }
-  const [cardResults, setCardResults] = useState({});
-  const sessionStartRef = useRef(new Date().toISOString());
+  const [cardResults, setCardResults] = useState(restoredStateRef.current.cardResults);
+  const sessionStartRef = useRef(restoredStateRef.current.sessionStartedAt);
   const sessionCompleteRef = useRef(false);
   const inputRef = useRef(null);
+
+  useEffect(() => {
+    if (!onStateChange) return;
+    const completedIds = orderedCards.slice(0, current).map((card) => card.id);
+    if (status && orderedCards[current]?.id != null) {
+      completedIds.push(orderedCards[current].id);
+    }
+
+    onStateChange({
+      completedIds: [...new Set(completedIds)],
+      currentIndex: current,
+      stats: {
+        reviewed: completedIds.length,
+        correct: correctCount,
+        incorrect: Math.max(0, completedIds.length - correctCount),
+      },
+      cardResults,
+      modeState: {
+        current,
+        answer,
+        status,
+        correctCount,
+        cardResults,
+        sessionStartedAt: sessionStartRef.current,
+      },
+    });
+  }, [answer, cardResults, correctCount, current, onStateChange, orderedCards, status]);
 
   useEffect(() => {
     inputRef.current?.focus();
@@ -43,23 +75,23 @@ const FillBlank = ({ flashcards, onQuit, onSessionComplete }) => {
 
   // Fire session complete callback when quiz finishes
   useEffect(() => {
-    if (current >= shuffled.length && shuffled.length > 0 && !sessionCompleteRef.current && onSessionComplete) {
+    if (current >= orderedCards.length && orderedCards.length > 0 && !sessionCompleteRef.current && onSessionComplete) {
       sessionCompleteRef.current = true;
       const now = new Date().toISOString();
       onSessionComplete({
         session_type: 'test',
-        cards_studied: shuffled.length,
+        cards_studied: orderedCards.length,
         cards_correct: correctCount,
-        cards_incorrect: shuffled.length - correctCount,
+        cards_incorrect: orderedCards.length - correctCount,
         started_at: sessionStartRef.current,
         finished_at: now,
       });
     }
-  }, [current, shuffled.length, correctCount, onSessionComplete]);
+  }, [current, orderedCards.length, correctCount, onSessionComplete]);
 
   if (!flashcards) return <LoadingScreen />;
 
-  if (shuffled.length === 0) {
+  if (orderedCards.length === 0) {
     return (
       <div className={styles.layout}>
         <div className={styles.content}>
@@ -69,8 +101,8 @@ const FillBlank = ({ flashcards, onQuit, onSessionComplete }) => {
     );
   }
 
-  if (current >= shuffled.length) {
-    const pct = Math.round((correctCount / shuffled.length) * 100);
+  if (current >= orderedCards.length) {
+    const pct = Math.round((correctCount / orderedCards.length) * 100);
     // Wrong cards = hardest
     const wrongCards = Object.values(cardResults)
       .filter(r => !r.correct)
@@ -83,7 +115,7 @@ const FillBlank = ({ flashcards, onQuit, onSessionComplete }) => {
             <h2>Quiz complete!</h2>
             <div className={styles.score}>{pct}%</div>
             <div className={styles.scoreLabel}>
-              {correctCount} / {shuffled.length} correct
+              {correctCount} / {orderedCards.length} correct
             </div>
             {wrongCards.length > 0 && (
               <div style={{ marginTop: '1rem', textAlign: 'left', width: '100%', maxWidth: 360 }}>
@@ -109,7 +141,7 @@ const FillBlank = ({ flashcards, onQuit, onSessionComplete }) => {
     );
   }
 
-  const card = shuffled[current];
+  const card = orderedCards[current];
   const isFillBlankType = card.card_type === 'fill_blank';
   // For fill_blank card type: front is the sentence with ___, back is the answer
   // For normal cards: front is the term (correct answer), back is the definition
@@ -203,7 +235,7 @@ const FillBlank = ({ flashcards, onQuit, onSessionComplete }) => {
       <div className={styles.header}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <h1>
-            Fill in the blank {current + 1}/{shuffled.length}
+            Fill in the blank {current + 1}/{orderedCards.length}
           </h1>
           {onQuit && (
             <button onClick={onQuit} title="Quit (Esc)" style={{
@@ -212,7 +244,7 @@ const FillBlank = ({ flashcards, onQuit, onSessionComplete }) => {
             }}>×</button>
           )}
         </div>
-        <ProgressBar completed={((current) / shuffled.length) * 100} />
+        <ProgressBar completed={((current) / orderedCards.length) * 100} />
       </div>
       <div className={styles.content}>
         <div className={styles.quizCard}>

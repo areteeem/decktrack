@@ -19,62 +19,116 @@ const SEGMENT_FILLS = [
   "var(--wheel-segment-4)",
 ];
 
-const SpinWheel = ({ flashcards, onQuit, onSessionComplete }) => {
-  const cards = useMemo(() => {
-    if (!flashcards || flashcards.length === 0) return [];
-    return [...flashcards].sort(() => Math.random() - 0.5);
-  }, [flashcards]);
+const SpinWheel = ({ flashcards, onQuit, onSessionComplete, sessionState, onStateChange }) => {
+  const cards = useMemo(() => flashcards || [], [flashcards]);
+  const restoredStateRef = useRef({
+    selectedCardId: sessionState?.selectedCardId ?? null,
+    flipped: Boolean(sessionState?.flipped),
+    rotation: Number(sessionState?.rotation || 0),
+    showCard: Boolean(sessionState?.showCard),
+    removedIds: Array.isArray(sessionState?.removedIds) ? sessionState.removedIds : [],
+    continued: Number(sessionState?.continued || 0),
+    winningSegIdx: typeof sessionState?.winningSegIdx === "number" ? sessionState.winningSegIdx : null,
+    cardShownAt: sessionState?.cardShownAt || null,
+    sessionStartedAt: sessionState?.sessionStartedAt || new Date().toISOString(),
+  });
 
   const [spinning, setSpinning] = useState(false);
-  const [selectedIdx, setSelectedIdx] = useState(null);
-  const [flipped, setFlipped] = useState(false);
-  const [rotation, setRotation] = useState(0);
-  const [showCard, setShowCard] = useState(false); // zoom-in phase
-  const [removed, setRemoved] = useState(new Set()); // hidden cards (session-only)
-  const [continued, setContinued] = useState(0);
-  const [winningSegIdx, setWinningSegIdx] = useState(null); // segment index for yellow blink
-  const [elapsedSeconds, setElapsedSeconds] = useState(0); // stopwatch timer
-  const sessionStartRef = useRef(new Date().toISOString());
-  const cardStartTimeRef = useRef(null);
+  const [selectedCardId, setSelectedCardId] = useState(restoredStateRef.current.selectedCardId);
+  const [flipped, setFlipped] = useState(restoredStateRef.current.flipped);
+  const [rotation, setRotation] = useState(restoredStateRef.current.rotation);
+  const [showCard, setShowCard] = useState(restoredStateRef.current.showCard); // zoom-in phase
+  const [removedIds, setRemovedIds] = useState(restoredStateRef.current.removedIds);
+  const [continued, setContinued] = useState(restoredStateRef.current.continued);
+  const [winningSegIdx, setWinningSegIdx] = useState(restoredStateRef.current.winningSegIdx); // segment index for yellow blink
+  const [cardShownAt, setCardShownAt] = useState(restoredStateRef.current.cardShownAt);
+  const [elapsedSeconds, setElapsedSeconds] = useState(() => {
+    if (!restoredStateRef.current.showCard || !restoredStateRef.current.cardShownAt) return 0;
+    return Math.max(0, Math.floor((Date.now() - new Date(restoredStateRef.current.cardShownAt).getTime()) / 1000));
+  });
+  const sessionStartRef = useRef(restoredStateRef.current.sessionStartedAt);
+  const sessionCompleteRef = useRef(false);
+
+  const removedIdSet = useMemo(
+    () => new Set((removedIds || []).map((cardId) => String(cardId))),
+    [removedIds]
+  );
 
   const totalCards = cards.length;
-  const remaining = totalCards - removed.size;
+  const remaining = totalCards - removedIds.length;
   const isComplete = remaining <= 0 && totalCards > 0;
 
   // Visible segments on the wheel (up to 12 non-removed cards)
   const segments = useMemo(() => {
     const pool = cards
       .map((c, i) => ({ card: c, idx: i }))
-      .filter((item) => !removed.has(item.idx));
+      .filter((item) => !removedIdSet.has(String(item.card.id)));
     return pool.slice(0, 12);
-  }, [cards, removed]);
+  }, [cards, removedIdSet]);
+
+  const selectedCard = useMemo(
+    () => cards.find((card) => String(card.id) === String(selectedCardId)) || null,
+    [cards, selectedCardId]
+  );
+
+  useEffect(() => {
+    if (!onStateChange) return;
+    onStateChange({
+      completedIds: removedIds,
+      currentIndex: removedIds.length,
+      stats: {
+        reviewed: removedIds.length + continued,
+        correct: continued,
+        incorrect: removedIds.length,
+      },
+      modeState: {
+        selectedCardId,
+        flipped,
+        rotation,
+        showCard,
+        removedIds,
+        continued,
+        winningSegIdx,
+        cardShownAt,
+        sessionStartedAt: sessionStartRef.current,
+      },
+    });
+  }, [cardShownAt, continued, flipped, onStateChange, removedIds, rotation, selectedCardId, showCard, winningSegIdx]);
 
   // Stopwatch timer - starts when card is shown
   useEffect(() => {
-    if (showCard && selectedIdx !== null) {
-      cardStartTimeRef.current = Date.now();
+    if (showCard && selectedCardId !== null && !cardShownAt) {
+      setCardShownAt(new Date().toISOString());
       setElapsedSeconds(0);
     }
-  }, [showCard, selectedIdx]);
+    if ((!showCard || selectedCardId === null) && cardShownAt) {
+      setCardShownAt(null);
+      setElapsedSeconds(0);
+    }
+  }, [cardShownAt, selectedCardId, showCard]);
 
   // Update elapsed seconds every second while card is visible
   useEffect(() => {
-    if (!showCard || selectedIdx === null) return;
+    if (!showCard || selectedCardId === null || !cardShownAt) return;
+
+    const updateElapsed = () => {
+      setElapsedSeconds(Math.max(0, Math.floor((Date.now() - new Date(cardShownAt).getTime()) / 1000)));
+    };
+
+    updateElapsed();
     const interval = setInterval(() => {
-      if (cardStartTimeRef.current) {
-        const elapsed = Math.floor((Date.now() - cardStartTimeRef.current) / 1000);
-        setElapsedSeconds(elapsed);
-      }
+      updateElapsed();
     }, 100); // Update 10x per second for smoothness
 
     return () => clearInterval(interval);
-  }, [showCard, selectedIdx]);
+  }, [cardShownAt, selectedCardId, showCard]);
 
   const spin = useCallback(() => {
     if (spinning || segments.length === 0) return;
     setFlipped(false);
-    setSelectedIdx(null);
+    setSelectedCardId(null);
     setShowCard(false);
+    setCardShownAt(null);
     setWinningSegIdx(null);
     setSpinning(true);
 
@@ -95,7 +149,7 @@ const SpinWheel = ({ flashcards, onQuit, onSessionComplete }) => {
     // After spin settles, highlight winning segment then reveal card
     setTimeout(() => {
       setSpinning(false);
-      setSelectedIdx(segments[target].idx);
+      setSelectedCardId(segments[target].card.id);
       setWinningSegIdx(target);
       // Yellow blink plays for ~600ms, then zoom in on the card
       setTimeout(() => setShowCard(true), 700);
@@ -103,35 +157,36 @@ const SpinWheel = ({ flashcards, onQuit, onSessionComplete }) => {
   }, [spinning, segments, rotation]);
 
   const handleRemove = useCallback(() => {
-    if (selectedIdx === null) return;
-    setRemoved((prev) => new Set([...prev, selectedIdx]));
-    setSelectedIdx(null);
+    if (selectedCardId === null) return;
+    setRemovedIds((prev) => Array.from(new Set([...(prev || []), selectedCardId])));
+    setSelectedCardId(null);
     setFlipped(false);
     setShowCard(false);
     setWinningSegIdx(null);
+    setCardShownAt(null);
     setElapsedSeconds(0);
-    cardStartTimeRef.current = null;
-  }, [selectedIdx]);
+  }, [selectedCardId]);
 
   const handleContinue = useCallback(() => {
-    if (selectedIdx === null) return;
+    if (selectedCardId === null) return;
     setContinued((c) => c + 1);
-    setSelectedIdx(null);
+    setSelectedCardId(null);
     setFlipped(false);
     setShowCard(false);
     setWinningSegIdx(null);
+    setCardShownAt(null);
     setElapsedSeconds(0);
-    cardStartTimeRef.current = null;
-  }, [selectedIdx]);
+  }, [selectedCardId]);
 
   // Session complete
   useEffect(() => {
-    if (isComplete && onSessionComplete) {
+    if (isComplete && onSessionComplete && !sessionCompleteRef.current) {
+      sessionCompleteRef.current = true;
       onSessionComplete({
         session_type: "wheel",
         cards_studied: totalCards,
         cards_correct: continued,
-        cards_incorrect: removed.size,
+        cards_incorrect: removedIds.length,
         started_at: sessionStartRef.current,
         finished_at: new Date().toISOString(),
         duration_seconds: Math.round(
@@ -139,21 +194,21 @@ const SpinWheel = ({ flashcards, onQuit, onSessionComplete }) => {
         ),
       });
     }
-  }, [isComplete, totalCards, continued, removed.size, onSessionComplete]);
+  }, [continued, isComplete, onSessionComplete, removedIds.length, totalCards]);
 
   // Keyboard shortcuts
   useEffect(() => {
     const handle = (e) => {
       if (e.key === "Escape") onQuit?.();
-      if (e.key === " " && !spinning && selectedIdx === null && !isComplete) {
+      if (e.key === " " && !spinning && selectedCardId === null && !isComplete) {
         e.preventDefault();
         spin();
       }
-      if (e.key === "Enter" && selectedIdx !== null && !flipped) setFlipped(true);
+      if (e.key === "Enter" && selectedCardId !== null && !flipped) setFlipped(true);
     };
     window.addEventListener("keydown", handle, true);
     return () => window.removeEventListener("keydown", handle, true);
-  }, [spinning, selectedIdx, isComplete, flipped, spin, onQuit]);
+  }, [flipped, isComplete, onQuit, selectedCardId, spin, spinning]);
 
   if (!cards.length) {
     return (
@@ -172,7 +227,7 @@ const SpinWheel = ({ flashcards, onQuit, onSessionComplete }) => {
           <div className={styles.statsRow}>
             <span className={styles.stat}>
               <span className={styles.statLabel}>Removed</span>
-              <span className={styles.statVal}>{removed.size}</span>
+              <span className={styles.statVal}>{removedIds.length}</span>
             </span>
             <span className={styles.stat}>
               <span className={styles.statLabel}>Continued</span>
@@ -184,7 +239,7 @@ const SpinWheel = ({ flashcards, onQuit, onSessionComplete }) => {
             </span>
           </div>
           <div className={styles.completeBtns}>
-            <button className={styles.outlinedBtn} onClick={() => { setRemoved(new Set()); setContinued(0); setRotation(0); }}>Spin Again</button>
+            <button className={styles.outlinedBtn} onClick={() => { setRemovedIds([]); setContinued(0); setRotation(0); setSelectedCardId(null); setShowCard(false); setFlipped(false); setWinningSegIdx(null); setCardShownAt(null); setElapsedSeconds(0); sessionCompleteRef.current = false; }}>Spin Again</button>
             <button className={styles.outlinedBtn} onClick={onQuit}>Finish</button>
           </div>
         </div>
@@ -192,15 +247,13 @@ const SpinWheel = ({ flashcards, onQuit, onSessionComplete }) => {
     );
   }
 
-  const selectedCard = selectedIdx !== null ? cards[selectedIdx] : null;
-
   return (
     <div className={styles.wheelContainer}>
       {/* Header */}
       <div className={styles.header}>
-        <ProgressBar current={removed.size} total={totalCards} />
+        <ProgressBar current={removedIds.length} total={totalCards} />
         <span className={styles.progressText}>{remaining} left</span>
-        {showCard && selectedIdx !== null && (
+        {showCard && selectedCardId !== null && (
           <div className={styles.stopwatch}>
             {elapsedSeconds}s
           </div>

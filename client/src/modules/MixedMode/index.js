@@ -1,6 +1,6 @@
 import ProgressBar from "../../common/components/ProgressBar";
 import styles from "./MixedMode.module.css";
-import { useState, useMemo, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import LoadingScreen from "../../common/components/LoadingScreen";
 
 /**
@@ -13,71 +13,113 @@ const stripHtml = (str) => (str || "").replace(/<[^>]*>/g, "").trim();
 
 const normalize = (s) => stripHtml(s).toLowerCase().trim();
 
-const MixedMode = ({ flashcards, showTermFirst = true, onQuit, onSessionComplete }) => {
-  const shuffled = useMemo(() => {
-    if (!flashcards) return [];
-    return [...flashcards].sort(() => Math.random() - 0.5);
-  }, [flashcards]);
+const shuffleItems = (items) => [...items].sort(() => Math.random() - 0.5);
 
-  // Assign a random question type to each card
-  const questions = useMemo(() => {
-    return shuffled.map((card, i) => {
-      const type = QUESTION_TYPES[Math.floor(Math.random() * QUESTION_TYPES.length)];
+const buildQuestions = (cards, showTermFirst) => {
+  if (!Array.isArray(cards)) return [];
 
-      if (type === "mcq") {
-        const correctAnswer = showTermFirst ? card.back : card.front;
-        const others = shuffled
-          .filter((_, j) => j !== i)
-          .sort(() => Math.random() - 0.5)
-          .slice(0, 3)
-          .map((c) => (showTermFirst ? c.back : c.front));
-        const options = [correctAnswer, ...others]
-          .sort(() => Math.random() - 0.5)
-          .map((text, idx) => ({ text, key: String(idx + 1), isCorrect: text === correctAnswer }));
-        return { card, type: "mcq", prompt: showTermFirst ? card.front : card.back, options };
-      }
+  return cards.map((card, index) => {
+    const type = QUESTION_TYPES[Math.floor(Math.random() * QUESTION_TYPES.length)];
 
-      if (type === "truefalse") {
-        const showCorrect = Math.random() >= 0.5;
-        let shownDef = card.back;
-        if (!showCorrect) {
-          const others = shuffled.filter((_, j) => j !== i);
-          if (others.length > 0) {
-            shownDef = others[Math.floor(Math.random() * others.length)].back;
-          } else {
-            return { card, type: "truefalse", prompt: card.front, shownDef: card.back, isCorrect: true };
-          }
+    if (type === "mcq") {
+      const correctAnswer = showTermFirst ? card.back : card.front;
+      const others = shuffleItems(cards.filter((_, questionIndex) => questionIndex !== index))
+        .slice(0, 3)
+        .map((candidate) => (showTermFirst ? candidate.back : candidate.front));
+      const options = shuffleItems([correctAnswer, ...others])
+        .map((text, optionIndex) => ({ text, key: String(optionIndex + 1), isCorrect: text === correctAnswer }));
+
+      return { cardId: card.id, type: "mcq", prompt: showTermFirst ? card.front : card.back, options };
+    }
+
+    if (type === "truefalse") {
+      const showCorrect = Math.random() >= 0.5;
+      let shownDef = card.back;
+      if (!showCorrect) {
+        const others = cards.filter((_, questionIndex) => questionIndex !== index);
+        if (others.length > 0) {
+          shownDef = shuffleItems(others)[0].back;
+        } else {
+          return { cardId: card.id, type: "truefalse", prompt: card.front, shownDef: card.back, isCorrect: true };
         }
-        return { card, type: "truefalse", prompt: card.front, shownDef, isCorrect: showCorrect };
       }
+      return { cardId: card.id, type: "truefalse", prompt: card.front, shownDef, isCorrect: showCorrect };
+    }
 
-      // fillblank
-      return {
-        card,
-        type: "fillblank",
-        prompt: showTermFirst ? card.front : card.back,
-        answer: showTermFirst ? card.back : card.front,
-      };
-    });
-  }, [shuffled, showTermFirst]);
+    return {
+      cardId: card.id,
+      type: "fillblank",
+      prompt: showTermFirst ? card.front : card.back,
+      answer: showTermFirst ? card.back : card.front,
+    };
+  });
+};
 
-  const [current, setCurrent] = useState(0);
-  const [answered, setAnswered] = useState(false);
-  const [correctCount, setCorrectCount] = useState(0);
-  const [lastCorrect, setLastCorrect] = useState(null);
+const MixedMode = ({ flashcards, showTermFirst = true, onQuit, onSessionComplete, sessionState, onStateChange }) => {
+  const restoredStateRef = useRef({
+    questions: Array.isArray(sessionState?.questions) && sessionState.questions.length > 0
+      ? sessionState.questions
+      : buildQuestions(flashcards || [], showTermFirst),
+    current: typeof sessionState?.current === "number" ? sessionState.current : 0,
+    answered: Boolean(sessionState?.answered),
+    correctCount: Number(sessionState?.correctCount || 0),
+    lastCorrect: typeof sessionState?.lastCorrect === "boolean" ? sessionState.lastCorrect : null,
+    mcqSelected: typeof sessionState?.mcqSelected === "number" ? sessionState.mcqSelected : null,
+    tfChoice: sessionState?.tfChoice ?? null,
+    fillValue: String(sessionState?.fillValue || ""),
+    fillChecked: Boolean(sessionState?.fillChecked),
+    sessionStartedAt: sessionState?.sessionStartedAt || new Date().toISOString(),
+  });
+
+  const [questions] = useState(restoredStateRef.current.questions);
+
+  const [current, setCurrent] = useState(restoredStateRef.current.current);
+  const [answered, setAnswered] = useState(restoredStateRef.current.answered);
+  const [correctCount, setCorrectCount] = useState(restoredStateRef.current.correctCount);
+  const [lastCorrect, setLastCorrect] = useState(restoredStateRef.current.lastCorrect);
   // MCQ state
-  const [mcqSelected, setMcqSelected] = useState(null);
+  const [mcqSelected, setMcqSelected] = useState(restoredStateRef.current.mcqSelected);
   // T/F state
-  const [tfChoice, setTfChoice] = useState(null);
+  const [tfChoice, setTfChoice] = useState(restoredStateRef.current.tfChoice);
   // Fill blank state
-  const [fillValue, setFillValue] = useState("");
-  const [fillChecked, setFillChecked] = useState(false);
+  const [fillValue, setFillValue] = useState(restoredStateRef.current.fillValue);
+  const [fillChecked, setFillChecked] = useState(restoredStateRef.current.fillChecked);
 
-  const sessionStartRef = useRef(new Date().toISOString());
+  const sessionStartRef = useRef(restoredStateRef.current.sessionStartedAt);
   const sessionCompleteRef = useRef(false);
   const fillInputRef = useRef(null);
 
   const q = questions[current] || null;
+
+  useEffect(() => {
+    if (!onStateChange) return;
+    const completedIds = questions.slice(0, current).map((question) => question.cardId);
+    if (answered && q?.cardId != null) {
+      completedIds.push(q.cardId);
+    }
+
+    onStateChange({
+      completedIds: [...new Set(completedIds)],
+      currentIndex: current,
+      stats: {
+        reviewed: completedIds.length,
+        correct: correctCount,
+        incorrect: Math.max(0, completedIds.length - correctCount),
+      },
+      modeState: {
+        questions,
+        current,
+        answered,
+        correctCount,
+        lastCorrect,
+        mcqSelected,
+        tfChoice,
+        fillValue,
+        fillChecked,
+        sessionStartedAt: sessionStartRef.current,
+      },
+    });
+  }, [answered, correctCount, current, fillChecked, fillValue, lastCorrect, mcqSelected, onStateChange, q?.cardId, questions, tfChoice]);
 
   const advance = useCallback(() => {
     setAnswered(false);
@@ -177,7 +219,7 @@ const MixedMode = ({ flashcards, showTermFirst = true, onQuit, onSessionComplete
 
   if (!flashcards) return <LoadingScreen />;
 
-  if (shuffled.length < 4) {
+  if (questions.length < 4) {
     return (
       <div className={styles.layout}>
         <div className={styles.content}>

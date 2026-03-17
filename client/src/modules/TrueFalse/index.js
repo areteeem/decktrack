@@ -9,41 +9,86 @@ import LoadingScreen from "../../common/components/LoadingScreen";
  * is correct, 50 % it's swapped with a random other card's definition.
  * Student picks True or False.
  */
-const TrueFalse = ({ flashcards, onQuit, onSessionComplete }) => {
-  const shuffled = useMemo(() => {
-    if (!flashcards) return [];
-    return [...flashcards].sort(() => Math.random() - 0.5);
+const shuffleItems = (items) => [...items].sort(() => Math.random() - 0.5);
+
+const buildQuestions = (cards) => {
+  if (!Array.isArray(cards)) return [];
+  return cards.map((card, index) => {
+    const showCorrect = Math.random() >= 0.5;
+    let shownDef = card.back;
+
+    if (!showCorrect) {
+      const others = cards.filter((_, otherIndex) => otherIndex !== index);
+      if (others.length > 0) {
+        shownDef = shuffleItems(others)[0].back;
+      } else {
+        return { cardId: card.id, shownDef: card.back, isCorrect: true };
+      }
+    }
+
+    return { cardId: card.id, shownDef, isCorrect: showCorrect };
+  });
+};
+
+const TrueFalse = ({ flashcards, onQuit, onSessionComplete, sessionState, onStateChange }) => {
+  const restoredStateRef = useRef({
+    questions: Array.isArray(sessionState?.questions) && sessionState.questions.length > 0
+      ? sessionState.questions
+      : buildQuestions(flashcards || []),
+    current: typeof sessionState?.current === "number" ? sessionState.current : 0,
+    answered: sessionState?.answered ?? null,
+    correctCount: Number(sessionState?.correctCount || 0),
+    cardResults: sessionState?.cardResults || {},
+    sessionStartedAt: sessionState?.sessionStartedAt || new Date().toISOString(),
+  });
+  const cardById = useMemo(() => {
+    const map = new Map();
+    (flashcards || []).forEach((card) => {
+      map.set(String(card.id), card);
+    });
+    return map;
   }, [flashcards]);
 
-  // Pre-compute whether each card shows correct or wrong definition
-  const questions = useMemo(() => {
-    return shuffled.map((card, i) => {
-      const showCorrect = Math.random() >= 0.5;
-      let shownDef = card.back;
-      if (!showCorrect) {
-        // Pick a random different card's definition
-        const others = shuffled.filter((_, j) => j !== i);
-        if (others.length > 0) {
-          shownDef = others[Math.floor(Math.random() * others.length)].back;
-        } else {
-          // Only 1 card — always correct
-          return { card, shownDef: card.back, isCorrect: true };
-        }
-      }
-      return { card, shownDef, isCorrect: showCorrect };
-    });
-  }, [shuffled]);
+  const [questions] = useState(restoredStateRef.current.questions);
 
-  const [current, setCurrent] = useState(0);
-  const [answered, setAnswered] = useState(null); // "true" | "false" | null
-  const [correctCount, setCorrectCount] = useState(0);
-  const [cardResults, setCardResults] = useState({});
-  const sessionStartRef = useRef(new Date().toISOString());
+  const [current, setCurrent] = useState(restoredStateRef.current.current);
+  const [answered, setAnswered] = useState(restoredStateRef.current.answered); // "true" | "false" | null
+  const [correctCount, setCorrectCount] = useState(restoredStateRef.current.correctCount);
+  const [cardResults, setCardResults] = useState(restoredStateRef.current.cardResults);
+  const sessionStartRef = useRef(restoredStateRef.current.sessionStartedAt);
   const sessionCompleteRef = useRef(false);
 
   const stripHtml = (str) => (str || "").replace(/<[^>]*>/g, "").trim();
 
   const q = questions[current] || null;
+  const currentCard = q ? cardById.get(String(q.cardId)) : null;
+
+  useEffect(() => {
+    if (!onStateChange) return;
+    const completedIds = questions.slice(0, current).map((question) => question.cardId);
+    if (answered !== null && q?.cardId != null) {
+      completedIds.push(q.cardId);
+    }
+
+    onStateChange({
+      completedIds: [...new Set(completedIds)],
+      currentIndex: current,
+      stats: {
+        reviewed: completedIds.length,
+        correct: correctCount,
+        incorrect: Math.max(0, completedIds.length - correctCount),
+      },
+      cardResults,
+      modeState: {
+        questions,
+        current,
+        answered,
+        correctCount,
+        cardResults,
+        sessionStartedAt: sessionStartRef.current,
+      },
+    });
+  }, [answered, cardResults, correctCount, current, onStateChange, q?.cardId, questions]);
 
   const handleAnswer = useCallback(
     (choice) => {
@@ -55,16 +100,16 @@ const TrueFalse = ({ flashcards, onQuit, onSessionComplete }) => {
 
       setCardResults((prev) => ({
         ...prev,
-        [current]: {
-          front: q.card.front,
-          back: q.card.back,
+        [String(q.cardId)]: {
+          front: currentCard?.front,
+          back: currentCard?.back,
           shownDef: q.shownDef,
           correct: wasRight,
           choice,
         },
       }));
     },
-    [answered, q, current]
+    [answered, currentCard, q]
   );
 
   const handleNext = useCallback(() => {
@@ -117,7 +162,7 @@ const TrueFalse = ({ flashcards, onQuit, onSessionComplete }) => {
 
   if (!flashcards) return <LoadingScreen />;
 
-  if (shuffled.length === 0) {
+  if (questions.length === 0) {
     return (
       <div className={styles.layout}>
         <div className={styles.content}>
@@ -206,7 +251,7 @@ const TrueFalse = ({ flashcards, onQuit, onSessionComplete }) => {
       </div>
       <div className={styles.content}>
         <div className={styles.card}>
-          <p className={styles.term}>{stripHtml(q.card.front)}</p>
+          <p className={styles.term}>{stripHtml(currentCard?.front)}</p>
           <p className={styles.definition}>{stripHtml(q.shownDef)}</p>
 
           <div className={styles.buttons}>
@@ -238,7 +283,7 @@ const TrueFalse = ({ flashcards, onQuit, onSessionComplete }) => {
               {!wasRight && (
                 <p className={styles.correctDef}>
                   Correct definition:{" "}
-                  <strong>{stripHtml(q.card.back)}</strong>
+                  <strong>{stripHtml(currentCard?.back)}</strong>
                 </p>
               )}
               <button className={styles.nextBtn} onClick={handleNext}>

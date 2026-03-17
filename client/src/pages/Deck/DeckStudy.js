@@ -13,6 +13,24 @@ import TrueFalse from "../../modules/TrueFalse";
 import { useDeck, useNewCards, useDueCards, useRecordSession } from "../../hooks/useSupabaseData";
 import { getStudySession, saveStudySession, clearStudySession } from "../../lib/studySession";
 
+const DEFAULT_SESSION_STATS = {
+  reviewed: 0,
+  again: 0,
+  hard: 0,
+  good: 0,
+  easy: 0,
+  correct: 0,
+  incorrect: 0,
+};
+
+const shuffleCards = (cards) => [...cards].sort(() => Math.random() - 0.5);
+
+const resolveShowTermFirst = (sideOrder) => {
+  if (sideOrder === "def") return false;
+  if (sideOrder === "mixed") return Math.random() > 0.5;
+  return true;
+};
+
 /**
  * Unified study page for a deck.
  * Shows a setup screen first, then launches the chosen study mode.
@@ -41,6 +59,23 @@ const DeckStudy = () => {
     return allCards.filter(c => (c.again_count || 0) >= 3 || (c.ease_factor && c.ease_factor < 2.0));
   }, [allCards]);
 
+  const getCardsForPool = useCallback((pool) => {
+    switch (pool) {
+      case "new":
+        return newCards || [];
+      case "due":
+        return dueCards || [];
+      case "mixed":
+        return [...(newCards || []), ...(dueCards || [])];
+      case "hard":
+        return hardCards;
+      case "all":
+        return allCards;
+      default:
+        return newCards || [];
+    }
+  }, [allCards, dueCards, hardCards, newCards]);
+
   // Check for existing session on mount
   useEffect(() => {
     if (loading || config) return;
@@ -68,50 +103,39 @@ const DeckStudy = () => {
 
   // Start a fresh session from setup
   const handleStart = useCallback((cfg) => {
+    const poolCards = getCardsForPool(cfg.pool);
+    const orderedCards = cfg.shuffle ? shuffleCards(poolCards) : [...poolCards];
     const session = {
       ...cfg,
+      showTermFirst: resolveShowTermFirst(cfg.sideOrder),
       startedAt: new Date().toISOString(),
+      cardOrder: orderedCards.map((card) => card.id),
       completedIds: [],
       currentIndex: 0,
-      stats: { reviewed: 0, again: 0, hard: 0, good: 0, easy: 0 },
+      stats: { ...DEFAULT_SESSION_STATS },
       cardResults: {},
+      modeState: null,
     };
     saveStudySession(deckId, session);
     setConfig(session);
-  }, [deckId]);
+  }, [deckId, getCardsForPool]);
 
-  // Called by study modules when a card is graded
-  const handleProgress = useCallback((cardId, grade, position, total, cardFront, cardBack) => {
-    const session = getStudySession(deckId);
+  const handleModeStateChange = useCallback((patch) => {
+    const session = getStudySession(deckId) || config;
     if (!session) return;
-    const completedIds = [...new Set([...(session.completedIds || []), cardId])];
-    const stats = { ...(session.stats || {}), reviewed: (session.stats?.reviewed || 0) + 1 };
-    if (grade) stats[grade] = (stats[grade] || 0) + 1;
-
-    // Track per-card results for hardness detection
-    const cardResults = { ...(session.cardResults || {}) };
-    if (!cardResults[cardId]) {
-      cardResults[cardId] = { front: cardFront || '', back: cardBack || '', grades: [], attempts: 0 };
-    }
-    cardResults[cardId].grades.push(grade);
-    cardResults[cardId].attempts += 1;
-
-    saveStudySession(deckId, { ...session, completedIds, currentIndex: position, stats, cardResults });
-  }, [deckId]);
+    saveStudySession(deckId, { ...session, ...patch });
+  }, [config, deckId]);
 
   // Called when session is complete — keep session data for results, mark as done
   const handleComplete = useCallback(() => {
-    // Don't clear immediately — results screen will read it
-    // Just mark updatedAt so sidebar stops showing it
-    const session = getStudySession(deckId);
+    const session = getStudySession(deckId) || config;
     if (session) {
       saveStudySession(deckId, { ...session, finished: true });
     }
-    // Clear after a short delay to allow results screen to read data
     setTimeout(() => clearStudySession(deckId), 2000);
-  }, [deckId]);
+  }, [config, deckId]);
 
-  const handleSessionComplete = useCallback(async (summary) => {
+  const handleRecordSession = useCallback(async (summary) => {
     await recordSession({
       ...summary,
       assignment_id: null,
@@ -119,10 +143,24 @@ const DeckStudy = () => {
     });
   }, [deck?.name, recordSession]);
 
+  const handleModeSessionComplete = useCallback(async (summary) => {
+    await handleRecordSession(summary);
+    handleComplete();
+  }, [handleComplete, handleRecordSession]);
+
   // Quit: save progress and navigate back to deck
   const handleQuit = useCallback(() => {
     navigate(`/deck/${deckId}`);
   }, [navigate, deckId]);
+
+  const poolCards = useMemo(
+    () => (config ? getCardsForPool(config.pool) : []),
+    [config, getCardsForPool]
+  );
+  const cardsById = useMemo(
+    () => new Map(poolCards.map((card) => [String(card.id), card])),
+    [poolCards]
+  );
 
   if (loading) return <LoadingScreen />;
   if (!deck) {
@@ -180,57 +218,48 @@ const DeckStudy = () => {
     );
   }
 
-  // Determine card pool
-  let cards = [];
-  switch (config.pool) {
-    case "new": cards = newCards || []; break;
-    case "due": cards = dueCards || []; break;
-    case "mixed": cards = [...(newCards || []), ...(dueCards || [])]; break;
-    case "hard": cards = hardCards; break;
-    case "all": cards = allCards; break;
-    default: cards = newCards || [];
+  let cards = Array.isArray(config.cardOrder) && config.cardOrder.length > 0
+    ? config.cardOrder.map((cardId) => cardsById.get(String(cardId))).filter(Boolean)
+    : poolCards;
+
+  if (cards.length === 0) {
+    cards = poolCards;
   }
 
-  // Shuffle if requested (only on first start, not resume)
-  if (config.shuffle && !config.completedIds?.length) {
-    cards = [...cards].sort(() => Math.random() - 0.5);
-  }
-
-  // Determine showTermFirst from side order
-  const getShowTermFirst = () => {
-    if (config.sideOrder === "def") return false;
-    if (config.sideOrder === "mixed") return Math.random() > 0.5;
-    return true; // "term"
-  };
-
-  const showTermFirst = getShowTermFirst();
+  const showTermFirst = typeof config.showTermFirst === "boolean"
+    ? config.showTermFirst
+    : resolveShowTermFirst(config.sideOrder);
 
   // Common props for all modules
   const sharedProps = { onQuit: handleQuit };
+  const sharedSessionProps = {
+    sessionState: config.modeState || null,
+    onStateChange: handleModeStateChange,
+  };
 
   // Render appropriate study mode
   switch (config.mode) {
     case "mcq":
-      return <MultipleChoice flashcards={cards} showTermFirst={showTermFirst} onSessionComplete={handleSessionComplete} {...sharedProps} />;
+      return <MultipleChoice flashcards={cards} showTermFirst={showTermFirst} onSessionComplete={handleModeSessionComplete} {...sharedSessionProps} {...sharedProps} />;
     case "fillblank":
-      return <FillBlank flashcards={cards} onSessionComplete={handleSessionComplete} {...sharedProps} />;
+      return <FillBlank flashcards={cards} onSessionComplete={handleModeSessionComplete} {...sharedSessionProps} {...sharedProps} />;
     case "match":
-      return <MatchGame flashcards={cards} onSessionComplete={handleSessionComplete} {...sharedProps} />;
+      return <MatchGame flashcards={cards} onSessionComplete={handleModeSessionComplete} {...sharedSessionProps} {...sharedProps} />;
     case "quiz":
-      return <FillBlank flashcards={cards} onSessionComplete={handleSessionComplete} {...sharedProps} />;
+      return <FillBlank flashcards={cards} onSessionComplete={handleModeSessionComplete} {...sharedSessionProps} {...sharedProps} />;
     case "wheel":
-      return <SpinWheel flashcards={cards} onSessionComplete={handleSessionComplete} {...sharedProps} />;
+      return <SpinWheel flashcards={cards} onSessionComplete={handleModeSessionComplete} {...sharedSessionProps} {...sharedProps} />;
     case "mixedmode":
-      return <MixedMode flashcards={cards} showTermFirst={showTermFirst} onSessionComplete={handleSessionComplete} {...sharedProps} />;
+      return <MixedMode flashcards={cards} showTermFirst={showTermFirst} onSessionComplete={handleModeSessionComplete} {...sharedSessionProps} {...sharedProps} />;
     case "truefalse":
-      return <TrueFalse flashcards={cards} onSessionComplete={handleSessionComplete} {...sharedProps} />;
+      return <TrueFalse flashcards={cards} onSessionComplete={handleModeSessionComplete} {...sharedSessionProps} {...sharedProps} />;
     case "flashcards":
     default:
       // For new cards use Learn, for due/mixed/hard/all use Practice
       if (config.pool === "new") {
-        return <Learn flashcards={cards} showTermFirst={showTermFirst} onProgress={handleProgress} onComplete={handleComplete} onSessionComplete={handleSessionComplete} {...sharedProps} />;
+        return <Learn flashcards={cards} showTermFirst={showTermFirst} onComplete={handleComplete} onSessionComplete={handleRecordSession} {...sharedSessionProps} {...sharedProps} />;
       }
-      return <Practice flashcards={cards} showTermFirst={showTermFirst} onProgress={handleProgress} onComplete={handleComplete} onSessionComplete={handleSessionComplete} {...sharedProps} />;
+      return <Practice flashcards={cards} showTermFirst={showTermFirst} onComplete={handleComplete} onSessionComplete={handleRecordSession} {...sharedSessionProps} {...sharedProps} />;
   }
 };
 

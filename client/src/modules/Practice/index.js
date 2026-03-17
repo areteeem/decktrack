@@ -53,10 +53,31 @@ const computeHardness = (cardResult) => {
   return score;
 };
 
-const Practice = ({ flashcards, showTermFirst = true, onProgress, onComplete, onQuit, onSessionComplete }) => {
+const Practice = ({ flashcards, showTermFirst = true, onComplete, onQuit, onSessionComplete, sessionState, onStateChange }) => {
   const { updateStudentCard } = useUpdateStudentCard();
   const { srsMode, t } = useSettings();
-  const sessionStartedAtRef = useRef(Date.now());
+  const initialQueueIds = useMemo(() => {
+    if (!flashcards) return [];
+    return flashcards.map((card) => card.id);
+  }, [flashcards]);
+  const restoredStateRef = useRef({
+    queueIds: Array.isArray(sessionState?.queueIds) && sessionState.queueIds.length > 0
+      ? sessionState.queueIds
+      : initialQueueIds,
+    position: typeof sessionState?.position === "number" ? sessionState.position : 0,
+    isFlipped: Boolean(sessionState?.isFlipped),
+    sessionStats: sessionState?.sessionStats || { reviewed: 0, again: 0, hard: 0, good: 0, easy: 0 },
+    cardResults: sessionState?.cardResults || {},
+    sessionStartedAt: typeof sessionState?.sessionStartedAt === "number" ? sessionState.sessionStartedAt : Date.now(),
+  });
+  const cardById = useMemo(() => {
+    const map = new Map();
+    (flashcards || []).forEach((card) => {
+      map.set(String(card.id), card);
+    });
+    return map;
+  }, [flashcards]);
+  const sessionStartedAtRef = useRef(restoredStateRef.current.sessionStartedAt);
   const sessionReportedRef = useRef(false);
 
   // Study timer
@@ -65,30 +86,42 @@ const Practice = ({ flashcards, showTermFirst = true, onProgress, onComplete, on
     return () => { clearInterval(id); timerStop(); };
   }, []);
 
-  const initialQueue = useMemo(() => {
-    if (!flashcards) return [];
-    return [...flashcards];
-  }, [flashcards]);
+  const [queueIds, setQueueIds] = useState(restoredStateRef.current.queueIds);
+  const [position, setPosition] = useState(restoredStateRef.current.position);
+  const [isFlipped, setIsFlipped] = useState(restoredStateRef.current.isFlipped);
+  const [sessionStats, setSessionStats] = useState(restoredStateRef.current.sessionStats);
+  const [cardResults, setCardResults] = useState(restoredStateRef.current.cardResults);
 
-  const [queue, setQueue] = useState(initialQueue);
-  const [position, setPosition] = useState(0);
-  const [isFlipped, setIsFlipped] = useState(false);
-  const [sessionStats, setSessionStats] = useState({ reviewed: 0, again: 0, hard: 0, good: 0, easy: 0 });
-  const [cardResults, setCardResults] = useState({});
-
-  useEffect(() => {
-    setQueue([...initialQueue]);
-    setPosition(0);
-    setIsFlipped(false);
-    setSessionStats({ reviewed: 0, again: 0, hard: 0, good: 0, easy: 0 });
-    setCardResults({});
-    sessionStartedAtRef.current = Date.now();
-    sessionReportedRef.current = false;
-  }, [initialQueue]);
+  const queue = useMemo(
+    () => queueIds.map((cardId) => cardById.get(String(cardId))).filter(Boolean),
+    [cardById, queueIds]
+  );
 
   const totalUnique = flashcards?.length || 0;
   const currentCard = queue[position];
   const isComplete = position >= queue.length;
+
+  useEffect(() => {
+    if (!onStateChange) return;
+    onStateChange({
+      completedIds: Object.keys(cardResults),
+      currentIndex: position,
+      stats: {
+        ...sessionStats,
+        correct: Number(sessionStats.good || 0) + Number(sessionStats.easy || 0),
+        incorrect: Number(sessionStats.again || 0) + Number(sessionStats.hard || 0),
+      },
+      cardResults,
+      modeState: {
+        queueIds,
+        position,
+        isFlipped,
+        sessionStats,
+        cardResults,
+        sessionStartedAt: sessionStartedAtRef.current,
+      },
+    });
+  }, [cardResults, isFlipped, onStateChange, position, queueIds, sessionStats]);
 
   // Notify parent when session completes
   useEffect(() => {
@@ -171,24 +204,16 @@ const Practice = ({ flashcards, showTermFirst = true, onProgress, onComplete, on
     // Re-queue "Again" cards
     if (requeue) {
       const reinsertAt = Math.min(position + 3 + Math.floor(Math.random() * 3), queue.length);
-      setQueue(prev => {
+      setQueueIds(prev => {
         const next = [...prev];
-        next.splice(reinsertAt, 0, {
-          ...currentCard,
-          again_count: (currentCard.again_count || 0) + 1,
-          next_review_days: 1,
-          ease_factor: ease,
-        });
+        next.splice(reinsertAt, 0, currentCard.id);
         return next;
       });
     }
 
     setIsFlipped(false);
     setPosition(prev => prev + 1);
-
-    // Notify parent of progress
-    onProgress?.(currentCard.id, grade, position + 1, queue.length, currentCard.front, currentCard.back);
-  }, [isComplete, currentCard, position, queue.length, updateStudentCard, onProgress]);
+  }, [isComplete, currentCard, position, queue.length, updateStudentCard]);
 
   useEffect(() => {
     const handleKeyDown = (e) => {
