@@ -86,6 +86,8 @@ const Deck = () => {
   const exportMenuRef = useRef(null);
   const exportBtnRef = useRef(null);
   const navigate = useNavigate();
+  const menuRef = useRef(null);
+  const titleRef = useRef(null);
   const actionsRef = useRef(null);
   const actionsMeasureRef = useRef(null);
   const overflowMenuRef = useRef(null);
@@ -365,13 +367,24 @@ const Deck = () => {
   }, [deck?.name]);
 
   useEffect(() => {
-    if (!actionsRef.current || !actionsMeasureRef.current) return undefined;
+    if (!actionsRef.current || !actionsMeasureRef.current || !menuRef.current || !titleRef.current) return undefined;
 
     const evaluateToolbar = () => {
       const availableWidth = actionsRef.current?.clientWidth || 0;
       const requiredWidth = actionsMeasureRef.current?.scrollWidth || 0;
-      if (!availableWidth || !requiredWidth) return;
-      setUseOverflowMenu(requiredWidth > availableWidth + 8);
+      const menuWidth = menuRef.current?.clientWidth || 0;
+      const titleWidth = titleRef.current?.scrollWidth || 0;
+      if (!requiredWidth) return;
+
+      const needsCompactBecauseActionsOverflow = availableWidth > 0 && requiredWidth > availableWidth + 8;
+      const needsCompactBecauseHeaderWraps = menuWidth > 0 && titleWidth > 0 && (titleWidth + requiredWidth + 32) > menuWidth;
+      const needsCompactBecauseViewportIsTight = menuWidth > 0 && menuWidth < 780;
+
+      setUseOverflowMenu(
+        needsCompactBecauseActionsOverflow
+        || needsCompactBecauseHeaderWraps
+        || needsCompactBecauseViewportIsTight
+      );
     };
 
     evaluateToolbar();
@@ -389,7 +402,7 @@ const Deck = () => {
       window.removeEventListener("resize", evaluateToolbar);
       resizeObserver?.disconnect();
     };
-  }, [deck?.id, deck?.name, flashcards.length, hardCards, isTeacher, isContinuingSession, deckCourseCount, selectionMode, viewMode]);
+  }, [deck?.id, deck?.name, deckRetention, flashcards.length, hardCards, isTeacher, isContinuingSession, deckCourseCount, newCards, dueCards, selectionMode, sessionProgress, viewMode]);
 
   useEffect(() => {
     if (!useOverflowMenu) setShowOverflowMenu(false);
@@ -619,6 +632,14 @@ const Deck = () => {
                   <span>{t("study")}</span>
                 </button>
               )}
+              <button className={styles.overflowItem} onClick={() => { closeOverflowMenu(); navigate("new"); }}>
+                <span>{t("learnNewBtn")}</span>
+                <Badge>{newCards}</Badge>
+              </button>
+              <button className={styles.overflowItem} onClick={() => { closeOverflowMenu(); navigate("due"); }}>
+                <span>{t("studyDue")}</span>
+                <Badge>{dueCards}</Badge>
+              </button>
               {hardCards > 0 && (
                 <button className={styles.overflowItem} onClick={() => { closeOverflowMenu(); navigate("study?pool=hard"); }}>
                   <span>{t("hard")}</span>
@@ -678,8 +699,8 @@ const Deck = () => {
           deckId={params.id}
           onSaved={refetch}
         />
-        <div className={styles.menu}>
-          <h1 className={styles.title}>
+        <div className={styles.menu} ref={menuRef}>
+          <h1 className={styles.title} ref={titleRef}>
             {deck.name}
             {deckRetention > 0 ? (
               <RetentionBadge retention={deckRetention}>

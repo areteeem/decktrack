@@ -2252,80 +2252,82 @@ export const useStudentCourses = () => {
   const [error, setError] = useState(null);
 
   const refetch = useCallback(async () => {
-    if (!user) { 
-      console.log('[useStudentCourses] No user, clearing courses');
-      setCourses([]); 
-      setLoading(false); 
-      return; 
+    if (!user) {
+      setCourses([]);
+      setLoading(false);
+      return;
     }
-    
+
     setLoading(true);
     setError(null);
-    
+
     try {
       const userId = String(user.id || '').trim();
-      console.log('[useStudentCourses] Starting fetch for user:', userId);
-      
-      const baseSelect = 'id, name, description, color, icon, sort_order, owner_id, flashy_course_decks(deck_id, sort_order, flashy_decks(id, name, description, category)), flashy_course_members(student_id, flashy_profiles!flashy_course_members_student_id_fkey(id, display_name, email, role))';
-      
-      // ATTEMPT 1: Full query with visibility table
-      console.log('[useStudentCourses] Attempting query with visibility table...');
-      let { data, error } = await supabase
-        .from('flashy_courses')
-        .select(`${baseSelect}, flashy_course_student_deck_visibility(student_id, deck_id, is_hidden)`)
-        .eq('is_archived', false)
-        .order('sort_order')
-        .order('name');
 
-      if (error) {
-        console.warn('[useStudentCourses] Visibility query failed:', error.message);
-        
-        // ATTEMPT 2: Query without visibility table (RLS may block it)
-        console.log('[useStudentCourses] Attempting query without visibility table...');
-        ({ data, error } = await supabase
-          .from('flashy_courses')
-          .select(baseSelect)
-          .eq('is_archived', false)
-          .order('sort_order')
-          .order('name'));
-        
-        if (error) {
-          console.error('[useStudentCourses] Base query also failed:', error.message);
-          throw error;
-        }
+      const { data: memberships, error: membershipError } = await supabase
+        .from('flashy_course_members')
+        .select('course_id')
+        .eq('student_id', userId);
+
+      if (membershipError) {
+        throw membershipError;
       }
 
-      console.log('[useStudentCourses] Query returned courses:', data?.length || 0);
-      
-      if (!data || data.length === 0) {
-        console.log('[useStudentCourses] No courses found in database');
+      const courseIds = [...new Set(
+        (memberships || [])
+          .map((entry) => String(entry?.course_id || '').trim())
+          .filter(Boolean)
+      )];
+
+      if (courseIds.length === 0) {
         setCourses([]);
         return;
       }
 
-      // Filter courses where current student is a member
-      const studentCourses = data.filter((course) => {
-        const members = course.flashy_course_members || [];
-        const isMember = members.some((m) => String(m.student_id || '').trim() === userId);
-        if (!isMember) {
-          console.log('[useStudentCourses] Filtering out course (not a member):', course.id, course.name);
+      const baseSelect = 'id, name, description, color, icon, sort_order, owner_id, flashy_course_decks(deck_id, sort_order, flashy_decks(id, name, description, category)), flashy_course_members(student_id, flashy_profiles!flashy_course_members_student_id_fkey(id, display_name, email, role))';
+      const { data: courseRows, error: courseError } = await supabase
+        .from('flashy_courses')
+        .select(baseSelect)
+        .in('id', courseIds)
+        .eq('is_archived', false)
+        .order('sort_order')
+        .order('name');
+
+      if (courseError) {
+        throw courseError;
+      }
+
+      let visibilityRows = [];
+      const { data: fetchedVisibilityRows, error: visibilityError } = await supabase
+        .from('flashy_course_student_deck_visibility')
+        .select('course_id, student_id, deck_id, is_hidden')
+        .eq('student_id', userId)
+        .in('course_id', courseIds);
+
+      if (visibilityError) {
+        const visibilityMessage = String(visibilityError.message || '');
+        if (!/flashy_course_student_deck_visibility|does not exist/i.test(visibilityMessage)) {
+          console.warn('[useStudentCourses] visibility lookup failed:', visibilityMessage);
         }
-        return isMember;
+      } else {
+        visibilityRows = Array.isArray(fetchedVisibilityRows) ? fetchedVisibilityRows : [];
+      }
+
+      const hiddenDeckIdsByCourse = new Map();
+      visibilityRows.forEach((row) => {
+        if (row?.is_hidden !== true) return;
+        const courseId = String(row?.course_id || '').trim();
+        const deckId = String(row?.deck_id || '').trim();
+        if (!courseId || !deckId) return;
+        const current = hiddenDeckIdsByCourse.get(courseId) || new Set();
+        current.add(deckId);
+        hiddenDeckIdsByCourse.set(courseId, current);
       });
 
-      console.log('[useStudentCourses] Courses after membership filter:', studentCourses.length);
-
-      // Process visibility and decks
-      const filteredCourses = studentCourses.map((course) => {
-        const hiddenDeckIds = new Set(
-          (course.flashy_course_student_deck_visibility || [])
-            .filter((row) => String(row.student_id || '').trim() === userId && row.is_hidden === true)
-            .map((row) => String(row.deck_id || '').trim())
-            .filter(Boolean)
-        );
-
+      const filteredCourses = (courseRows || []).map((course) => {
+        const hiddenDeckIds = hiddenDeckIdsByCourse.get(String(course?.id || '').trim()) || new Set();
         const visibleDecks = (course.flashy_course_decks || []).filter((entry) => {
-          const deckId = String(entry.deck_id || entry.flashy_decks?.id || '').trim();
+          const deckId = String(entry?.deck_id || entry?.flashy_decks?.id || '').trim();
           return deckId && !hiddenDeckIds.has(deckId);
         });
 
@@ -2335,15 +2337,14 @@ export const useStudentCourses = () => {
         };
       });
 
-      console.log('[useStudentCourses] Final filtered courses:', filteredCourses.length);
       setCourses(filteredCourses);
     } catch (err) {
       const errorMsg = err?.message || String(err);
       console.error('[useStudentCourses] Fatal error:', errorMsg);
       setError(errorMsg);
       setCourses([]);
-    } finally { 
-      setLoading(false); 
+    } finally {
+      setLoading(false);
     }
   }, [user]);
 
