@@ -827,18 +827,6 @@ const StudentsPage = () => {
   const [showBulkAssign, setShowBulkAssign] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState("name");
-  const [isScrolled, setIsScrolled] = useState(false);
-  useEffect(() => {
-    let ticking = false;
-    const onScroll = () => {
-      if (!ticking) {
-        requestAnimationFrame(() => { setIsScrolled(window.scrollY > 50); ticking = false; });
-        ticking = true;
-      }
-    };
-    window.addEventListener('scroll', onScroll, { passive: true });
-    return () => window.removeEventListener('scroll', onScroll);
-  }, []);
   const [stickyAssignNext, setStickyAssignNext] = useState(() => {
     try {
       return JSON.parse(localStorage.getItem(STICKY_NEXT_STUDENT_KEY)) === true;
@@ -1157,7 +1145,7 @@ const StudentsPage = () => {
       </div>
 
       {studentRows.length > 0 && (
-        <div className={`${styles.stickyFilters}${searchQuery || sortBy !== 'name' ? ` ${styles.isStuck}` : ''}${isScrolled ? ` ${styles.isScrolled}` : ''}`}>
+        <div className={`${styles.stickyFilters}${searchQuery || sortBy !== 'name' ? ` ${styles.isStuck}` : ''}`}>
           <div className={styles.stickyFiltersInner}>
             <div className={styles.stickyFiltersStatus}>
               <div className={styles.searchSortBar} style={{ margin: 0 }}>

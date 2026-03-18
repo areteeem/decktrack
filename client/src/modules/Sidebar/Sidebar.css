@@ -166,6 +166,10 @@
   margin-bottom: 0.5rem;
 }
 
+.continue-row {
+  position: relative;
+}
+
 .continue-link {
   display: flex;
   align-items: center;
@@ -180,6 +184,10 @@
   font-weight: 500;
   color: var(--fg);
   transition: background 0.12s;
+}
+
+.continue-link.has-delete {
+  padding-right: 2rem;
 }
 
 .continue-link:hover {
@@ -198,6 +206,47 @@
   font-size: 0.75em;
   color: var(--fg-faint);
   font-weight: 600;
+}
+
+.continue-delete {
+  position: absolute;
+  top: 50%;
+  right: 0.1rem;
+  transform: translateY(-50%);
+  opacity: 0;
+  pointer-events: none;
+  border: none;
+  background: transparent;
+  color: var(--fg-faint);
+  border-radius: 999px;
+  width: 1.5rem;
+  height: 1.5rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 0.95rem;
+  line-height: 1;
+  transition: opacity 0.12s, color 0.12s, background 0.12s;
+}
+
+.continue-row:hover .continue-delete,
+.continue-delete:focus-visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.continue-delete:hover,
+.continue-delete:focus-visible {
+  color: var(--danger, #dc2626);
+  background: var(--card-hover);
+  outline: none;
+}
+
+.continue-delete:disabled {
+  opacity: 1;
+  pointer-events: auto;
+  cursor: wait;
 }
 
 .study-time-sidebar {

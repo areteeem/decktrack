@@ -2,7 +2,7 @@
 import "./Sidebar.css";
 import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import logo from "../../common/logo1.svg";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { useLogout } from "../../common/hooks/useLogout";
 import NewDeckModal from "./NewDeckModal";
 import DeckLink from "./DeckLink";
@@ -11,7 +11,7 @@ import { toast } from "react-toastify";
 import { useDecks, useStudentStats, useAssignments, usePerDeckStats, useUnassignDeck } from "../../hooks/useSupabaseData";
 import { useAuth } from "../../contexts/AuthContext";
 import { useSettings } from "../../contexts/SettingsContext";
-import { getSessionProgress, getActiveSessionDeckIds } from "../../lib/studySession";
+import { getSessionProgress, getActiveSessionDeckIds, getStudySession, clearStudySession } from "../../lib/studySession";
 import { getTotalSeconds, formatStudyTime } from "../../lib/studyTimer";
 
 const SORT_OPTIONS = [
@@ -29,6 +29,7 @@ const MAX_WIDTH = 380;
 
 const Sidebar = ({ isOpen, setIsOpen }) => {
   const logout = useLogout();
+  const location = useLocation();
   const { isTeacher, isStudent, user } = useAuth();
   const { t } = useSettings();
   const { data: decks, loading, error, refetch } = useDecks();
@@ -41,6 +42,8 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [studyTime, setStudyTime] = useState(() => formatStudyTime(getTotalSeconds()));
   const [removingAssignmentId, setRemovingAssignmentId] = useState(null);
+  const [removingContinueDeckId, setRemovingContinueDeckId] = useState(null);
+  const [continueSessions, setContinueSessions] = useState([]);
   const [deckSearch, setDeckSearch] = useState("");
   const [deckSort, setDeckSort] = useState("alpha");
   const [decksCollapsed, setDecksCollapsed] = useState(false);
@@ -165,20 +168,52 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
     }
   }, [refetchAssignments, unassign]);
 
-  // Active study sessions for continue-study links
-  const continueSessions = useMemo(() => {
-    if (!decks || !decks.length) return [];
+  const refreshContinueSessions = useCallback(() => {
+    if (!decks || !decks.length) {
+      setContinueSessions([]);
+      return;
+    }
     const activeIds = getActiveSessionDeckIds();
-    return activeIds
+    const nextSessions = activeIds
       .map((deckId) => {
         const deck = decks.find((d) => d.id === deckId);
         if (!deck) return null;
+        const session = getStudySession(deckId);
         const pct = getSessionProgress(deckId);
         if (pct == null || pct >= 100) return null;
-        return { deckId, name: deck.name, pct };
+        const updatedAtTs = Date.parse(String(session?.updatedAt || session?.startedAt || ""));
+        return {
+          deckId,
+          name: deck.name,
+          pct,
+          updatedAtTs: Number.isFinite(updatedAtTs) ? updatedAtTs : 0,
+        };
       })
-      .filter(Boolean);
+      .filter(Boolean)
+      .sort((left, right) => right.updatedAtTs - left.updatedAtTs);
+    setContinueSessions(nextSessions);
   }, [decks]);
+
+  useEffect(() => {
+    refreshContinueSessions();
+  }, [location.pathname, refreshContinueSessions]);
+
+  const handleRemoveContinueSession = useCallback((deckId, deckName) => {
+    if (!deckId) return;
+    const confirmed = window.confirm(`Delete unfinished study "${deckName || 'this study'}" from Continue?`);
+    if (!confirmed) return;
+
+    setRemovingContinueDeckId(deckId);
+    try {
+      clearStudySession(deckId);
+      refreshContinueSessions();
+      toast.success("Unfinished study removed");
+    } catch (removeError) {
+      toast.error(removeError?.message || "Failed to remove unfinished study");
+    } finally {
+      setRemovingContinueDeckId((current) => (current === deckId ? null : current));
+    }
+  }, [refreshContinueSessions]);
 
   return (
     <div className={isOpen ? "sidebar" : "sidebar collapsed"} ref={sidebarRef}>
@@ -340,15 +375,30 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
               {t("continueStudy")}
             </strong>
             {continueSessions.map((s) => (
-              <Link
-                key={s.deckId}
-                className="continue-link"
-                to={`/deck/${s.deckId}/study`}
-                onClick={() => setIsOpen(false)}
-              >
-                <span className="continue-name">{s.name}</span>
-                <span className="continue-pct">{s.pct}%</span>
-              </Link>
+              <div key={s.deckId} className="continue-row">
+                <Link
+                  className="continue-link has-delete"
+                  to={`/deck/${s.deckId}/study`}
+                  onClick={() => setIsOpen(false)}
+                >
+                  <span className="continue-name">{s.name}</span>
+                  <span className="continue-pct">{s.pct}%</span>
+                </Link>
+                <button
+                  type="button"
+                  className="continue-delete"
+                  onClick={(event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    handleRemoveContinueSession(s.deckId, s.name);
+                  }}
+                  disabled={removingContinueDeckId === s.deckId}
+                  title={`Delete unfinished study ${s.name}`}
+                  aria-label={`Delete unfinished study ${s.name}`}
+                >
+                  {removingContinueDeckId === s.deckId ? "..." : "×"}
+                </button>
+              </div>
             ))}
           </div>
         )}

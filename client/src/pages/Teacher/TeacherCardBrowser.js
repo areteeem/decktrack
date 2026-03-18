@@ -247,18 +247,6 @@ const TeacherCardBrowser = () => {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("all");
   const [search, setSearch] = useState("");
-  const [isScrolled, setIsScrolled] = useState(false);
-  useEffect(() => {
-    let ticking = false;
-    const onScroll = () => {
-      if (!ticking) {
-        requestAnimationFrame(() => { setIsScrolled(window.scrollY > 50); ticking = false; });
-        ticking = true;
-      }
-    };
-    window.addEventListener('scroll', onScroll, { passive: true });
-    return () => window.removeEventListener('scroll', onScroll);
-  }, []);
   const [viewMode, setViewMode] = useState("grid");
 
   const [editModal, setEditModal] = useState({ open: false, card: null });
@@ -505,7 +493,7 @@ const TeacherCardBrowser = () => {
       </div>
 
       {/* Search + filter bar — Sticky pinned */}
-      <div className={`${styles.stickyFilters}${search || filter !== 'all' ? ` ${styles.isStuck}` : ''}${isScrolled ? ` ${styles.isScrolled}` : ''}`}>
+      <div className={`${styles.stickyFilters}${search || filter !== 'all' ? ` ${styles.isStuck}` : ''}`}>
         <div className={styles.stickyFiltersInner}>
           <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem", alignItems: "center" }}>
             <input
