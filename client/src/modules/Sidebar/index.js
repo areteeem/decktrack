@@ -8,7 +8,7 @@ import NewDeckModal from "./NewDeckModal";
 import DeckLink from "./DeckLink";
 import KeyboardShortcutsModal from "../../common/components/KeyboardShortcutsModal";
 import { toast } from "react-toastify";
-import { useDecks, useStudentStats, useAssignments, usePerDeckStats, useUnassignDeck } from "../../hooks/useSupabaseData";
+import { useDecks, useStudentStats, useAssignments, usePerDeckStats } from "../../hooks/useSupabaseData";
 import { useAuth } from "../../contexts/AuthContext";
 import { useSettings } from "../../contexts/SettingsContext";
 import { getSessionProgress, getActiveSessionDeckIds, getStudySession, clearStudySession } from "../../lib/studySession";
@@ -34,14 +34,12 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
   const { t } = useSettings();
   const { data: decks, loading, error, refetch } = useDecks();
   const { data: studentStats } = useStudentStats(!isTeacher ? user?.id : null);
-  const { data: assignments, refetch: refetchAssignments } = useAssignments();
+  const { data: assignments } = useAssignments();
   const { data: perDeckStats } = usePerDeckStats();
-  const { unassign } = useUnassignDeck();
 
   const [showModal, setShowModal] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [studyTime, setStudyTime] = useState(() => formatStudyTime(getTotalSeconds()));
-  const [removingAssignmentId, setRemovingAssignmentId] = useState(null);
   const [removingContinueDeckId, setRemovingContinueDeckId] = useState(null);
   const [continueSessions, setContinueSessions] = useState([]);
   const [deckSearch, setDeckSearch] = useState("");
@@ -150,23 +148,6 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
     if (!assignments) return [];
     return assignments.filter((a) => !a.is_archived);
   }, [assignments]);
-
-  const handleRemoveAssignment = useCallback(async (assignmentId, assignmentName) => {
-    if (!assignmentId) return;
-    const confirmed = window.confirm(`Remove "${assignmentName || 'this study'}" from assigned studies?`);
-    if (!confirmed) return;
-
-    setRemovingAssignmentId(assignmentId);
-    try {
-      await unassign(assignmentId);
-      await refetchAssignments?.({ background: true });
-      toast.success("Study removed");
-    } catch (removeError) {
-      toast.error(removeError?.message || "Failed to remove study");
-    } finally {
-      setRemovingAssignmentId(null);
-    }
-  }, [refetchAssignments, unassign]);
 
   const refreshContinueSessions = useCallback(() => {
     if (!decks || !decks.length) {
@@ -431,20 +412,6 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
                     <span className="sidebar-deck-name">{name}</span>
                     {total > 0 && <span className="sidebar-deck-badge">{pct}%</span>}
                   </Link>
-                  <button
-                    type="button"
-                    className="sidebar-assignment-delete"
-                    onClick={(event) => {
-                      event.preventDefault();
-                      event.stopPropagation();
-                      handleRemoveAssignment(a.id, name);
-                    }}
-                    disabled={removingAssignmentId === a.id}
-                    title={t("delete") || "Remove from studies"}
-                    aria-label={`Remove ${name}`}
-                  >
-                    {removingAssignmentId === a.id ? "..." : "×"}
-                  </button>
                 </div>
               );
             })}

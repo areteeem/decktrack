@@ -2266,7 +2266,7 @@ export const useStudentCourses = () => {
       const userId = String(user.id || '').trim();
       console.log('[useStudentCourses] Starting fetch for user:', userId);
       
-      const baseSelect = 'id, name, description, color, icon, sort_order, owner_id, flashy_course_decks(deck_id, sort_order, flashy_decks(id, name, description, category)), flashy_course_members(student_id, flashy_profiles(id, display_name, email, role))';
+      const baseSelect = 'id, name, description, color, icon, sort_order, owner_id, flashy_course_decks(deck_id, sort_order, flashy_decks(id, name, description, category)), flashy_course_members(student_id, flashy_profiles!flashy_course_members_student_id_fkey(id, display_name, email, role))';
       
       // ATTEMPT 1: Full query with visibility table
       console.log('[useStudentCourses] Attempting query with visibility table...');
