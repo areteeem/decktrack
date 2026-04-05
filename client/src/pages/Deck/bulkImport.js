@@ -1,4 +1,5 @@
-import * as XLSX from 'xlsx';
+import Papa from 'papaparse';
+import readXlsxFile from 'read-excel-file/browser';
 
 const HEADER_ALIASES = {
   front: ['term', 'front', 'question', 'word', 'phrase', 'prompt'],
@@ -196,22 +197,24 @@ export const parseCardsFromFile = async (file) => {
     return cards;
   }
 
-  if (extension === 'xlsx' || extension === 'xls' || extension === 'csv') {
-    const readType = extension === 'csv' ? 'string' : 'array';
-    const source = extension === 'csv' ? await file.text() : await file.arrayBuffer();
-    const workbook = XLSX.read(source, { type: readType });
-    const firstSheetName = workbook.SheetNames[0];
-    if (!firstSheetName) {
-      throw new Error('This spreadsheet is empty.');
-    }
-
-    const worksheet = workbook.Sheets[firstSheetName];
-    const rows = XLSX.utils.sheet_to_json(worksheet, {
-      header: 1,
-      blankrows: false,
-      raw: false,
-    });
+  if (extension === 'xlsx') {
+    const rows = await readXlsxFile(file);
     return normalizeCards(rows);
+  }
+
+  if (extension === 'xls') {
+    throw new Error('Legacy .xls files are no longer supported. Save the file as .xlsx or .csv and try again.');
+  }
+
+  if (extension === 'csv') {
+    const text = await file.text();
+    const { data, errors } = Papa.parse(text, {
+      skipEmptyLines: true,
+    });
+    if (errors.length) {
+      throw new Error('This CSV file could not be parsed.');
+    }
+    return normalizeCards(data);
   }
 
   const text = await file.text();

@@ -132,9 +132,9 @@ const BulkImportModal = ({ open, setOpen, deckId, startSortOrder = 0, onImported
       <div className={styles.form}>
         {mode === MODES.upload ? (
           <div className={styles.uploadBox}>
-            <input type="file" accept=".csv,.xlsx,.xls,.txt" onChange={handleFileChange} />
+            <input type="file" accept=".csv,.xlsx,.json,.txt" onChange={handleFileChange} />
             <p className={styles.hint}>
-              Supported formats: XLSX, XLS, CSV, and TXT. Header names like <strong>Term</strong> and <strong>Definition</strong> are detected automatically.
+              Supported formats: XLSX, CSV, JSON, and TXT. Header names like <strong>Term</strong> and <strong>Definition</strong> are detected automatically. Save legacy XLS files as XLSX or CSV first.
             </p>
           </div>
         ) : (

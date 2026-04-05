@@ -96,7 +96,7 @@ const InlineBulkImport = ({ deckId, startSortOrder = 0, onImported }) => {
 
       {subTab === "upload" ? (
         <div className={styles.uploadBox}>
-          <input type="file" accept=".csv,.xlsx,.xls,.txt,.json" onChange={handleFileChange} />
+          <input type="file" accept=".csv,.xlsx,.txt,.json" onChange={handleFileChange} />
           <p className={styles.hint}>{t("supportedFormats")}</p>
         </div>
       ) : (

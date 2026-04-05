@@ -1,15 +1,14 @@
 import { createClient } from '@supabase/supabase-js';
 import { STORAGE_KEYS } from './storageKeys';
 
-// Singleton Supabase client — matches TutPro pattern.
-// Uses REACT_APP_ prefix for create-react-app compatibility.
+const runtimeEnv = (typeof import.meta !== 'undefined' && import.meta.env) || process.env;
 
-const SUPABASE_URL = (process.env.REACT_APP_SUPABASE_URL || '').trim();
-const SUPABASE_ANON_KEY = (process.env.REACT_APP_SUPABASE_ANON_KEY || '').trim();
+const SUPABASE_URL = (runtimeEnv.REACT_APP_SUPABASE_URL || runtimeEnv.VITE_SUPABASE_URL || '').trim();
+const SUPABASE_ANON_KEY = (runtimeEnv.REACT_APP_SUPABASE_ANON_KEY || runtimeEnv.VITE_SUPABASE_ANON_KEY || '').trim();
 
 if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
   console.warn(
-    '[Flashy] Missing REACT_APP_SUPABASE_URL or REACT_APP_SUPABASE_ANON_KEY — auth will not work.'
+    '[Flashy] Missing REACT_APP_SUPABASE_URL/VITE_SUPABASE_URL or REACT_APP_SUPABASE_ANON_KEY/VITE_SUPABASE_ANON_KEY — auth will not work.'
   );
 }
 

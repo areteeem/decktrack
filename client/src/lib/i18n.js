@@ -105,7 +105,7 @@ const en = {
 
   // ── Bulk import ──
   bulkImport: "Bulk import cards",
-  bulkImportDesc: "Upload XLSX or CSV files, or paste rows separated by tabs, commas, or another delimiter. The first column becomes the term and the second becomes the definition.",
+  bulkImportDesc: "Upload XLSX, CSV, or JSON files, or paste rows separated by tabs, commas, or another delimiter. The first column becomes the term and the second becomes the definition.",
   uploadFile: "Upload file",
   pasteText: "Paste text",
   source: "Source",
@@ -118,7 +118,7 @@ const en = {
   dash: "Dash -",
   colon: "Colon :",
   everyTwoLines: "Every two lines",
-  supportedFormats: "Supported formats: XLSX, XLS, CSV, and TXT. Header names like Term and Definition are detected automatically.",
+  supportedFormats: "Supported formats: XLSX, CSV, JSON, and TXT. Header names like Term and Definition are detected automatically. Save legacy XLS files as XLSX or CSV first.",
   pasteCards: "Paste cards",
   pasteHelper: "Example: copy two spreadsheet columns and paste them directly.",
   preparePreview: "Prepare preview",
@@ -284,7 +284,7 @@ const uk = {
 
   // ── Bulk import ──
   bulkImport: "Масовий імпорт карток",
-  bulkImportDesc: "Завантажте файли XLSX чи CSV або вставте рядки, розділені табуляцією, комою чи іншим роздільником.",
+  bulkImportDesc: "Завантажте файли XLSX, CSV чи JSON або вставте рядки, розділені табуляцією, комою чи іншим роздільником.",
   uploadFile: "Завантажити файл",
   pasteText: "Вставити текст",
   source: "Джерело",
@@ -297,7 +297,7 @@ const uk = {
   dash: "Тире -",
   colon: "Двокрапка :",
   everyTwoLines: "Кожні два рядки",
-  supportedFormats: "Підтримувані формати: XLSX, XLS, CSV та TXT.",
+  supportedFormats: "Підтримувані формати: XLSX, CSV, JSON та TXT. Старі файли XLS спершу збережіть як XLSX або CSV.",
   pasteCards: "Вставте картки",
   pasteHelper: "Приклад: скопіюйте два стовпці та вставте їх безпосередньо.",
   preparePreview: "Підготувати попередній перегляд",

@@ -1,7 +1,24 @@
 const { prisma } = require("./db");
 const bcrypt = require("bcryptjs");
+const { GraphQLError } = require("graphql");
 const jwt = require("jsonwebtoken");
-const { AuthenticationError } = require("apollo-server");
+
+const createToken = (userId) => jwt.sign({ userId }, process.env.TOKEN_SECRET, {
+  algorithm: "HS256",
+  expiresIn: process.env.TOKEN_EXPIRY,
+});
+
+const ensureAuthenticated = (context) => {
+  if (context.userId) {
+    return;
+  }
+
+  throw new GraphQLError("Not authenticated", {
+    extensions: {
+      code: "UNAUTHENTICATED",
+    },
+  });
+};
 
 const resolvers = {
   Query: {
@@ -13,7 +30,7 @@ const resolvers = {
       return !!context.userId;
     },
     user: (parent, args, context) => {
-      if (!context.userId) return new AuthenticationError("Not authenticated");
+      ensureAuthenticated(context);
       return prisma.user.findFirst({
         where: {
           id: context.userId,
@@ -25,7 +42,7 @@ const resolvers = {
       });
     },
     deck: (parent, args, context) => {
-      if (!context.userId) return new AuthenticationError("Not authenticated");
+      ensureAuthenticated(context);
       return prisma.deck.findFirst({
         where: {
           id: args.id,
@@ -42,7 +59,7 @@ const resolvers = {
       });
     },
     newFlashcards: (parent, args, context) => {
-      if (!context.userId) return new AuthenticationError("Not authenticated");
+      ensureAuthenticated(context);
       return prisma.flashcard.findMany({
         where: {
           userId: context.userId,
@@ -51,7 +68,7 @@ const resolvers = {
       });
     },
     dueFlashcards: (parent, args, context) => {
-      if (!context.userId) return new AuthenticationError("Not authenticated");
+      ensureAuthenticated(context);
       return prisma.flashcard.findMany({
         where: {
           userId: context.userId,
@@ -63,7 +80,7 @@ const resolvers = {
       });
     },
     newFromDeck: (parent, args, context) => {
-      if (!context.userId) return new AuthenticationError("Not authenticated");
+      ensureAuthenticated(context);
       return prisma.flashcard.findMany({
         where: {
           deckId: args.deckId,
@@ -73,7 +90,7 @@ const resolvers = {
       });
     },
     dueFromDeck: (parent, args, context) => {
-      if (!context.userId) return new AuthenticationError("Not authenticated");
+      ensureAuthenticated(context);
       return prisma.flashcard.findMany({
         where: {
           deckId: args.deckId,
@@ -99,9 +116,7 @@ const resolvers = {
       // Since id is added by prisma it is unavailable when creating a user.
       const userWithToken = {
         ...user,
-        token: jwt.sign({ userId: user.id }, process.env.TOKEN_SECRET, {
-          expiresIn: process.env.TOKEN_EXPIRY,
-        }),
+        token: createToken(user.id),
       };
       res.cookie("token", userWithToken.token, {
         httpOnly: true,
@@ -118,9 +133,7 @@ const resolvers = {
 
       const userWithToken = {
         ...user,
-        token: jwt.sign({ userId: user.id }, process.env.TOKEN_SECRET, {
-          expiresIn: process.env.TOKEN_EXPIRY,
-        }),
+        token: createToken(user.id),
       };
       context.res.cookie("token", userWithToken.token, {
         httpOnly: true,
@@ -129,7 +142,7 @@ const resolvers = {
       return userWithToken.token;
     },
     updateFlashcard: async (parent, { data }, context, info) => {
-      if (!context.userId) return new AuthenticationError("Not authenticated");
+      ensureAuthenticated(context);
       const flashcard = await prisma.flashcard.update({
         where: { id: data.id },
         data: {
@@ -139,7 +152,7 @@ const resolvers = {
       return flashcard;
     },
     createFlashcard: async (parent, { data }, context, info) => {
-      if (!context.userId) return new AuthenticationError("Not authenticated");
+      ensureAuthenticated(context);
       const flashcard = await prisma.flashcard.create({
         data: {
           ...data,
@@ -149,14 +162,14 @@ const resolvers = {
       return flashcard;
     },
     deleteFlashcard: async (parent, { id }, context, info) => {
-      if (!context.userId) return new AuthenticationError("Not authenticated");
+      ensureAuthenticated(context);
       const flashcard = await prisma.flashcard.delete({
         where: { id },
       });
       return flashcard;
     },
     createDeck: async (parent, { name }, context, info) => {
-      if (!context.userId) return new AuthenticationError("Not authenticated");
+      ensureAuthenticated(context);
       const deck = await prisma.deck.create({
         data: {
           name,
@@ -166,7 +179,7 @@ const resolvers = {
       return deck;
     },
     deleteDeck: async (parent, { id }, context, info) => {
-      if (!context.userId) return new AuthenticationError("Not authenticated");
+      ensureAuthenticated(context);
       // delete all flashcards in the deck first
       await prisma.flashcard.deleteMany({
         where: {

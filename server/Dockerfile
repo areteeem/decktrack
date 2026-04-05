@@ -1,9 +1,9 @@
-FROM node:16.13.0-alpine
+FROM node:20-alpine
 
 WORKDIR /app
 
 COPY ["package.json", "yarn.lock", "./"]
-RUN yarn install
+RUN npx yarn@1.22.22 install --non-interactive
 COPY . .
 RUN npx prisma generate
 
