@@ -27,19 +27,6 @@
 <!-- ABOUT THE PROJECT -->
 ## About The Project
 
-![Flashy Screenshot][product-screenshot]
-
-Flashy was created to be an easy to use, open source spaced repetition system packed in a web app.
-
-You can try it out [here](http://138.68.84.207) and create an account or log into the sample one using the details below.
-
-### Demo user account:
-
-E-mail: `demo@test.com`
-Passowrd: `demo`
-
----
-
 ### Built With
 
 ##### Frontend
