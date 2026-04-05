@@ -7,7 +7,7 @@
     <img src="images/logo.png" alt="Logo" width="80" height="80">
   </a>
 
-<h3 align="center">Flashy</h3>
+<h3 align="center">DeckTrack</h3>
 
   <p align="center">
     Open-source Spaced Repetition System.
@@ -26,19 +26,6 @@
 
 <!-- ABOUT THE PROJECT -->
 ## About The Project
-
-![Flashy Screenshot][product-screenshot]
-
-Flashy was created to be an easy to use, open source spaced repetition system packed in a web app.
-
-You can try it out [here](http://138.68.84.207) and create an account or log into the sample one using the details below.
-
-### Demo user account:
-
-E-mail: `demo@test.com`
-Passowrd: `demo`
-
----
 
 ### Built With
 
