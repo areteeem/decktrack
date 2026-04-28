@@ -1834,6 +1834,7 @@ export const useCreateStudentCard = () => {
         pronunciation: fields.pronunciation || '',
         notes: fields.notes || '',
         difficulty: fields.difficulty || 'medium',
+        card_type: fields.card_type || 'normal',
       })
       .select()
       .single();
@@ -1918,6 +1919,7 @@ export const useTeacherCreateStudentCard = () => {
         notes: fields.notes || '',
         is_custom: false,
         is_new: true,
+        card_type: fields.card_type || 'normal',
       })
       .select()
       .single();
