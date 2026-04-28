@@ -395,9 +395,13 @@ export const useCreateCard = () => {
 
   const createCard = async (fields) => {
     setLoading(true);
+    let ct = String(fields.card_type || '').toLowerCase().trim();
+    if (ct === 'fill_blank' || ct === 'fill-blank' || ct === 'fill blank' || fields.front?.match(/_{2,}/)) ct = 'fill_blank';
+    else ct = 'normal';
+
     const { data, error } = await supabase
       .from('flashy_cards')
-      .insert(fields)
+      .insert({ ...fields, card_type: ct })
       .select()
       .single();
     setLoading(false);
@@ -416,13 +420,24 @@ export const useCreateCardsBulk = () => {
     const normalizedCards = Array.isArray(cards) ? cards.filter(Boolean) : [];
     if (!normalizedCards.length) return [];
 
+    const processedCards = normalizedCards.map(card => {
+      let ct = String(card.card_type || '').toLowerCase().trim();
+      if (ct === 'fill_blank' || ct === 'fill-blank' || ct === 'fill blank' || card.front?.match(/_{2,}/)) ct = 'fill_blank';
+      else ct = 'normal';
+      
+      return {
+        ...card,
+        card_type: ct
+      };
+    });
+
     setLoading(true);
 
     try {
       const inserted = [];
 
-      for (let index = 0; index < normalizedCards.length; index += chunkSize) {
-        const chunk = normalizedCards.slice(index, index + chunkSize);
+      for (let index = 0; index < processedCards.length; index += chunkSize) {
+        const chunk = processedCards.slice(index, index + chunkSize);
         const { data, error } = await supabase
           .from('flashy_cards')
           .insert(chunk)
@@ -447,9 +462,16 @@ export const useUpdateCard = () => {
 
   const updateCard = async (id, fields) => {
     setLoading(true);
+    const updateFields = { ...fields };
+    if (updateFields.hasOwnProperty('card_type')) {
+      let ct = String(updateFields.card_type || '').toLowerCase().trim();
+      if (ct === 'fill_blank' || ct === 'fill-blank' || ct === 'fill blank' || updateFields.front?.match(/_{2,}/)) ct = 'fill_blank';
+      else ct = 'normal';
+      updateFields.card_type = ct;
+    }
     const { data, error } = await supabase
       .from('flashy_cards')
-      .update(fields)
+      .update(updateFields)
       .eq('id', id)
       .select()
       .single();
