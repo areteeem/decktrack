@@ -13,13 +13,24 @@ const stripHtmlTags = (html) => (html || "").replace(/<[^>]*>/g, "").trim();
 const Settings = () => {
   const { profile, role } = useAuth();
   const { theme, toggle } = useTheme();
-  const { srsMode, setSrsMode, locale, setLocale, t } = useSettings();
+  const {
+    srsMode,
+    setSrsMode,
+    locale,
+    setLocale,
+    pronunciationEnabled,
+    setPronunciationEnabled,
+    autoPronounce,
+    setAutoPronounce,
+    t,
+  } = useSettings();
   const { data: decks, refetch } = useDecks();
   const { createDeck } = useCreateDeck();
   const { createCardsBulk } = useCreateCardsBulk();
   const importFileRef = useRef(null);
   const [pendingImport, setPendingImport] = useState(null);
   const [importing, setImporting] = useState(false);
+  const autoPronounceActive = pronunciationEnabled && autoPronounce;
 
   const handleExport = () => {
     if (!decks?.length) { toast.info("No decks to export"); return; }
@@ -161,6 +172,55 @@ const Settings = () => {
             Українська
           </button>
         </div>
+      </div>
+
+      <hr className={styles.separator} />
+
+      {/* ── Pronunciation ─────────────── */}
+      <div className={styles.section}>
+        <span className={styles.sectionTitle}>{t("pronunciationTitle")}</span>
+        <div className={styles.toggleList}>
+          <div className={styles.settingToggleRow}>
+            <div className={styles.toggleCopy}>
+              <span className={styles.toggleTitle}>{t("pronunciationEnabled")}</span>
+              <span className={styles.toggleText}>{t("pronunciationEnabledDesc")}</span>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={pronunciationEnabled}
+              aria-label={t("pronunciationEnabled")}
+              className={pronunciationEnabled ? `${styles.switch} ${styles.switchOn}` : styles.switch}
+              onClick={() => setPronunciationEnabled(!pronunciationEnabled)}
+            >
+              <span className={styles.switchThumb} />
+            </button>
+          </div>
+
+          <div className={`${styles.settingToggleRow} ${!pronunciationEnabled ? styles.settingToggleRowDisabled : ""}`}>
+            <div className={styles.toggleCopy}>
+              <span className={styles.toggleTitle}>{t("autoPronounce")}</span>
+              <span className={styles.toggleText}>{t("autoPronounceDesc")}</span>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={autoPronounceActive}
+              aria-label={t("autoPronounce")}
+              disabled={!pronunciationEnabled}
+              className={autoPronounceActive ? `${styles.switch} ${styles.switchOn}` : styles.switch}
+              onClick={() => {
+                if (!pronunciationEnabled) return;
+                setAutoPronounce(!autoPronounce);
+              }}
+            >
+              <span className={styles.switchThumb} />
+            </button>
+          </div>
+        </div>
+        <p className={styles.desc}>
+          {pronunciationEnabled ? t("pronunciationLanguagesDesc") : t("pronunciationUnavailable")}
+        </p>
       </div>
 
       <hr className={styles.separator} />

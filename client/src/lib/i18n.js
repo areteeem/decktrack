@@ -153,6 +153,15 @@ const en = {
   gradingSimpleDesc: "Two buttons: Again re-queues the card, Know marks it learned.",
   gradingFullDesc: "Four-button SRS grading with separate intervals for each grade.",
   language: "Language",
+  pronunciationTitle: "Pronunciation",
+  pronunciationEnabled: "Enable pronunciation",
+  pronunciationEnabledDesc: "Show sound buttons and allow playback for visible card text.",
+  autoPronounce: "Automatic pronunciation",
+  autoPronounceDesc: "Speak the newly visible side once when a card appears or is revealed.",
+  pronunciationLanguagesDesc: "Google TTS is used first. English and Ukrainian are optimized, with browser fallback for other locales when available.",
+  pronunciationUnavailable: "Turn pronunciation on to enable automatic playback.",
+  playPronunciation: "Play pronunciation",
+  stopPronunciation: "Stop pronunciation",
 
   // ── SRS intervals ──
   lessThan1m: "<1m",
@@ -332,6 +341,15 @@ const uk = {
   gradingSimpleDesc: "Дві кнопки: Знову повертає картку, Знаю позначає як вивчену.",
   gradingFullDesc: "Чотири кнопки SRS з окремими інтервалами для кожної оцінки.",
   language: "Мова",
+  pronunciationTitle: "Вимова",
+  pronunciationEnabled: "Увімкнути вимову",
+  pronunciationEnabledDesc: "Показувати кнопки звуку та дозволяти озвучення видимого тексту картки.",
+  autoPronounce: "Автоматична вимова",
+  autoPronounceDesc: "Озвучувати нову видиму сторону один раз, коли картка з'являється або відкривається.",
+  pronunciationLanguagesDesc: "Спочатку використовується Google TTS. Англійська й українська оптимізовані, а для інших мов використовується доступний запасний варіант браузера.",
+  pronunciationUnavailable: "Увімкніть вимову, щоб дозволити автоматичне озвучення.",
+  playPronunciation: "Відтворити вимову",
+  stopPronunciation: "Зупинити вимову",
 
   // ── SRS intervals ──
   lessThan1m: "<1хв",

@@ -339,6 +339,7 @@ const Learn = ({ flashcards, showTermFirst = true, onComplete, onQuit, onSession
             isFlipped={isFlipped}
             setIsFlipped={setIsFlipped}
             showTermFirst={showTermFirst}
+            revealSeed={position}
             onSwipeLeft={() => gradeCard("again")}
             onSwipeRight={() => gradeCard("good")}
           />

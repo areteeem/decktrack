@@ -339,6 +339,7 @@ const Practice = ({ flashcards, showTermFirst = true, onComplete, onQuit, onSess
             isFlipped={isFlipped}
             setIsFlipped={setIsFlipped}
             showTermFirst={showTermFirst}
+            revealSeed={position}
             onSwipeLeft={() => gradeCard("again")}
             onSwipeRight={() => gradeCard("good")}
           />

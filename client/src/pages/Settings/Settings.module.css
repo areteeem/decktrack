@@ -93,6 +93,87 @@
   color: var(--bg);
 }
 
+.toggleList {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.settingToggleRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.85rem;
+  padding: 0.8rem 0.9rem;
+  border: var(--border);
+  border-radius: var(--radius);
+  background: var(--card-bg);
+}
+
+.settingToggleRowDisabled {
+  opacity: 0.6;
+}
+
+.toggleCopy {
+  min-width: 0;
+  display: grid;
+  gap: 0.2rem;
+}
+
+.toggleTitle {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--fg);
+}
+
+.toggleText {
+  font-size: 0.75rem;
+  line-height: 1.4;
+  color: var(--fg-faint);
+}
+
+.switch {
+  position: relative;
+  width: 2.8rem;
+  height: 1.65rem;
+  flex-shrink: 0;
+  border: 1.5px solid var(--border-color);
+  border-radius: 999px;
+  background: var(--bg-secondary);
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s, opacity 0.12s;
+}
+
+.switch:hover:not(:disabled) {
+  border-color: var(--fg-muted);
+}
+
+.switch:disabled {
+  cursor: not-allowed;
+}
+
+.switchThumb {
+  position: absolute;
+  top: 50%;
+  left: 0.18rem;
+  width: 1.05rem;
+  height: 1.05rem;
+  border-radius: 50%;
+  background: var(--card-bg);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  transform: translateY(-50%);
+  transition: transform 0.12s, background 0.12s;
+}
+
+.switchOn {
+  background: var(--fg);
+  border-color: var(--fg);
+}
+
+.switchOn .switchThumb {
+  transform: translate(1.13rem, -50%);
+  background: var(--bg);
+}
+
 /* ── Description text ─────────────── */
 .desc {
   font-size: 0.75rem;

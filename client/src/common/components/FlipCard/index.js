@@ -1,9 +1,11 @@
 import { useEffect, useRef } from "react";
 import styles from "./FlipCard.module.css";
 import { useSettings } from "../../../contexts/SettingsContext";
+import PronunciationButton from "../PronunciationButton";
+import { resolvePronunciationLocale, usePronunciation } from "../../../lib/pronunciation";
 
-const FlipCard = ({ flashcard, isFlipped, setIsFlipped, showTermFirst = true, onSwipeLeft, onSwipeRight }) => {
-  const { t } = useSettings();
+const FlipCard = ({ flashcard, isFlipped, setIsFlipped, showTermFirst = true, onSwipeLeft, onSwipeRight, revealSeed = 0 }) => {
+  const { autoPronounce, locale, pronunciationEnabled, t } = useSettings();
   const touchRef = useRef({ startX: 0, startY: 0 });
 
   const onKeyPressed = (e) => {
@@ -69,9 +71,63 @@ const FlipCard = ({ flashcard, isFlipped, setIsFlipped, showTermFirst = true, on
   const backSide = showTermFirst ? flashcard.back : flashcard.front;
   const frontLabel = showTermFirst ? t("term") : t("definition");
   const backLabel = showTermFirst ? t("definition") : t("term");
+  const frontRole = showTermFirst ? "term" : "definition";
+  const backRole = showTermFirst ? "definition" : "term";
+  const frontSourceKey = `${flashcard.id || "flashcard"}:front:${revealSeed}`;
+  const backSourceKey = `${flashcard.id || "flashcard"}:back:${revealSeed}`;
+  const frontLocale = resolvePronunciationLocale({
+    flashcard,
+    side: frontRole,
+    text: frontSide,
+    fallbackLocale: locale,
+  });
+  const backLocale = resolvePronunciationLocale({
+    flashcard,
+    side: backRole,
+    text: backSide,
+    fallbackLocale: locale,
+  });
+  const frontPronunciation = usePronunciation({
+    enabled: pronunciationEnabled,
+    autoEnabled: autoPronounce && !isFlipped,
+    sourceKey: frontSourceKey,
+    text: frontSide,
+    locale: frontLocale,
+  });
+  const backPronunciation = usePronunciation({
+    enabled: pronunciationEnabled,
+    autoEnabled: autoPronounce && isFlipped,
+    sourceKey: backSourceKey,
+    text: backSide,
+    locale: backLocale,
+  });
 
   // Check if content contains HTML tags
   const hasHtml = (str) => /<[a-z][\s\S]*>/i.test(str || "");
+
+  const togglePronunciation = (pronunciation) => {
+    if (pronunciation.isLoading || pronunciation.isPlaying) {
+      pronunciation.stop();
+      return;
+    }
+
+    pronunciation.play();
+  };
+
+  const renderSideHeader = (label, pronunciation) => (
+    <div className={styles.sideHeader}>
+      <span className={styles.sideLabel}>{label}</span>
+      {pronunciationEnabled && pronunciation.canPronounce && (
+        <PronunciationButton
+          compact
+          active={pronunciation.isPlaying}
+          loading={pronunciation.isLoading}
+          onClick={() => togglePronunciation(pronunciation)}
+          title={pronunciation.isPlaying || pronunciation.isLoading ? t("stopPronunciation") : t("playPronunciation")}
+        />
+      )}
+    </div>
+  );
 
   return (
     <div
@@ -81,7 +137,7 @@ const FlipCard = ({ flashcard, isFlipped, setIsFlipped, showTermFirst = true, on
       onTouchEnd={handleTouchEnd}
     >
       <div className={styles.front}>
-        <span className={styles.sideLabel}>{frontLabel}</span>
+        {renderSideHeader(frontLabel, frontPronunciation)}
         {hasHtml(frontSide)
           ? <h2 dangerouslySetInnerHTML={{ __html: frontSide }} />
           : <h2>{frontSide}</h2>
@@ -108,7 +164,7 @@ const FlipCard = ({ flashcard, isFlipped, setIsFlipped, showTermFirst = true, on
         </div>
       ) : (
         <div className={styles.back}>
-          <span className={styles.sideLabel}>{backLabel}</span>
+          {renderSideHeader(backLabel, backPronunciation)}
           {hasHtml(backSide)
             ? <h3 dangerouslySetInnerHTML={{ __html: backSide }} />
             : <h3>{boldTermIn(backSide, flashcard.front) || backSide}</h3>

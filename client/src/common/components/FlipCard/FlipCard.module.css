@@ -49,9 +49,25 @@
   font-style: normal;
 }
 
+.sideHeader {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 1.75rem;
+  margin-bottom: 0.5rem;
+  padding-right: 2.2rem;
+}
+
+.sideHeader button {
+  position: absolute;
+  top: 50%;
+  right: 0;
+  transform: translateY(-50%);
+}
+
 .sideLabel {
   display: inline-block;
-  margin-bottom: 0.5rem;
   font-size: 0.7rem;
   font-weight: 700;
   letter-spacing: 0.1em;

@@ -27,6 +27,14 @@
   gap: 0.15rem;
 }
 
+.labelRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.35rem;
+  min-height: 1.45rem;
+}
+
 .label {
   font-size: 0.65rem;
   font-weight: 700;
