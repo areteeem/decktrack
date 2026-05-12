@@ -5,17 +5,16 @@
   width: 2rem;
   height: 2rem;
   flex-shrink: 0;
-  border: 1px solid var(--border-color);
-  border-radius: 999px;
-  background: var(--bg-secondary);
-  color: var(--fg-muted);
+  border: var(--border);
+  border-radius: var(--radius);
+  background: var(--card-bg);
+  color: var(--fg);
   cursor: pointer;
   transition: background 0.12s, color 0.12s, border-color 0.12s, transform 0.12s;
 }
 
 .button:hover {
   background: var(--card-hover);
-  color: var(--fg);
   border-color: var(--fg-faint);
 }
 
@@ -27,6 +26,10 @@
 .buttonCompact {
   width: 1.7rem;
   height: 1.7rem;
+}
+
+.buttonSquare {
+  border-radius: var(--radius);
 }
 
 .buttonActive {

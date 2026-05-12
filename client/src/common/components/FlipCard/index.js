@@ -114,19 +114,25 @@ const FlipCard = ({ flashcard, isFlipped, setIsFlipped, showTermFirst = true, on
     pronunciation.play();
   };
 
-  const renderSideHeader = (label, pronunciation) => (
+  const renderSideHeader = (label) => (
     <div className={styles.sideHeader}>
       <span className={styles.sideLabel}>{label}</span>
-      {pronunciationEnabled && pronunciation.canPronounce && (
+    </div>
+  );
+
+  const renderPronunciationControl = (pronunciation) => (
+    pronunciationEnabled && pronunciation.canPronounce ? (
+      <div className={styles.sideControl}>
         <PronunciationButton
           compact
+          square
           active={pronunciation.isPlaying}
           loading={pronunciation.isLoading}
           onClick={() => togglePronunciation(pronunciation)}
           title={pronunciation.isPlaying || pronunciation.isLoading ? t("stopPronunciation") : t("playPronunciation")}
         />
-      )}
-    </div>
+      </div>
+    ) : null
   );
 
   return (
@@ -137,7 +143,8 @@ const FlipCard = ({ flashcard, isFlipped, setIsFlipped, showTermFirst = true, on
       onTouchEnd={handleTouchEnd}
     >
       <div className={styles.front}>
-        {renderSideHeader(frontLabel, frontPronunciation)}
+        {renderPronunciationControl(frontPronunciation)}
+        {renderSideHeader(frontLabel)}
         {hasHtml(frontSide)
           ? <h2 dangerouslySetInnerHTML={{ __html: frontSide }} />
           : <h2>{frontSide}</h2>
@@ -164,7 +171,8 @@ const FlipCard = ({ flashcard, isFlipped, setIsFlipped, showTermFirst = true, on
         </div>
       ) : (
         <div className={styles.back}>
-          {renderSideHeader(backLabel, backPronunciation)}
+          {renderPronunciationControl(backPronunciation)}
+          {renderSideHeader(backLabel)}
           {hasHtml(backSide)
             ? <h3 dangerouslySetInnerHTML={{ __html: backSide }} />
             : <h3>{boldTermIn(backSide, flashcard.front) || backSide}</h3>

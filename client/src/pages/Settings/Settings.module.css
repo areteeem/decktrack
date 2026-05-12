@@ -1,14 +1,16 @@
 .settings {
-  max-width: 28rem;
-  margin: 1.5rem auto;
+  width: min(100%, 31rem);
+  max-width: 31rem;
+  margin: 1.25rem auto 1.75rem;
+  padding: 0 0.25rem;
 }
 
 .settings h1 {
   font-size: 1.25rem;
-  margin-bottom: 1.5rem;
+  margin-bottom: 1.25rem;
+  padding-top: 0;
 }
 
-/* ── Section ──────────────────────── */
 .section {
   margin-bottom: 1.5rem;
 }
@@ -23,7 +25,6 @@
   margin-bottom: 0.5rem;
 }
 
-/* ── Profile card ─────────────────── */
 .profileCard {
   border: var(--border);
   border-radius: var(--radius);
@@ -56,7 +57,6 @@
   color: var(--fg);
 }
 
-/* ── Option pill group ────────────── */
 .optionGroup {
   display: flex;
   flex-wrap: wrap;
@@ -64,12 +64,16 @@
 }
 
 .optionBtn {
-  padding: 0.4rem 0.75rem;
-  border: 1.5px solid var(--border-color);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2rem;
+  padding: 0.42rem 0.78rem;
+  border: var(--border);
   border-radius: var(--radius);
   background: var(--card-bg);
-  color: var(--fg-muted);
-  font-size: 0.8rem;
+  color: var(--fg);
+  font-size: 0.82rem;
   font-weight: 600;
   cursor: pointer;
   font-family: inherit;
@@ -93,88 +97,50 @@
   color: var(--bg);
 }
 
-.toggleList {
-  display: grid;
-  gap: 0.65rem;
+.modeGroup {
+  display: flex;
+  gap: 0.35rem;
+  flex-wrap: wrap;
 }
 
-.settingToggleRow {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.85rem;
-  padding: 0.8rem 0.9rem;
+.modeBtn {
+  flex: 0 0 auto;
+  width: fit-content;
+  min-height: 1.95rem;
+  padding: 0.38rem 0.72rem;
   border: var(--border);
   border-radius: var(--radius);
   background: var(--card-bg);
-}
-
-.settingToggleRowDisabled {
-  opacity: 0.6;
-}
-
-.toggleCopy {
-  min-width: 0;
-  display: grid;
-  gap: 0.2rem;
-}
-
-.toggleTitle {
-  font-size: 0.85rem;
+  color: var(--fg);
+  font-size: 0.8rem;
   font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.12s, color 0.12s;
+}
+
+.modeBtn:hover {
+  background: var(--card-hover);
+}
+
+.modeBtnActive {
+  composes: modeBtn;
+  background: var(--fg);
+  color: var(--bg);
+}
+
+.modeBtnActive:hover {
+  background: var(--fg);
+  color: var(--bg);
+}
+
+.modeNote {
+  margin: 0.55rem 0 0;
+  font-size: 0.75rem;
+  line-height: 1.4;
   color: var(--fg);
 }
 
-.toggleText {
-  font-size: 0.75rem;
-  line-height: 1.4;
-  color: var(--fg-faint);
-}
-
-.switch {
-  position: relative;
-  width: 2.8rem;
-  height: 1.65rem;
-  flex-shrink: 0;
-  border: 1.5px solid var(--border-color);
-  border-radius: 999px;
-  background: var(--bg-secondary);
-  cursor: pointer;
-  transition: background 0.12s, border-color 0.12s, opacity 0.12s;
-}
-
-.switch:hover:not(:disabled) {
-  border-color: var(--fg-muted);
-}
-
-.switch:disabled {
-  cursor: not-allowed;
-}
-
-.switchThumb {
-  position: absolute;
-  top: 50%;
-  left: 0.18rem;
-  width: 1.05rem;
-  height: 1.05rem;
-  border-radius: 50%;
-  background: var(--card-bg);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
-  transform: translateY(-50%);
-  transition: transform 0.12s, background 0.12s;
-}
-
-.switchOn {
-  background: var(--fg);
-  border-color: var(--fg);
-}
-
-.switchOn .switchThumb {
-  transform: translate(1.13rem, -50%);
-  background: var(--bg);
-}
-
-/* ── Description text ─────────────── */
 .desc {
   font-size: 0.75rem;
   color: var(--fg-faint);
@@ -182,7 +148,6 @@
   line-height: 1.4;
 }
 
-/* ── Separator ────────────────────── */
 .separator {
   border: none;
   border-top: 1px solid var(--border-color);
@@ -190,7 +155,6 @@
   opacity: 0.2;
 }
 
-/* ── Data section ─────────────────── */
 .dataActions {
   display: flex;
   gap: 0.5rem;
@@ -200,13 +164,15 @@
 .dataBtn {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 0.4rem;
-  padding: 0.5rem 0.85rem;
-  border: 1.5px solid var(--border-color);
+  min-height: 2rem;
+  padding: 0.42rem 0.78rem;
+  border: var(--border);
   border-radius: var(--radius);
   background: var(--card-bg);
   color: var(--fg);
-  font-size: 0.8rem;
+  font-size: 0.82rem;
   font-weight: 600;
   cursor: pointer;
   font-family: inherit;
@@ -218,7 +184,6 @@
   border-color: var(--fg-muted);
 }
 
-/* ── Import preview list ──────────── */
 .importList {
   display: flex;
   flex-direction: column;
@@ -235,7 +200,7 @@
   justify-content: space-between;
   align-items: center;
   padding: 0.4rem 0.55rem;
-  border-radius: calc(var(--radius) - 2px);
+  border-radius: var(--radius);
   background: var(--bg-secondary, #f9f9f9);
 }
 
@@ -253,4 +218,30 @@
   color: var(--fg-muted);
   flex-shrink: 0;
   margin-left: 0.5rem;
+}
+
+@media (max-width: 520px) {
+  .settings {
+    padding: 0 0.1rem;
+  }
+
+  .optionGroup,
+  .modeGroup,
+  .dataActions {
+    gap: 0.3rem;
+  }
+
+  .optionBtn,
+  .optionBtnActive,
+  .dataBtn,
+  .modeBtn,
+  .modeBtnActive {
+    font-size: 0.78rem;
+  }
+
+  .modeBtn,
+  .modeBtnActive {
+    min-height: 1.85rem;
+    padding: 0.32rem 0.62rem;
+  }
 }

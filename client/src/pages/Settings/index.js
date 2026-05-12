@@ -30,7 +30,24 @@ const Settings = () => {
   const importFileRef = useRef(null);
   const [pendingImport, setPendingImport] = useState(null);
   const [importing, setImporting] = useState(false);
-  const autoPronounceActive = pronunciationEnabled && autoPronounce;
+  const pronunciationMode = !pronunciationEnabled ? "disabled" : autoPronounce ? "auto" : "manual";
+
+  const setPronunciationMode = (mode) => {
+    if (mode === "disabled") {
+      setAutoPronounce(false);
+      setPronunciationEnabled(false);
+      return;
+    }
+
+    setPronunciationEnabled(true);
+    setAutoPronounce(mode === "auto");
+  };
+
+  const pronunciationModeDescription = pronunciationMode === "auto"
+    ? t("pronunciationModeAutoDesc")
+    : pronunciationMode === "manual"
+      ? t("pronunciationModeManualDesc")
+      : t("pronunciationModeDisabledDesc");
 
   const handleExport = () => {
     if (!decks?.length) { toast.info("No decks to export"); return; }
@@ -179,47 +196,32 @@ const Settings = () => {
       {/* ── Pronunciation ─────────────── */}
       <div className={styles.section}>
         <span className={styles.sectionTitle}>{t("pronunciationTitle")}</span>
-        <div className={styles.toggleList}>
-          <div className={styles.settingToggleRow}>
-            <div className={styles.toggleCopy}>
-              <span className={styles.toggleTitle}>{t("pronunciationEnabled")}</span>
-              <span className={styles.toggleText}>{t("pronunciationEnabledDesc")}</span>
-            </div>
-            <button
-              type="button"
-              role="switch"
-              aria-checked={pronunciationEnabled}
-              aria-label={t("pronunciationEnabled")}
-              className={pronunciationEnabled ? `${styles.switch} ${styles.switchOn}` : styles.switch}
-              onClick={() => setPronunciationEnabled(!pronunciationEnabled)}
-            >
-              <span className={styles.switchThumb} />
-            </button>
-          </div>
-
-          <div className={`${styles.settingToggleRow} ${!pronunciationEnabled ? styles.settingToggleRowDisabled : ""}`}>
-            <div className={styles.toggleCopy}>
-              <span className={styles.toggleTitle}>{t("autoPronounce")}</span>
-              <span className={styles.toggleText}>{t("autoPronounceDesc")}</span>
-            </div>
-            <button
-              type="button"
-              role="switch"
-              aria-checked={autoPronounceActive}
-              aria-label={t("autoPronounce")}
-              disabled={!pronunciationEnabled}
-              className={autoPronounceActive ? `${styles.switch} ${styles.switchOn}` : styles.switch}
-              onClick={() => {
-                if (!pronunciationEnabled) return;
-                setAutoPronounce(!autoPronounce);
-              }}
-            >
-              <span className={styles.switchThumb} />
-            </button>
-          </div>
+        <div className={styles.modeGroup}>
+          <button
+            type="button"
+            className={pronunciationMode === "disabled" ? styles.modeBtnActive : styles.modeBtn}
+            onClick={() => setPronunciationMode("disabled")}
+          >
+            {t("pronunciationModeDisabled")}
+          </button>
+          <button
+            type="button"
+            className={pronunciationMode === "manual" ? styles.modeBtnActive : styles.modeBtn}
+            onClick={() => setPronunciationMode("manual")}
+          >
+            {t("pronunciationModeManual")}
+          </button>
+          <button
+            type="button"
+            className={pronunciationMode === "auto" ? styles.modeBtnActive : styles.modeBtn}
+            onClick={() => setPronunciationMode("auto")}
+          >
+            {t("pronunciationModeAuto")}
+          </button>
         </div>
+        <p className={styles.modeNote}>* {pronunciationModeDescription}</p>
         <p className={styles.desc}>
-          {pronunciationEnabled ? t("pronunciationLanguagesDesc") : t("pronunciationUnavailable")}
+          {t("pronunciationLanguagesDesc")}
         </p>
       </div>
 

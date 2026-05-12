@@ -18,10 +18,11 @@ const stopBubble = (event) => {
   event.stopPropagation();
 };
 
-const PronunciationButton = ({ active, loading, compact, onClick, title }) => {
+const PronunciationButton = ({ active, loading, compact, square, onClick, title }) => {
   const className = [
     styles.button,
     compact ? styles.buttonCompact : "",
+    square ? styles.buttonSquare : "",
     active ? styles.buttonActive : "",
     loading ? styles.buttonLoading : "",
   ]
@@ -52,6 +53,7 @@ PronunciationButton.propTypes = {
   compact: PropTypes.bool,
   loading: PropTypes.bool,
   onClick: PropTypes.func,
+  square: PropTypes.bool,
   title: PropTypes.string,
 };
 
@@ -60,6 +62,7 @@ PronunciationButton.defaultProps = {
   compact: false,
   loading: false,
   onClick: undefined,
+  square: false,
   title: "Pronounce text",
 };
 

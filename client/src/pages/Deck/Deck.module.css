@@ -23,6 +23,8 @@
   align-items: center;
   gap: 0.35em;
   flex-wrap: wrap;
+  margin: 0;
+  padding-top: 0;
 }
 
 .actions {

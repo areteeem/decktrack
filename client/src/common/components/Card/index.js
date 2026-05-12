@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from "react";
 import styles from "./Card.module.css";
 import PropTypes from "prop-types";
 import RetentionBadge from "../../../pages/Deck/RetentionBadge";
@@ -8,18 +9,19 @@ import relativeTime from "dayjs/plugin/relativeTime";
 import calendar from "dayjs/plugin/calendar";
 import { useSettings } from "../../../contexts/SettingsContext";
 import { resolvePronunciationLocale, usePronunciation } from "../../../lib/pronunciation";
+
 dayjs.extend(relativeTime);
 dayjs.extend(calendar);
 
 const Card = (props) => {
   const { locale, pronunciationEnabled, t } = useSettings();
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef(null);
   const retention = props.flashcard.reviews > 0
     ? Math.round((props.flashcard.retention / props.flashcard.reviews) * 100)
     : 0;
 
   const againCount = props.flashcard.again_count || 0;
-
-  // Parse due as ISO string (not as integer timestamp)
   const dueDate = props.flashcard.due ? dayjs(props.flashcard.due) : null;
   const isOverdue = dueDate ? dueDate.isBefore(dayjs()) : false;
 
@@ -47,6 +49,19 @@ const Card = (props) => {
     }),
   });
 
+  const menuOptions = [
+    {
+      key: "term",
+      label: t("term"),
+      pronunciation: frontPronunciation,
+    },
+    {
+      key: "definition",
+      label: t("definition"),
+      pronunciation: backPronunciation,
+    },
+  ].filter((option) => option.pronunciation.canPronounce);
+
   const togglePronunciation = (pronunciation) => {
     if (pronunciation.isLoading || pronunciation.isPlaying) {
       pronunciation.stop();
@@ -56,33 +71,82 @@ const Card = (props) => {
     pronunciation.play();
   };
 
-  const renderLabelRow = (label, pronunciation) => (
-    <div className={styles.labelRow}>
-      <span className={styles.label}>{label}</span>
-      {pronunciationEnabled && pronunciation.canPronounce && (
-        <PronunciationButton
-          compact
-          active={pronunciation.isPlaying}
-          loading={pronunciation.isLoading}
-          onClick={() => togglePronunciation(pronunciation)}
-          title={pronunciation.isPlaying || pronunciation.isLoading ? t("stopPronunciation") : t("playPronunciation")}
-        />
-      )}
-    </div>
-  );
+  useEffect(() => {
+    if (!menuOpen) return undefined;
+
+    const handlePointerDown = (event) => {
+      if (menuRef.current && !menuRef.current.contains(event.target)) {
+        setMenuOpen(false);
+      }
+    };
+
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape") {
+        setMenuOpen(false);
+      }
+    };
+
+    document.addEventListener("pointerdown", handlePointerDown);
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown);
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [menuOpen]);
+
+  useEffect(() => {
+    if (!pronunciationEnabled) {
+      setMenuOpen(false);
+    }
+  }, [pronunciationEnabled]);
+
+  const menuIsActive = menuOptions.some((option) => option.pronunciation.isPlaying);
+  const menuIsLoading = menuOptions.some((option) => option.pronunciation.isLoading);
 
   return (
     <div className={styles.card} onClick={props.onClick}>
+      {pronunciationEnabled && menuOptions.length > 0 && (
+        <div className={styles.pronunciationMenuWrap} ref={menuRef}>
+          <PronunciationButton
+            compact
+            square
+            active={menuIsActive}
+            loading={menuIsLoading}
+            onClick={() => setMenuOpen((open) => !open)}
+            title={t("choosePronunciationSide")}
+          />
+          {menuOpen && (
+            <div className={styles.pronunciationMenu}>
+              {menuOptions.map((option) => (
+                <button
+                  key={option.key}
+                  type="button"
+                  className={option.pronunciation.isPlaying || option.pronunciation.isLoading ? `${styles.pronunciationMenuItem} ${styles.pronunciationMenuItemActive}` : styles.pronunciationMenuItem}
+                  onClick={(event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    togglePronunciation(option.pronunciation);
+                    setMenuOpen(false);
+                  }}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
       <div className={styles.body}>
         <div className={styles.section}>
-          {renderLabelRow(t("term"), frontPronunciation)}
+          <span className={styles.label}>{t("term")}</span>
           {hasHtml(props.flashcard.front)
             ? <h2 className={styles.title} dangerouslySetInnerHTML={{ __html: props.flashcard.front }} />
             : <h2 className={styles.title}>{props.flashcard.front}</h2>
           }
         </div>
         <div className={styles.section}>
-          {renderLabelRow(t("definition"), backPronunciation)}
+          <span className={styles.label}>{t("definition")}</span>
           {hasHtml(props.flashcard.back)
             ? <h3 className={styles.definition} dangerouslySetInnerHTML={{ __html: props.flashcard.back }} />
             : <h3 className={styles.definition}>{props.flashcard.back}</h3>
@@ -99,8 +163,8 @@ const Card = (props) => {
         )}
       </div>
       <div className={styles.meta}>
-        {props.flashcard.card_type === 'fill_blank' && (
-          <Badge fontSize="0.55em" style={{ color: 'var(--accent, #6366f1)', borderColor: 'var(--accent, #6366f1)' }}>
+        {props.flashcard.card_type === "fill_blank" && (
+          <Badge fontSize="0.55em" style={{ color: "var(--accent, #6366f1)", borderColor: "var(--accent, #6366f1)" }}>
             Fill-blank
           </Badge>
         )}

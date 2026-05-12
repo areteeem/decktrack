@@ -160,8 +160,15 @@ const en = {
   autoPronounceDesc: "Speak the newly visible side once when a card appears or is revealed.",
   pronunciationLanguagesDesc: "Google TTS is used first. English and Ukrainian are optimized, with browser fallback for other locales when available.",
   pronunciationUnavailable: "Turn pronunciation on to enable automatic playback.",
+  pronunciationModeDisabled: "Disabled",
+  pronunciationModeManual: "Manual",
+  pronunciationModeAuto: "Auto",
+  pronunciationModeDisabledDesc: "Hide sound controls and keep pronunciation fully off.",
+  pronunciationModeManualDesc: "Show the sound button, but only play when you ask for it.",
+  pronunciationModeAutoDesc: "Show the sound button and pronounce each newly visible side once.",
   playPronunciation: "Play pronunciation",
   stopPronunciation: "Stop pronunciation",
+  choosePronunciationSide: "Choose what to pronounce",
 
   // ── SRS intervals ──
   lessThan1m: "<1m",
@@ -348,8 +355,15 @@ const uk = {
   autoPronounceDesc: "Озвучувати нову видиму сторону один раз, коли картка з'являється або відкривається.",
   pronunciationLanguagesDesc: "Спочатку використовується Google TTS. Англійська й українська оптимізовані, а для інших мов використовується доступний запасний варіант браузера.",
   pronunciationUnavailable: "Увімкніть вимову, щоб дозволити автоматичне озвучення.",
+  pronunciationModeDisabled: "Вимкнено",
+  pronunciationModeManual: "Вручну",
+  pronunciationModeAuto: "Авто",
+  pronunciationModeDisabledDesc: "Сховати звукові елементи керування та повністю вимкнути вимову.",
+  pronunciationModeManualDesc: "Показувати кнопку звуку, але відтворювати лише за вашим запитом.",
+  pronunciationModeAutoDesc: "Показувати кнопку звуку й один раз озвучувати кожну нову видиму сторону.",
   playPronunciation: "Відтворити вимову",
   stopPronunciation: "Зупинити вимову",
+  choosePronunciationSide: "Виберіть, що озвучити",
 
   // ── SRS intervals ──
   lessThan1m: "<1хв",

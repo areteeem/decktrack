@@ -13,12 +13,14 @@
 }
 
 .front {
+  position: relative;
   text-align: center;
   padding: 2rem 2rem 1.5rem;
   width: 100%;
 }
 
 .back {
+  position: relative;
   text-align: center;
   padding: 1.5rem 2rem 2rem;
   width: 100%;
@@ -50,20 +52,17 @@
 }
 
 .sideHeader {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  display: grid;
+  place-items: center;
   min-height: 1.75rem;
   margin-bottom: 0.5rem;
-  padding-right: 2.2rem;
 }
 
-.sideHeader button {
+.sideControl {
   position: absolute;
-  top: 50%;
-  right: 0;
-  transform: translateY(-50%);
+  top: 0.9rem;
+  right: 0.9rem;
+  z-index: 1;
 }
 
 .sideLabel {
@@ -99,5 +98,10 @@
   .back {
     padding-left: 1.25rem;
     padding-right: 1.25rem;
+  }
+
+  .sideControl {
+    top: 0.75rem;
+    right: 0.75rem;
   }
 }
