@@ -7,6 +7,9 @@ import { ThemeProvider } from "./contexts/ThemeContext";
 import { SettingsProvider } from "./contexts/SettingsContext";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import { installToastLifecycleOptimizations } from "./common/lib/toastLifecycle";
+
+installToastLifecycleOptimizations();
 
 ReactDOM.render(
   <React.StrictMode>
@@ -16,6 +19,11 @@ ReactDOM.render(
           <BrowserRouter>
             <App />
             <ToastContainer
+              autoClose={2600}
+              closeOnClick
+              limit={3}
+              newestOnTop
+              pauseOnFocusLoss={false}
               toastStyle={{
                 border: "1.5px solid var(--border-color, #111)",
                 borderRadius: "3px",

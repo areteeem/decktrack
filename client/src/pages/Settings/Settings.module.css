@@ -1,28 +1,26 @@
 .settings {
-  width: min(100%, 31rem);
   max-width: 31rem;
-  margin: 1.25rem auto 1.75rem;
-  padding: 0 0.25rem;
+  margin: 1rem auto 1.5rem;
 }
 
 .settings h1 {
   font-size: 1.25rem;
-  margin-bottom: 1.25rem;
+  margin-bottom: 1.15rem;
   padding-top: 0;
 }
 
 .section {
-  margin-bottom: 1.5rem;
+  margin-bottom: 1.35rem;
 }
 
 .sectionTitle {
   display: block;
+  margin-bottom: 0.5rem;
+  color: var(--fg-faint);
   font-size: 0.7rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  color: var(--fg-faint);
-  margin-bottom: 0.5rem;
 }
 
 .profileCard {
@@ -44,91 +42,73 @@
 }
 
 .profileLabel {
+  color: var(--fg-faint);
   font-size: 0.75rem;
   font-weight: 600;
-  color: var(--fg-faint);
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
 
 .profileValue {
+  color: var(--fg);
   font-size: 0.85rem;
   font-weight: 600;
-  color: var(--fg);
 }
 
-.optionGroup {
+.optionGroup,
+.modeGroup,
+.dataActions {
   display: flex;
   flex-wrap: wrap;
+  align-items: flex-start;
   gap: 0.35rem;
 }
 
-.optionBtn {
+.optionBtn,
+.modeBtn,
+.dataBtn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   min-height: 2rem;
-  padding: 0.42rem 0.78rem;
-  border: var(--border);
-  border-radius: var(--radius);
-  background: var(--card-bg);
-  color: var(--fg);
-  font-size: 0.82rem;
-  font-weight: 600;
-  cursor: pointer;
-  font-family: inherit;
-  transition: background 0.12s, color 0.12s, border-color 0.12s;
-}
-
-.optionBtn:hover {
-  background: var(--card-hover);
-  color: var(--fg);
-}
-
-.optionBtnActive {
-  composes: optionBtn;
-  background: var(--fg);
-  color: var(--bg);
-  border-color: var(--fg);
-}
-
-.optionBtnActive:hover {
-  background: var(--fg);
-  color: var(--bg);
-}
-
-.modeGroup {
-  display: flex;
-  gap: 0.35rem;
-  flex-wrap: wrap;
-}
-
-.modeBtn {
-  flex: 0 0 auto;
-  width: fit-content;
-  min-height: 1.95rem;
-  padding: 0.38rem 0.72rem;
+  padding: 0.4rem 0.8rem;
   border: var(--border);
   border-radius: var(--radius);
   background: var(--card-bg);
   color: var(--fg);
   font-size: 0.8rem;
   font-weight: 600;
-  cursor: pointer;
   font-family: inherit;
-  transition: background 0.12s, color 0.12s;
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
 }
 
-.modeBtn:hover {
+.modeBtn {
+  min-height: 1.95rem;
+  padding: 0.35rem 0.75rem;
+}
+
+.optionBtn:hover,
+.modeBtn:hover,
+.dataBtn:hover {
   background: var(--card-hover);
+  color: var(--fg);
+  border-color: var(--fg-faint);
+}
+
+.optionBtnActive,
+.modeBtnActive {
+  composes: optionBtn;
+  background: var(--fg);
+  color: var(--bg);
+  border-color: var(--fg);
 }
 
 .modeBtnActive {
   composes: modeBtn;
-  background: var(--fg);
-  color: var(--bg);
 }
 
+.optionBtnActive:hover,
 .modeBtnActive:hover {
   background: var(--fg);
   color: var(--bg);
@@ -136,52 +116,23 @@
 
 .modeNote {
   margin: 0.55rem 0 0;
+  color: var(--fg);
   font-size: 0.75rem;
   line-height: 1.4;
-  color: var(--fg);
 }
 
 .desc {
-  font-size: 0.75rem;
+  margin-top: 0.25rem;
   color: var(--fg-faint);
-  margin-top: 0.35rem;
+  font-size: 0.75rem;
   line-height: 1.4;
 }
 
 .separator {
   border: none;
   border-top: 1px solid var(--border-color);
-  margin: 1.5rem 0;
+  margin: 1.3rem 0;
   opacity: 0.2;
-}
-
-.dataActions {
-  display: flex;
-  gap: 0.5rem;
-  flex-wrap: wrap;
-}
-
-.dataBtn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.4rem;
-  min-height: 2rem;
-  padding: 0.42rem 0.78rem;
-  border: var(--border);
-  border-radius: var(--radius);
-  background: var(--card-bg);
-  color: var(--fg);
-  font-size: 0.82rem;
-  font-weight: 600;
-  cursor: pointer;
-  font-family: inherit;
-  transition: background 0.12s, border-color 0.12s;
-}
-
-.dataBtn:hover {
-  background: var(--card-hover);
-  border-color: var(--fg-muted);
 }
 
 .importList {
@@ -205,24 +156,24 @@
 }
 
 .importName {
-  font-weight: 600;
-  font-size: 0.85rem;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  font-size: 0.85rem;
+  font-weight: 600;
 }
 
 .importCount {
-  font-size: 0.75rem;
-  color: var(--fg-muted);
   flex-shrink: 0;
   margin-left: 0.5rem;
+  color: var(--fg-muted);
+  font-size: 0.75rem;
 }
 
-@media (max-width: 520px) {
+@media (max-width: 640px) {
   .settings {
-    padding: 0 0.1rem;
+    margin: 0.75rem auto 1.25rem;
   }
 
   .optionGroup,
@@ -232,16 +183,18 @@
   }
 
   .optionBtn,
+  .modeBtn,
   .optionBtnActive,
-  .dataBtn,
-  .modeBtn,
-  .modeBtnActive {
+  .modeBtnActive,
+  .dataBtn {
     font-size: 0.78rem;
+    padding-inline: 0.7rem;
   }
+}
 
+@media (max-width: 520px) {
   .modeBtn,
   .modeBtnActive {
-    min-height: 1.85rem;
-    padding: 0.32rem 0.62rem;
+    flex-basis: 100%;
   }
 }

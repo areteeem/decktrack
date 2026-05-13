@@ -196,15 +196,32 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
     }
   }, [refreshContinueSessions]);
 
+  // Helper to detect if a nav link is active
+  const getNavLinkClass = (linkPath) => {
+    const isActive = linkPath === '/' 
+      ? location.pathname === '/' 
+      : location.pathname.startsWith(linkPath);
+    return `icon-link${isActive ? ' active' : ''}`;
+  };
+
   return (
-    <div className={isOpen ? "sidebar" : "sidebar collapsed"} ref={sidebarRef}>
+    <>
+      {isOpen && (
+        <button
+          type="button"
+          className="sidebar-mobile-backdrop"
+          aria-label="Close navigation"
+          onClick={() => setIsOpen(false)}
+        />
+      )}
+      <div className={isOpen ? "sidebar" : "sidebar collapsed"} ref={sidebarRef}>
       <NewDeckModal open={showModal} setOpen={setShowModal} onCreated={refetch} />
       <KeyboardShortcutsModal open={showShortcuts} setOpen={setShowShortcuts} />
       <div className="sidebar-scrollable">
         <Link to="/" onClick={() => setIsOpen(false)}>
           <img src={logo} className="logo" alt="logo" />
         </Link>
-        <Link className="icon-link" to="/" onClick={() => setIsOpen(false)}>
+        <Link className={getNavLinkClass('/')} to="/" onClick={() => setIsOpen(false)}>
           <svg
             className="w-6 h-6"
             fill="none"
@@ -221,7 +238,7 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
           </svg>
           <p>{t("dashboard")}</p>
         </Link>
-        <Link className="icon-link" to="/progress" onClick={() => setIsOpen(false)}>
+        <Link className={getNavLinkClass('/progress')} to="/progress" onClick={() => setIsOpen(false)}>
           <svg
             className="w-6 h-6"
             fill="none"
@@ -240,7 +257,7 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
         </Link>
         {isTeacher && (
           <>
-            <Link className="icon-link" to="/due" onClick={() => setIsOpen(false)}>
+            <Link className={getNavLinkClass('/due')} to="/due" onClick={() => setIsOpen(false)}>
               <svg
                 className="w-6 h-6"
                 fill="none"
@@ -257,7 +274,7 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
               </svg>
               <p>{t("dueToday")}</p>
             </Link>
-            <Link className="icon-link" to="/new" onClick={() => setIsOpen(false)}>
+            <Link className={getNavLinkClass('/new')} to="/new" onClick={() => setIsOpen(false)}>
               <svg
                 className="w-6 h-6"
                 fill="none"
@@ -274,7 +291,7 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
               </svg>
               <p>{t("learnNew")}</p>
             </Link>
-            <Link className="icon-link" to="/students" onClick={() => setIsOpen(false)}>
+            <Link className={getNavLinkClass('/students')} to="/students" onClick={() => setIsOpen(false)}>
               <svg
                 className="w-6 h-6"
                 fill="none"
@@ -291,7 +308,7 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
               </svg>
               <p>{t("students")}</p>
             </Link>
-            <Link className="icon-link" to="/groups" onClick={() => setIsOpen(false)}>
+            <Link className={getNavLinkClass('/groups')} to="/groups" onClick={() => setIsOpen(false)}>
               <svg
                 className="w-6 h-6"
                 fill="none"
@@ -312,7 +329,7 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
         )}
         {isStudent && (
           <>
-            <Link className="icon-link" to="/study/all/due" onClick={() => setIsOpen(false)}>
+            <Link className={getNavLinkClass('/study/all/due')} to="/study/all/due" onClick={() => setIsOpen(false)}>
               <svg
                 className="w-6 h-6"
                 fill="none"
@@ -329,7 +346,7 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
               </svg>
               <p>{t("dueToday")} {studentStats?.dueCards ? `(${studentStats.dueCards})` : ""}</p>
             </Link>
-            <Link className="icon-link" to="/study/all/new" onClick={() => setIsOpen(false)}>
+            <Link className={getNavLinkClass('/study/all/new')} to="/study/all/new" onClick={() => setIsOpen(false)}>
               <svg
                 className="w-6 h-6"
                 fill="none"
@@ -524,7 +541,8 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
         className={`sidebar-resize-handle${isResizing ? " active" : ""}`}
         onMouseDown={handleResizeStart}
       />
-    </div>
+      </div>
+    </>
   );
 };
 

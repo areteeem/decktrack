@@ -21,7 +21,6 @@
 .body {
   display: grid;
   gap: 0.35rem;
-  padding-right: 2rem;
 }
 
 .pronunciationMenuWrap {
@@ -91,9 +90,9 @@
   color: var(--fg);
   font-weight: 600;
   line-height: 1.3;
-  line-clamp: 2;
   overflow: hidden;
   display: -webkit-box;
+  line-clamp: 2;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
 }
@@ -104,9 +103,9 @@
   font-weight: 400;
   font-size: 0.85rem;
   line-height: 1.4;
-  line-clamp: 3;
   overflow: hidden;
   display: -webkit-box;
+  line-clamp: 3;
   -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
 }
@@ -128,10 +127,6 @@
 }
 
 @media (max-width: 720px) {
-  .body {
-    padding-right: 1.85rem;
-  }
-
   .pronunciationMenuWrap {
     top: 0.65rem;
     right: 0.65rem;
