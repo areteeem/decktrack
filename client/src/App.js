@@ -30,6 +30,7 @@ import Settings from "./pages/Settings";
 import SharedDeckPage from "./pages/SharedDeck";
 import ProgressPage from "./pages/Progress";
 import NotFoundPage from "./common/components/NotFoundPage";
+import SsoCallback from "./pages/SsoCallback";
 export default function Home() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { isAuthenticated, loading, isTeacher, isStudent } = useAuth();
@@ -39,6 +40,7 @@ export default function Home() {
   if (location.pathname === "/launch/student-app") {
     return (
       <Routes>
+          <Route path="/sso/callback" element={<SsoCallback />} />
         <Route path="/launch/student-app" element={<StudentLaunchPage />} />
         <Route path="*" element={<Navigate to="/launch/student-app" replace />} />
       </Routes>
@@ -105,6 +107,7 @@ export default function Home() {
         </div>
       ) : (
         <Routes>
+          <Route path="/sso/callback" element={<SsoCallback />} />
           <Route path="/" element={<Navigate to="/signin" replace />} />
           <Route path="/launch/student-app" element={<StudentLaunchPage />} />
           <Route path="/shared/:token" element={<SharedDeckPage />} />

@@ -10,8 +10,8 @@ const SignIn = () => {
   const login = useLogin();
   const navigate = useNavigate();
   const { signInStudent } = useAuth();
-  const accountOrigin = String(import.meta.env.VITE_TUTPRO_ACCOUNT_ORIGIN || "https://tutpro.org").replace(/\/$/, "");
-  const returnTo = typeof window === "undefined" ? "" : window.location.href;
+  const accountOrigin = String(import.meta.env.VITE_TUTPRO_ACCOUNT_ORIGIN || "https://www.tutpro.org").replace(/\/$/, "");
+  const returnTo = typeof window === "undefined" ? "" : `${window.location.origin}${new URLSearchParams(window.location.search).get("redirect") || "/"}`;
   const centralSignInUrl = `${accountOrigin}/signin?returnTo=${encodeURIComponent(returnTo)}`;
 
   const [tab, setTab] = useState("teacher"); // "teacher" | "student"

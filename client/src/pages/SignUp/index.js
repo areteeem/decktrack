@@ -8,7 +8,7 @@ const SignUp = () => {
   const signup = useSignUp();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const accountOrigin = String(import.meta.env.VITE_TUTPRO_ACCOUNT_ORIGIN || "https://tutpro.org").replace(/\/$/, "");
+  const accountOrigin = String(import.meta.env.VITE_TUTPRO_ACCOUNT_ORIGIN || "https://www.tutpro.org").replace(/\/$/, "");
   const returnTo = typeof window === "undefined" ? "" : window.location.href;
   return (
     <div className={styles.layout}>
