@@ -1,9 +1,9 @@
 .layout {
-  height: 100vh;
-  width: 100vw;
+  min-height: 100dvh;
+  width: 100%;
   display: grid;
-  place-content: center;
-  background: var(--bg);
+  grid-template-columns: minmax(0, 1fr) minmax(28rem, 1fr);
+  background: #f7f9fc;
 }
 
 .form {
@@ -11,12 +11,26 @@
   flex-direction: column;
   align-items: stretch;
   justify-content: center;
-  padding: 2rem;
-  border: var(--border);
-  border-radius: var(--radius);
   background: var(--card-bg);
-  width: 22rem;
-  max-width: 90vw;
+  width: 100%;
+  max-width: 36rem;
+  padding: clamp(2rem, 6vw, 5.5rem);
+  justify-self: center;
+}
+
+.visual { position: relative; isolation: isolate; overflow: hidden; min-height: 100dvh; color: white; background: linear-gradient(145deg, #075a9e 0%, #23a4ae 48%, #f39b67 100%); }
+.visual::before { content: ""; position: absolute; inset: 0; background: radial-gradient(circle at 16% 20%, rgba(255,235,155,.95), transparent 18rem), radial-gradient(circle at 80% 16%, rgba(255,112,108,.9), transparent 22rem), radial-gradient(circle at 72% 82%, rgba(232,94,193,.85), transparent 20rem); z-index: -1; }
+.visualOrb { position: absolute; width: min(42vw, 38rem); aspect-ratio: 1; left: 9%; top: 18%; border-radius: 50%; background: linear-gradient(135deg, rgba(255,255,255,.85), rgba(255,155,127,.4) 42%, rgba(82,198,215,.64)); box-shadow: 0 0 80px rgba(255,255,255,.4), inset -24px -20px 60px rgba(255,255,255,.2); }
+.visualGlow { position: absolute; width: 15rem; height: 15rem; right: 8%; bottom: 12%; border-radius: 50%; background: rgba(255,255,255,.23); filter: blur(30px); }
+.visualCopy { position: absolute; left: 10%; right: 10%; bottom: 9%; display: grid; gap: .8rem; max-width: 27rem; }
+.visualEyebrow { font-size: .75rem; font-weight: 800; letter-spacing: .18em; text-transform: uppercase; color: rgba(255,255,255,.75); }
+.visualCopy strong { font-size: clamp(2.4rem, 5vw, 4.8rem); line-height: .98; letter-spacing: -.06em; }
+.visualCopy > span:last-child { max-width: 22rem; font-size: 1rem; line-height: 1.55; color: rgba(255,255,255,.84); }
+
+@media (max-width: 760px) {
+  .layout { grid-template-columns: 1fr; }
+  .visual { display: none; }
+  .form { min-height: 100dvh; max-width: none; padding: 2rem 1.4rem; }
 }
 
 .title {

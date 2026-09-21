@@ -1,28 +1,43 @@
 .layout {
-  height: 100vh;
-  width: 100vw;
+  min-height: 100dvh;
+  width: 100%;
   display: grid;
-  place-content: center;
-  background: var(--bg);
+  grid-template-columns: minmax(0, 1fr) minmax(28rem, 1fr);
+  background: #f7f9fc;
 }
+
+.visual {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  min-height: 100dvh;
+  color: white;
+  background: linear-gradient(145deg, #075a9e 0%, #23a4ae 48%, #f39b67 100%);
+}
+.visual::before { content: ""; position: absolute; inset: 0; background: radial-gradient(circle at 16% 20%, rgba(255,235,155,.95), transparent 18rem), radial-gradient(circle at 80% 16%, rgba(255,112,108,.9), transparent 22rem), radial-gradient(circle at 72% 82%, rgba(232,94,193,.85), transparent 20rem); z-index: -1; }
+.visualOrb { position: absolute; width: min(42vw, 38rem); aspect-ratio: 1; left: 9%; top: 18%; border-radius: 50%; background: linear-gradient(135deg, rgba(255,255,255,.85), rgba(255,155,127,.4) 42%, rgba(82,198,215,.64)); box-shadow: 0 0 80px rgba(255,255,255,.4), inset -24px -20px 60px rgba(255,255,255,.2); }
+.visualGlow { position: absolute; width: 15rem; height: 15rem; right: 8%; bottom: 12%; border-radius: 50%; background: rgba(255,255,255,.23); filter: blur(30px); }
+.visualCopy { position: absolute; left: 10%; right: 10%; bottom: 9%; display: grid; gap: .8rem; max-width: 27rem; }
+.visualEyebrow { font-size: .75rem; font-weight: 800; letter-spacing: .18em; text-transform: uppercase; color: rgba(255,255,255,.75); }
+.visualCopy strong { font-size: clamp(2.4rem, 5vw, 4.8rem); line-height: .98; letter-spacing: -.06em; }
+.visualCopy > span:last-child { max-width: 22rem; font-size: 1rem; line-height: 1.55; color: rgba(255,255,255,.84); }
 
 .form {
   display: flex;
   flex-direction: column;
   align-items: stretch;
   justify-content: center;
-  padding: 2rem;
-  border: var(--border);
-  border-radius: var(--radius);
+  padding: clamp(2rem, 6vw, 5.5rem);
   background: var(--card-bg);
-  width: 22rem;
-  max-width: 90vw;
+  width: 100%;
+  max-width: 36rem;
+  justify-self: center;
 }
 
 .title {
-  margin: 0 0 0.75rem 0;
-  font-size: 1.5rem;
-  text-align: center;
+  margin: 1.75rem 0 0.4rem;
+  font-size: 1.75rem;
+  text-align: left;
   color: var(--fg);
 }
 
@@ -33,7 +48,7 @@
   gap: 0;
   margin-bottom: 1rem;
   border: var(--border);
-  border-radius: var(--radius);
+  border-radius: 999px;
   overflow: hidden;
 }
 
@@ -54,8 +69,8 @@
 }
 
 .tabActive {
-  background: var(--fg);
-  color: var(--bg);
+  background: #1557aa;
+  color: white;
 }
 
 /* ── Fields ───────────────────── */
@@ -97,4 +112,17 @@
   text-align: center;
   margin-top: 0.6rem;
   line-height: 1.4;
+}
+
+.brand { display: flex; align-items: center; gap: .5rem; color: var(--fg); font-size: .85rem; font-weight: 700; }
+.brandMark { display: grid; place-items: center; width: 1.85rem; height: 1.85rem; border-radius: 50%; background: #1557aa; color: #fff; font-size: .72rem; font-weight: 900; }
+.product { color: var(--fg-muted); font-weight: 600; }
+.intro { margin: 0 0 1.3rem; color: var(--fg-muted); font-size: .87rem; line-height: 1.45; }
+.primaryLink { display: inline-flex; box-sizing: border-box; width: 100%; min-height: 2.8rem; align-items: center; justify-content: center; border-radius: 999px; background: #1557aa; color: #fff; font-size: .9rem; font-weight: 700; text-decoration: none; transition: background .15s ease; }
+.primaryLink:hover { background: #10498f; }
+
+@media (max-width: 760px) {
+  .layout { grid-template-columns: 1fr; }
+  .visual { display: none; }
+  .form { min-height: 100dvh; max-width: none; padding: 2rem 1.4rem; }
 }

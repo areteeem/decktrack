@@ -340,7 +340,7 @@ const AddStudentModal = ({ open, setOpen, onAdded }) => {
       <form onSubmit={handleAdd}>
       <h3>Link existing student account</h3>
       <p className={styles.helperText}>
-        TutPro students sync automatically from your latest backup. Use this only if a student already created a DeckTrack account manually and you want to link it by email.
+        TutPro students sync automatically from your latest backup. Use this only if a student already created a Decks account manually and you want to link it by email.
       </p>
       <TextInput label="Student email" placeholder="student@example.com" state={email} setState={setEmail} />
       <TextInput
@@ -1051,13 +1051,13 @@ const StudentsPage = () => {
     const displayName = studentRow?.displayName || "Student";
     const body = [
       `Hi ${displayName},`,
-      "Please open your student app and continue your assigned DeckTrack studies.",
+      "Please open your student app and continue your assigned Decks studies.",
       loginUrl ? `Login link: ${loginUrl}` : "",
     ].filter(Boolean).join("\n\n");
 
     const email = String(studentRow?.email || "").trim();
     if (email) {
-      const mailto = `mailto:${encodeURIComponent(email)}?subject=${encodeURIComponent("DeckTrack study reminder")}&body=${encodeURIComponent(body)}`;
+      const mailto = `mailto:${encodeURIComponent(email)}?subject=${encodeURIComponent("Decks study reminder")}&body=${encodeURIComponent(body)}`;
       window.open(mailto, "_blank", "noopener,noreferrer");
     }
 
@@ -1107,7 +1107,7 @@ const StudentsPage = () => {
         <div>
           <h1>my students</h1>
           <p className={styles.helperText}>
-            TutPro students sync from your latest backup automatically. Students become assignable in DeckTrack after they open the flashcards link in the student app once.
+            TutPro students sync from your latest backup automatically. Students become assignable in Decks after they open the deck link in the student app once.
           </p>
         </div>
         <div className={styles.headerActions}>
@@ -1135,7 +1135,7 @@ const StudentsPage = () => {
           <strong className={styles.summaryValue}>{rosterStudents?.length || 0}</strong>
         </div>
         <div className={styles.summaryCard}>
-          <span className={styles.summaryLabel}>Ready in DeckTrack</span>
+          <span className={styles.summaryLabel}>Ready in Decks</span>
           <strong className={styles.summaryValue}>{linkedCount}</strong>
         </div>
         <div className={styles.summaryCard}>
@@ -1200,7 +1200,7 @@ const StudentsPage = () => {
       {filteredStudentRows.length === 0 ? (
         <div className={styles.empty}>
           <h2>{searchQuery ? "No matching students" : "No students yet"}</h2>
-          <p>{searchQuery ? "Try a different search term." : "Sync your TutPro backup or link an existing DeckTrack student account to get started."}</p>
+          <p>{searchQuery ? "Try a different search term." : "Sync your TutPro backup or link an existing Decks student account to get started."}</p>
         </div>
       ) : (
         <div className={styles.grid}>

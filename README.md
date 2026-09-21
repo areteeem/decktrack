@@ -7,7 +7,7 @@
     <img src="images/logo.png" alt="Logo" width="80" height="80">
   </a>
 
-<h3 align="center">DeckTrack</h3>
+<h3 align="center">Decks</h3>
 
   <p align="center">
     Open-source Spaced Repetition System.

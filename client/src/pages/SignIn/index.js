@@ -10,6 +10,9 @@ const SignIn = () => {
   const login = useLogin();
   const navigate = useNavigate();
   const { signInStudent } = useAuth();
+  const accountOrigin = String(import.meta.env.VITE_TUTPRO_ACCOUNT_ORIGIN || "https://tutpro.org").replace(/\/$/, "");
+  const returnTo = typeof window === "undefined" ? "" : window.location.href;
+  const centralSignInUrl = `${accountOrigin}/signin?returnTo=${encodeURIComponent(returnTo)}`;
 
   const [tab, setTab] = useState("teacher"); // "teacher" | "student"
 
@@ -44,8 +47,21 @@ const SignIn = () => {
 
   return (
     <div className={styles.layout}>
+      <aside className={styles.visual} aria-hidden="true">
+        <div className={styles.visualOrb} />
+        <div className={styles.visualGlow} />
+        <div className={styles.visualCopy}>
+          <span className={styles.visualEyebrow}>TutPro / Decks</span>
+          <strong>Make every idea<br />stick.</strong>
+          <span>Study with a calmer rhythm and see your progress grow.</span>
+        </div>
+      </aside>
       <div className={styles.form}>
-        <h1 className={styles.title}>Sign In</h1>
+        <div className={styles.brand}><span className={styles.brandMark}>T</span><span>TutPro account</span><span className={styles.product}>/ Decks</span></div>
+        <h1 className={styles.title}>Continue to Decks</h1>
+        <p className={styles.intro}>Use your TutPro account and return straight to the deck you opened.</p>
+        <a className={styles.primaryLink} href={centralSignInUrl}>Continue with TutPro</a>
+        <div className={styles.divider}>or use Decks directly</div>
 
         {/* Tab switcher */}
         <div className={styles.tabs}>
@@ -54,14 +70,14 @@ const SignIn = () => {
             onClick={() => setTab("teacher")}
             type="button"
           >
-            Teacher
+            Teacher account
           </button>
           <button
             className={`${styles.tab} ${tab === "student" ? styles.tabActive : ""}`}
             onClick={() => setTab("student")}
             type="button"
           >
-            Student
+            Student access
           </button>
         </div>
 

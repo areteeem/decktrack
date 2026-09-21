@@ -2,7 +2,8 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 
 export default defineConfig({
-  base: '/decktrack/',
+  // Deployed directly at decks.tutpro.org rather than through /decktrack/.
+  base: '/',
   plugins: [react({ include: /\.[jt]sx?$/ })],
   envPrefix: ['VITE_', 'REACT_APP_'],
   esbuild: {

@@ -292,13 +292,13 @@ const StudentDetailPage = () => {
     const displayName = student?.display_name || student?.email || 'Student';
     const body = [
       `Hi ${displayName},`,
-      'Please open your student app and continue your assigned DeckTrack studies.',
+      'Please open your student app and continue your assigned Decks studies.',
       studentAppLoginUrl ? `Login link: ${studentAppLoginUrl}` : '',
     ].filter(Boolean).join('\n\n');
 
     const email = String(student?.email || '').trim();
     if (email) {
-      const mailto = `mailto:${encodeURIComponent(email)}?subject=${encodeURIComponent('DeckTrack study reminder')}&body=${encodeURIComponent(body)}`;
+      const mailto = `mailto:${encodeURIComponent(email)}?subject=${encodeURIComponent('Decks study reminder')}&body=${encodeURIComponent(body)}`;
       window.open(mailto, '_blank', 'noopener,noreferrer');
     }
 
