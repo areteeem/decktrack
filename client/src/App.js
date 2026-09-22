@@ -31,6 +31,7 @@ import SharedDeckPage from "./pages/SharedDeck";
 import ProgressPage from "./pages/Progress";
 import NotFoundPage from "./common/components/NotFoundPage";
 import SsoCallback from "./pages/SsoCallback";
+import WordlyImport from "./pages/WordlyImport";
 export default function Home() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { isAuthenticated, loading, isTeacher, isStudent } = useAuth();
@@ -78,6 +79,7 @@ export default function Home() {
               {/* Teacher-only routes */}
               {isTeacher && (
                 <>
+                  <Route path="/import" element={<WordlyImport />} />
                   <Route path="/new" element={<LearnNew />} />
                   <Route path="/due" element={<PracticeDue />} />
                   <Route path="/students" element={<StudentsPage />} />
@@ -108,12 +110,12 @@ export default function Home() {
       ) : (
         <Routes>
           <Route path="/sso/callback" element={<SsoCallback />} />
-          <Route path="/" element={<Navigate to="/signin" replace />} />
+          <Route path="/" element={<SignIn />} />
           <Route path="/launch/student-app" element={<StudentLaunchPage />} />
           <Route path="/shared/:token" element={<SharedDeckPage />} />
           <Route path="/signin" element={<SignIn />} />
           <Route path="/signup" element={<SignUp />} />
-          <Route path="*" element={<NotFoundPage />} />
+          <Route path="*" element={<SignIn />} />
         </Routes>
       )}
     </div>

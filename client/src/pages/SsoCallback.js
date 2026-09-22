@@ -12,7 +12,9 @@ export default function SsoCallback() {
         const code = new URLSearchParams(window.location.hash.replace(/^#/, '')).get('sso');
         if (!code) throw new Error('The sign-in handoff is missing.');
         const supabase = getSupabase();
-        const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sso_consume`, { method: 'POST', headers: { apikey: import.meta.env.VITE_SUPABASE_ANON_KEY, 'Content-Type': 'application/json' }, body: JSON.stringify({ code }) });
+        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || import.meta.env.REACT_APP_SUPABASE_URL;
+        const publishableKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || import.meta.env.VITE_SUPABASE_ANON_KEY || import.meta.env.REACT_APP_SUPABASE_ANON_KEY;
+        const response = await fetch(`${supabaseUrl}/functions/v1/sso_consume`, { method: 'POST', headers: { apikey: publishableKey, 'Content-Type': 'application/json' }, body: JSON.stringify({ code }) });
         const handoff = await response.json().catch(() => ({}));
         if (!response.ok || !handoff.tokenHash) throw new Error(handoff.error || 'The sign-in handoff expired.');
         const { error: verifyError } = await supabase.auth.verifyOtp({ token_hash: handoff.tokenHash, type: 'magiclink' });
