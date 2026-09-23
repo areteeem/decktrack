@@ -4,6 +4,21 @@
   grid-gap: 0.5rem;
 }
 
+.deletedState {
+  min-height: 55vh;
+  display: grid;
+  place-content: center;
+  gap: 0.75rem;
+  max-width: 34rem;
+  margin: 0 auto;
+  padding: 2rem;
+  text-align: center;
+}
+
+.deletedState h1 { margin: 0; }
+.deletedState p { margin: 0; color: var(--text-secondary, #64748b); line-height: 1.55; }
+.deletedEyebrow { color: var(--primary, #2563eb) !important; font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em; font-size: 0.75rem; }
+
 .flashcardContainer.tableView {
   grid-template-columns: 1fr;
 }

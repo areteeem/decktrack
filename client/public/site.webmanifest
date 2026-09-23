@@ -1,9 +1,9 @@
 {
-  "name": "TutPro - Teacher",
-  "short_name": "TutPro",
+  "name": "TutPro Decks",
+  "short_name": "Decks",
   "icons": [
     {
-      "src": "./favicon.svg",
+      "src": "./tutpro-decks.svg",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any maskable"

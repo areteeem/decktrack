@@ -953,8 +953,14 @@ const Deck = () => {
       </>
     );
   } else {
-    toast.error(t("deckNotFound"));
-    return <h1>{t("error")}</h1>;
+    return (
+      <main className={styles.deletedState} role="alert">
+        <p className={styles.deletedEyebrow}>Decks</p>
+        <h1>Deck was deleted</h1>
+        <p>This Decks assignment is no longer available. Ask your teacher to choose another deck.</p>
+        <Button onClick={() => navigate("/", { replace: true })}>Back to Decks</Button>
+      </main>
+    );
   }
 };
 
