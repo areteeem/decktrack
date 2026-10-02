@@ -218,11 +218,6 @@ const StudentDetailPage = () => {
     [student, user?.id]
   );
 
-  const studentProgressUrl = useMemo(() => {
-    if (!detailStudentId) return null;
-    return new URL(`students/${encodeURIComponent(detailStudentId)}`, `${window.location.origin}${import.meta.env.BASE_URL}`).toString();
-  }, [detailStudentId]);
-
   const logStudentAction = useCallback(async (action, metadata = {}) => {
     if (!detailStudentId) return;
     try {
@@ -256,16 +251,6 @@ const StudentDetailPage = () => {
     logStudentAction('copy_login_link', { source: 'student_detail' });
   }, [logStudentAction, studentAppLoginUrl]);
 
-  const handleCopyProfileLink = useCallback(async () => {
-    if (!studentProgressUrl) {
-      toast.info('Profile link is not available.');
-      return;
-    }
-    await copyText(studentProgressUrl);
-    toast.success('Profile link copied!');
-    logStudentAction('copy_profile_link', { source: 'student_detail' });
-  }, [logStudentAction, studentProgressUrl]);
-
   const handleCopyBundle = useCallback(async () => {
     const deckNames = (assignments || [])
       .filter((assignment) => !assignment?.is_archived)
@@ -277,7 +262,6 @@ const StudentDetailPage = () => {
       `Student: ${student?.display_name || student?.email || 'Student'}`,
       student?.email ? `Email: ${student.email}` : '',
       `Login link: ${studentAppLoginUrl || 'Not available'}`,
-      `Profile link: ${studentProgressUrl || 'Not available'}`,
       `Assigned decks: ${assignmentHealth.total}`,
       `Pending: ${assignmentHealth.pending}, due soon: ${assignmentHealth.dueSoon}, overdue: ${assignmentHealth.overdue}`,
       deckNames.length ? `Deck list: ${deckNames.join(', ')}` : 'Deck list: none',
@@ -286,7 +270,7 @@ const StudentDetailPage = () => {
     await copyText(lines.join('\n'));
     toast.success('Student bundle copied!');
     logStudentAction('copy_student_bundle', { source: 'student_detail' });
-  }, [assignmentHealth.dueSoon, assignmentHealth.overdue, assignmentHealth.pending, assignmentHealth.total, assignments, logStudentAction, student?.display_name, student?.email, studentAppLoginUrl, studentProgressUrl]);
+  }, [assignmentHealth.dueSoon, assignmentHealth.overdue, assignmentHealth.pending, assignmentHealth.total, assignments, logStudentAction, student?.display_name, student?.email, studentAppLoginUrl]);
 
   const handlePrepareReminder = useCallback(async () => {
     const displayName = student?.display_name || student?.email || 'Student';
@@ -552,22 +536,42 @@ const StudentDetailPage = () => {
         .order("assigned_at", { ascending: false }),
       supabase
         .from("flashy_decks")
-        .select("*, flashy_cards(id)")
+        .select("*")
         .eq("owner_id", studentId)
         .eq("is_archived", false)
         .order("created_at", { ascending: false }),
       supabase
         .from("flashy_decks")
-        .select("*, flashy_cards(id)")
+        .select("*")
         .eq("owner_id", studentId)
         .eq("is_archived", true)
         .order("created_at", { ascending: false }),
     ]);
 
+    const allDecks = [...(personalRes.data || []), ...(archivedRes.data || [])];
+    const deckIds = allDecks.map((deck) => deck.id).filter(Boolean);
+    let cardCounts = new Map();
+    if (deckIds.length > 0) {
+      const { data: deckCards, error: cardsError } = await supabase
+        .from("flashy_cards")
+        .select("deck_id")
+        .in("deck_id", deckIds);
+      if (cardsError) {
+        console.warn("[StudentDetailPage] personal deck card counts failed", cardsError.message || cardsError);
+      } else {
+        cardCounts = (deckCards || []).reduce((counts, card) => {
+          counts.set(card.deck_id, (counts.get(card.deck_id) || 0) + 1);
+          return counts;
+        }, new Map());
+      }
+    }
+
+    if (personalRes.error) console.warn("[StudentDetailPage] personal decks failed", personalRes.error.message || personalRes.error);
+    if (archivedRes.error) console.warn("[StudentDetailPage] archived personal decks failed", archivedRes.error.message || archivedRes.error);
     if (profileRes.data) setStudent(profileRes.data);
     if (assignRes.data) setAssignments(assignRes.data);
-    if (personalRes.data) setPersonalDecks(personalRes.data);
-    if (archivedRes.data) setArchivedPersonalDecks(archivedRes.data);
+    if (personalRes.data) setPersonalDecks(personalRes.data.map((deck) => ({ ...deck, card_count: cardCounts.get(deck.id) || 0 })));
+    if (archivedRes.data) setArchivedPersonalDecks(archivedRes.data.map((deck) => ({ ...deck, card_count: cardCounts.get(deck.id) || 0 })));
     setLoading(false);
   }, [studentId, user?.id]);
 
@@ -616,7 +620,6 @@ const StudentDetailPage = () => {
             <Button callback={handleOpenAssignFlow}>Assign deck</Button>
             <Button callback={handleOpenStudentApp} bgcolor="transparent" color="var(--fg)">Open student app</Button>
             <Button callback={handleCopyLoginLink} bgcolor="transparent" color="var(--fg)">Copy login link</Button>
-            <Button callback={handleCopyProfileLink} bgcolor="transparent" color="var(--fg)">Copy profile link</Button>
             <Button callback={handleCopyBundle} bgcolor="transparent" color="var(--fg)">Copy quick bundle</Button>
             <Button callback={handlePrepareReminder} bgcolor="transparent" color="var(--fg-muted)">Prepare reminder</Button>
           </div>
@@ -868,7 +871,7 @@ const StudentDetailPage = () => {
               <h3>{d.name || "Unnamed Deck"}</h3>
               <p>{d.description || ""}</p>
               <div className={styles.assignmentMeta}>
-                <Badge>{d.flashy_cards?.length ?? 0} cards</Badge>
+                <Badge>{d.card_count ?? 0} cards</Badge>
                 <span>Created: {new Date(d.created_at).toLocaleDateString()}</span>
               </div>
               <div style={{ marginTop: "0.35rem", display: "flex", gap: "0.35rem", flexWrap: "wrap" }}>

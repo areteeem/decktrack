@@ -61,7 +61,6 @@ const ACTION_LABELS = {
   deck_assigned: "Assigned deck",
   deck_assign_duplicate: "Duplicate assign",
   copy_login_link: "Copied login link",
-  copy_profile_link: "Copied profile link",
   copy_student_bundle: "Copied student bundle",
   reminder_prepared: "Prepared reminder",
   open_student_app: "Opened student app",
@@ -149,12 +148,6 @@ const getStudentLoginUrl = (profile, teacherId) => {
     studentId,
     studentName,
   });
-};
-
-const getStudentProfileUrl = (profile) => {
-  const profileId = String(profile?.id || "").trim();
-  if (!profileId) return null;
-  return new URL(`students/${encodeURIComponent(profileId)}`, `${window.location.origin}${import.meta.env.BASE_URL}`).toString();
 };
 
 const buildStudentAssignmentSummaryMap = (assignments = []) => {
@@ -987,18 +980,6 @@ const StudentsPage = () => {
     logStudentAction("copy_login_link", studentId, { source: "students_list" });
   }, [logStudentAction, user?.id]);
 
-  const handleCopyProfileLink = useCallback(async (studentRow) => {
-    const studentId = String(studentRow?.linkedProfile?.id || "").trim();
-    const url = getStudentProfileUrl(studentRow?.linkedProfile);
-    if (!url) {
-      toast.info("Profile link is not available.");
-      return;
-    }
-    await copyText(url);
-    toast.success("Profile link copied!");
-    logStudentAction("copy_profile_link", studentId, { source: "students_list" });
-  }, [logStudentAction]);
-
   const handleCopyBundle = useCallback(async (studentRow) => {
     const studentId = String(studentRow?.linkedProfile?.id || "").trim();
     if (!studentId) {
@@ -1007,7 +988,6 @@ const StudentsPage = () => {
     }
 
     const loginUrl = getStudentLoginUrl(studentRow?.linkedProfile, user?.id) || "Not available";
-    const profileUrl = getStudentProfileUrl(studentRow?.linkedProfile) || "Not available";
     const assignmentSummary = assignmentSummaryMap.get(studentId) || {
       total: 0,
       dueSoon: 0,
@@ -1020,7 +1000,6 @@ const StudentsPage = () => {
       `Student: ${studentRow.displayName || "Student"}`,
       studentRow.email ? `Email: ${studentRow.email}` : "",
       `Login link: ${loginUrl}`,
-      `Profile link: ${profileUrl}`,
       `Assigned decks: ${assignmentSummary.total}`,
       `Due soon: ${assignmentSummary.dueSoon}, overdue: ${assignmentSummary.overdue}`,
       `Average progress: ${assignmentSummary.avgProgress}%`,
@@ -1331,9 +1310,6 @@ const StudentsPage = () => {
                       <div className={styles.moreActions}>
                         <button type="button" className={styles.moreActionButton} onClick={() => handleCopyLoginLink(studentRow)}>
                           Copy login link
-                        </button>
-                        <button type="button" className={styles.moreActionButton} onClick={() => handleCopyProfileLink(studentRow)}>
-                          Copy profile link
                         </button>
                         <button type="button" className={styles.moreActionButton} onClick={() => handleCopyBundle(studentRow)}>
                           Copy quick bundle
