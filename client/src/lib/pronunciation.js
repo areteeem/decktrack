@@ -15,7 +15,6 @@ const LOCALE_ALIASES = {
   "uk-ua": "uk-UA",
 };
 
-const SUPPORTED_GOOGLE_LANGUAGES = new Set(["en", "uk"]);
 const UKRAINIAN_LETTERS_RE = /[іїєґІЇЄҐ]/;
 const CYRILLIC_RE = /[\u0400-\u04FF]/;
 const LATIN_RE = /[A-Za-z]/;
@@ -275,7 +274,9 @@ export const resolvePronunciationLocale = ({ flashcard, side, text, fallbackLoca
 
 const buildGoogleTtsUrl = (text, locale) => {
   const googleLocale = getLanguagePrefix(locale);
-  if (!SUPPORTED_GOOGLE_LANGUAGES.has(googleLocale)) return "";
+  // Use Google's more natural server-rendered voice for any language code.
+  // Unsupported codes and network failures fall back to browser speech.
+  if (!/^[a-z]{2,3}$/.test(googleLocale)) return "";
   if (text.length > MAX_GOOGLE_TEXT_LENGTH) return "";
 
   const params = new URLSearchParams({
@@ -307,7 +308,9 @@ const loadVoices = async () => {
           synth.removeEventListener("voiceschanged", handleVoicesChanged);
         } catch {}
         const resolvedVoices = synth.getVoices().filter(Boolean);
-        voicesPromise = Promise.resolve(resolvedVoices);
+        // Voice lists can arrive after the first request (notably in Safari).
+        // Retry later rather than caching an empty list for the whole session.
+        voicesPromise = resolvedVoices.length ? Promise.resolve(resolvedVoices) : null;
         resolve(resolvedVoices);
       };
 
@@ -454,6 +457,9 @@ const playViaSpeechSynthesis = async ({ token, text, locale, sourceKey }) => {
   return new Promise((resolve) => {
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.lang = voice?.lang || normalizeLocale(locale, DEFAULT_LOCALE);
+    utterance.rate = 1;
+    utterance.pitch = 1;
+    utterance.volume = 1;
     if (voice) {
       utterance.voice = voice;
     }
