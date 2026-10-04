@@ -3,6 +3,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 const DEFAULT_LOCALE = "en-US";
 const MAX_GOOGLE_TEXT_LENGTH = 180;
 const GOOGLE_TTS_URL = "https://translate.google.com/translate_tts";
+const ENGLISH_SPEECH_RATE = 0.92;
+const ENGLISH_SPEECH_PITCH = 1;
 
 const LOCALE_ALIASES = {
   en: "en-US",
@@ -457,8 +459,9 @@ const playViaSpeechSynthesis = async ({ token, text, locale, sourceKey }) => {
   return new Promise((resolve) => {
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.lang = voice?.lang || normalizeLocale(locale, DEFAULT_LOCALE);
-    utterance.rate = 1;
-    utterance.pitch = 1;
+    const isEnglish = getLanguagePrefix(locale) === "en";
+    utterance.rate = isEnglish ? ENGLISH_SPEECH_RATE : 1;
+    utterance.pitch = isEnglish ? ENGLISH_SPEECH_PITCH : 1;
     utterance.volume = 1;
     if (voice) {
       utterance.voice = voice;
@@ -545,6 +548,38 @@ export const playPronunciation = async ({ text, locale, sourceKey }) => {
     requestId: token,
   });
 
+  // Google Translate audio has no rate or pitch controls. Use the browser's
+  // selected English voice first so English playback honors the tuned settings.
+  if (getLanguagePrefix(resolvedLocale) === "en") {
+    updateState({
+      status: "loading",
+      sourceKey,
+      text: plainText,
+      locale: resolvedLocale,
+      engine: "speech",
+      requestId: token,
+    });
+
+    const speechSucceeded = await playViaSpeechSynthesis({
+      token,
+      text: plainText,
+      locale: resolvedLocale,
+      sourceKey,
+    });
+
+    if (token !== currentToken) return false;
+    if (speechSucceeded) return true;
+
+    updateState({
+      status: "loading",
+      sourceKey,
+      text: plainText,
+      locale: resolvedLocale,
+      engine: "google",
+      requestId: token,
+    });
+  }
+
   const googleSucceeded = await playViaGoogleAudio({
     token,
     text: plainText,
@@ -569,12 +604,14 @@ export const playPronunciation = async ({ text, locale, sourceKey }) => {
     requestId: token,
   });
 
-  const speechSucceeded = await playViaSpeechSynthesis({
-    token,
-    text: plainText,
-    locale: resolvedLocale,
-    sourceKey,
-  });
+  const speechSucceeded = getLanguagePrefix(resolvedLocale) === "en"
+    ? false
+    : await playViaSpeechSynthesis({
+      token,
+      text: plainText,
+      locale: resolvedLocale,
+      sourceKey,
+    });
 
   if (!speechSucceeded && token === currentToken) {
     resetPronunciationState(token);
