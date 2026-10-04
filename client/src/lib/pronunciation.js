@@ -72,7 +72,6 @@ let audioNode = null;
 let audioCleanup = null;
 let speechCleanup = null;
 let fallbackTimer = null;
-let voicesPromise = null;
 
 const emit = () => {
   listeners.forEach((listener) => {
@@ -102,6 +101,8 @@ const ensureAudioNode = () => {
   if (!audioNode) {
     audioNode = new Audio();
     audioNode.preload = "none";
+    audioNode.preservesPitch = true;
+    audioNode.webkitPreservesPitch = true;
   }
   return audioNode;
 };
@@ -291,46 +292,15 @@ const buildGoogleTtsUrl = (text, locale) => {
   return `${GOOGLE_TTS_URL}?${params.toString()}`;
 };
 
-const loadVoices = async () => {
+const pickSpeechVoice = (locale) => {
   if (!isBrowser() || !window.speechSynthesis) {
-    return [];
+    return null;
   }
 
-  const voices = window.speechSynthesis.getVoices().filter(Boolean);
-  if (voices.length > 0) {
-    return voices;
-  }
-
-  if (!voicesPromise) {
-    voicesPromise = new Promise((resolve) => {
-      const synth = window.speechSynthesis;
-
-      const finish = () => {
-        try {
-          synth.removeEventListener("voiceschanged", handleVoicesChanged);
-        } catch {}
-        const resolvedVoices = synth.getVoices().filter(Boolean);
-        // Voice lists can arrive after the first request (notably in Safari).
-        // Retry later rather than caching an empty list for the whole session.
-        voicesPromise = resolvedVoices.length ? Promise.resolve(resolvedVoices) : null;
-        resolve(resolvedVoices);
-      };
-
-      const handleVoicesChanged = () => finish();
-
-      try {
-        synth.addEventListener("voiceschanged", handleVoicesChanged);
-      } catch {}
-
-      setTimeout(finish, 1200);
-    });
-  }
-
-  return voicesPromise;
-};
-
-const pickSpeechVoice = async (locale) => {
-  const voices = await loadVoices();
+  let voices = [];
+  try {
+    voices = window.speechSynthesis.getVoices().filter(Boolean);
+  } catch {}
   if (!voices.length) return null;
 
   const normalizedLocale = normalizeLocale(locale, DEFAULT_LOCALE).toLowerCase();
@@ -354,6 +324,10 @@ const playViaGoogleAudio = async ({ token, text, locale, sourceKey }) => {
 
   clearAudioHandlers();
   clearFallbackTimer();
+  const isEnglish = getLanguagePrefix(locale) === "en";
+  audio.playbackRate = isEnglish ? ENGLISH_SPEECH_RATE : 1;
+  if ("preservesPitch" in audio) audio.preservesPitch = true;
+  if ("webkitPreservesPitch" in audio) audio.webkitPreservesPitch = true;
 
   return new Promise((resolve) => {
     let settled = false;
@@ -445,7 +419,7 @@ const playViaGoogleAudio = async ({ token, text, locale, sourceKey }) => {
   });
 };
 
-const playViaSpeechSynthesis = async ({ token, text, locale, sourceKey }) => {
+const playViaSpeechSynthesis = ({ token, text, locale, sourceKey }) => {
   if (!isBrowser() || !window.speechSynthesis || typeof SpeechSynthesisUtterance === "undefined") {
     return false;
   }
@@ -453,7 +427,7 @@ const playViaSpeechSynthesis = async ({ token, text, locale, sourceKey }) => {
   clearSpeechHandlers();
 
   const synth = window.speechSynthesis;
-  const voice = await pickSpeechVoice(locale);
+  const voice = pickSpeechVoice(locale);
   if (token !== currentToken) return false;
 
   return new Promise((resolve) => {
@@ -548,38 +522,6 @@ export const playPronunciation = async ({ text, locale, sourceKey }) => {
     requestId: token,
   });
 
-  // Google Translate audio has no rate or pitch controls. Use the browser's
-  // selected English voice first so English playback honors the tuned settings.
-  if (getLanguagePrefix(resolvedLocale) === "en") {
-    updateState({
-      status: "loading",
-      sourceKey,
-      text: plainText,
-      locale: resolvedLocale,
-      engine: "speech",
-      requestId: token,
-    });
-
-    const speechSucceeded = await playViaSpeechSynthesis({
-      token,
-      text: plainText,
-      locale: resolvedLocale,
-      sourceKey,
-    });
-
-    if (token !== currentToken) return false;
-    if (speechSucceeded) return true;
-
-    updateState({
-      status: "loading",
-      sourceKey,
-      text: plainText,
-      locale: resolvedLocale,
-      engine: "google",
-      requestId: token,
-    });
-  }
-
   const googleSucceeded = await playViaGoogleAudio({
     token,
     text: plainText,
@@ -604,14 +546,12 @@ export const playPronunciation = async ({ text, locale, sourceKey }) => {
     requestId: token,
   });
 
-  const speechSucceeded = getLanguagePrefix(resolvedLocale) === "en"
-    ? false
-    : await playViaSpeechSynthesis({
-      token,
-      text: plainText,
-      locale: resolvedLocale,
-      sourceKey,
-    });
+  const speechSucceeded = playViaSpeechSynthesis({
+    token,
+    text: plainText,
+    locale: resolvedLocale,
+    sourceKey,
+  });
 
   if (!speechSucceeded && token === currentToken) {
     resetPronunciationState(token);
